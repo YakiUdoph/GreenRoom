@@ -2,11 +2,11 @@
 
 > Built on Google Antigravity & the **Official Animoca Brands Minds Builder API** ([build.hellominds.ai](https://build.hellominds.ai)).
 
-**Greenroom** is an always-on multi-agent creator staff built using the official Animoca Brands Minds Builder API. Instead of acting as another context-less chatbot wrapper or static SaaS analytics dashboard, Greenroom creates an autonomous digital staff that accumulates long-term knowledge regarding a creator’s identity, audience behavior, performance benchmarks, and commercial goals.
+**Greenroom** is an always-on multi-agent creator staff built using the official `@animocabrands/minds-client-lib` and Animoca Brands Minds Builder API. Instead of acting as another context-less chatbot wrapper or static SaaS analytics dashboard, Greenroom creates an autonomous digital staff that accumulates long-term knowledge regarding a creator’s identity, audience behavior, performance benchmarks, and commercial goals.
 
 ---
 
-## 🌟 Architecture & Official Minds Builder API Integration
+## 🌟 Architecture & Official Minds Client-Lib Integration
 
 ### Real Platform Mind:
 - **Platform Mind UUID:** Bound to official platform Mind UUID `8208493e-f36b-1410-8466-00039ce7df11`.
@@ -14,6 +14,11 @@
 - **Mind Wallet:** `0xB675Ec9857776678aE540cF3248d898f015987Cb`
 - **Builder API Endpoint:** `https://api.build.hellominds.ai`
 - **Authentication:** `MINDS_BUILDER_API_KEY` sent via HTTP header `X-Api-Key`.
+
+### Official Client-Lib Node Bridge (`minds_bridge.mjs`):
+- Production Mind interactions run through an internal Node bridge script importing the official `@animocabrands/minds-client-lib` SDK (`createMindsClient`).
+- **Strict Verification (`verify_real_mind`):** Verification requires the API response itself to contain all 4 matching fields: `mindId == 8208493e-f36b-1410-8466-00039ce7df11`, `email == udophia@hellominds.ai`, `walletAddress == 0xB675Ec9857776678aE540cF3248d898f015987Cb`, and `isEnabled == true`. Missing or mismatched fields evaluate `verified = false` and prevent the "Remote Minds Connected" status.
+- **Documented Conversation Flow:** Production messaging uses the official conversation flow: `ensureConversation` -> `sendMessage` -> `waitForReply`. Successful `sendMessage` without a Mind reply raises a `MindsExecutionError` and is **never** marked as completed.
 
 ### Clear Architecture Separation:
 1. **Real Platform Mind (`8208493e-f36b-1410-8466-00039ce7df11`):** The real remote platform Mind created on Animoca Brands Builder, handling strategy completions and remote interactions.

@@ -261,6 +261,123 @@ def test_verify_real_mind_parsing():
     print("[OK] [TEST 8 PASSED]\n")
 
 
+def test_missing_email_cannot_verify():
+    print("--- [TEST 9] Testing Missing Email Cannot Verify ---")
+    from minds_integration import GreenroomMindsIntegrationManager
+    class MockClient:
+        def get_mind(self, mind_id):
+            return {
+                "mindId": "8208493e-f36b-1410-8466-00039ce7df11",
+                "walletAddress": "0xB675Ec9857776678aE540cF3248d898f015987Cb",
+                "isEnabled": True
+            }
+    mgr = GreenroomMindsIntegrationManager()
+    mgr.builder_client = MockClient()
+    res = mgr.verify_real_mind()
+    assert res["verified"] is False
+    print("[OK] Verified missing email causes verified=False.")
+    print("[OK] [TEST 9 PASSED]\n")
+
+
+def test_missing_wallet_cannot_verify():
+    print("--- [TEST 10] Testing Missing WalletAddress Cannot Verify ---")
+    from minds_integration import GreenroomMindsIntegrationManager
+    class MockClient:
+        def get_mind(self, mind_id):
+            return {
+                "mindId": "8208493e-f36b-1410-8466-00039ce7df11",
+                "email": "udophia@hellominds.ai",
+                "isEnabled": True
+            }
+    mgr = GreenroomMindsIntegrationManager()
+    mgr.builder_client = MockClient()
+    res = mgr.verify_real_mind()
+    assert res["verified"] is False
+    print("[OK] Verified missing walletAddress causes verified=False.")
+    print("[OK] [TEST 10 PASSED]\n")
+
+
+def test_wrong_uuid_cannot_verify():
+    print("--- [TEST 11] Testing Wrong UUID Cannot Verify ---")
+    from minds_integration import GreenroomMindsIntegrationManager
+    class MockClient:
+        def get_mind(self, mind_id):
+            return {
+                "mindId": "11111111-2222-3333-4444-555555555555",
+                "email": "udophia@hellominds.ai",
+                "walletAddress": "0xB675Ec9857776678aE540cF3248d898f015987Cb",
+                "isEnabled": True
+            }
+    mgr = GreenroomMindsIntegrationManager()
+    mgr.builder_client = MockClient()
+    res = mgr.verify_real_mind()
+    assert res["verified"] is False
+    print("[OK] Verified wrong UUID causes verified=False.")
+    print("[OK] [TEST 11 PASSED]\n")
+
+
+def test_is_enabled_false_cannot_verify():
+    print("--- [TEST 12] Testing isEnabled=False Cannot Verify ---")
+    from minds_integration import GreenroomMindsIntegrationManager
+    class MockClient:
+        def get_mind(self, mind_id):
+            return {
+                "mindId": "8208493e-f36b-1410-8466-00039ce7df11",
+                "email": "udophia@hellominds.ai",
+                "walletAddress": "0xB675Ec9857776678aE540cF3248d898f015987Cb",
+                "isEnabled": False
+            }
+    mgr = GreenroomMindsIntegrationManager()
+    mgr.builder_client = MockClient()
+    res = mgr.verify_real_mind()
+    assert res["verified"] is False
+    print("[OK] Verified isEnabled=False causes verified=False.")
+    print("[OK] [TEST 12 PASSED]\n")
+
+
+async def test_message_send_without_reply_raises_error():
+    print("--- [TEST 13] Testing Successful Message Send Without Mind Reply Raises Error ---")
+    orig_builder_key = os.environ.get("MINDS_BUILDER_API_KEY")
+    orig_demo = os.environ.get("DEMO_MODE")
+    
+    os.environ["MINDS_BUILDER_API_KEY"] = "test_key"
+    os.environ["DEMO_MODE"] = "false"
+
+    from minds_integration import MindsAgent, MindsExecutionError, AnimocaMindsBuilderClient
+    
+    class MockClientNoReply(AnimocaMindsBuilderClient):
+        def __init__(self):
+            self.builder_api_key = "test_key"
+            self.bridge_script = "non_existent_script.mjs"
+        def create_conversation(self, mind_id, alias="greenroom-main"):
+            return {"ok": True}
+        def send_message(self, alias, message_text):
+            return {"ok": True, "messageId": "msg_123"}
+        def _wait_for_history_reply(self, alias, sent_prompt, timeout=30):
+            return None
+
+    try:
+        agent = MindsAgent("TestMind", "Role", "Prompt", builder_client=MockClientNoReply())
+        res = await agent.generate_response("Hello Mind")
+        assert False, f"Expected MindsExecutionError when Mind reply is missing, but got {res}"
+    except MindsExecutionError as e:
+        assert "no mind reply" in str(e).lower() or "timed out" in str(e).lower() or "failed" in str(e).lower()
+        print(f"[OK] Caught expected exception when message was sent without reply: {e}")
+    finally:
+        if orig_builder_key is not None:
+            os.environ["MINDS_BUILDER_API_KEY"] = orig_builder_key
+        else:
+            os.environ.pop("MINDS_BUILDER_API_KEY", None)
+
+        if orig_demo is not None:
+            os.environ["DEMO_MODE"] = orig_demo
+        else:
+            os.environ.pop("DEMO_MODE", None)
+        
+    print("[OK] [TEST 13 PASSED]\n")
+
+
+
 async def main():
     test_loud_failure_when_unconfigured()
     await test_production_mode_execution_error_without_fallback()
@@ -270,7 +387,12 @@ async def main():
     await test_demo_runner_flow()
     test_real_mind_builder_api_integration()
     test_verify_real_mind_parsing()
-    print("SUCCESS: ALL GREENROOM INTEGRATION & COMPLIANCE TESTS PASSED CLEANLY!")
+    test_missing_email_cannot_verify()
+    test_missing_wallet_cannot_verify()
+    test_wrong_uuid_cannot_verify()
+    test_is_enabled_false_cannot_verify()
+    await test_message_send_without_reply_raises_error()
+    print("SUCCESS: ALL GREENROOM INTEGRATION & HARDENED VERIFICATION TESTS PASSED CLEANLY!")
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -3,6 +3,7 @@ import json
 import asyncio
 import time
 import re
+import subprocess
 import urllib.request
 import urllib.error
 from typing import Dict, List, Any, Optional, Callable
@@ -30,11 +31,13 @@ class MindsExecutionError(Exception):
 class AnimocaMindsBuilderClient:
     """
     Official Animoca Brands Minds Builder API Client (https://api.build.hellominds.ai)
-    Communicates directly with the platform HTTP REST API using X-Api-Key authentication.
+    Utilizes official @animocabrands/minds-client-lib via Node bridge script when available,
+    with direct HTTP REST implementation adhering strictly to documented Builder API routes.
     """
     def __init__(self, builder_api_key: str, base_url: str = OFFICIAL_BUILDER_API_BASE_URL):
         self.builder_api_key = builder_api_key
         self.base_url = base_url.rstrip("/")
+        self.bridge_script = os.path.join(os.path.dirname(__file__), "minds_bridge.mjs")
 
     def _get_headers(self) -> Dict[str, str]:
         return {
@@ -81,11 +84,25 @@ class AnimocaMindsBuilderClient:
     def get_mind(self, mind_id: str) -> Dict[str, Any]:
         """
         GET /v1/minds/{mindId} — Retrieve full details for a platform Mind.
-        Official fields: mindId, email, walletAddress, isEnabled, name, model, species, chain.
+        Prefers official @animocabrands/minds-client-lib bridge.
         """
+        if os.path.exists(self.bridge_script):
+            cmd = ["node", self.bridge_script, "get-mind", mind_id]
+            env = os.environ.copy()
+            env["MINDS_BUILDER_API_KEY"] = self.builder_api_key
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=15)
+                if proc.stdout:
+                    res = json.loads(proc.stdout)
+                    if res.get("ok") and isinstance(res.get("mind"), dict):
+                        return res["mind"]
+                    if not res.get("ok") and "error" in res:
+                        raise MindsExecutionError(f"Animoca Minds Builder API getMind failed: {res['error']}")
+            except Exception as e:
+                if isinstance(e, MindsExecutionError):
+                    raise
+
         res = self._http_request("GET", f"/v1/minds/{mind_id}")
-        
-        # Unwrap nested data if API wraps in {"mind": {...}} or {"data": {...}}
         mind_data = res
         if isinstance(res, dict):
             if "mind" in res and isinstance(res["mind"], dict):
@@ -93,14 +110,26 @@ class AnimocaMindsBuilderClient:
             elif "data" in res and isinstance(res["data"], dict):
                 mind_data = res["data"]
         
-        # Ensure mindId is populated in normalized output
         if isinstance(mind_data, dict) and "mindId" not in mind_data and "id" in mind_data:
             mind_data["mindId"] = mind_data["id"]
 
-        return mind_data if isinstance(mind_data, dict) else {"mindId": mind_id, "raw": res}
+        return mind_data if isinstance(mind_data, dict) else {}
 
     def list_minds(self) -> List[Dict[str, Any]]:
         """GET /v1/minds — List all Minds on user's Builder account."""
+        if os.path.exists(self.bridge_script):
+            cmd = ["node", self.bridge_script, "list-minds"]
+            env = os.environ.copy()
+            env["MINDS_BUILDER_API_KEY"] = self.builder_api_key
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=15)
+                if proc.stdout:
+                    res = json.loads(proc.stdout)
+                    if res.get("ok") and isinstance(res.get("minds"), list):
+                        return res["minds"]
+            except Exception:
+                pass
+
         res = self._http_request("GET", "/v1/minds")
         if isinstance(res, list):
             return res
@@ -122,33 +151,72 @@ class AnimocaMindsBuilderClient:
         """GET /v1/minds/{mindId}/cognition/balance — Check spendable cognition balance."""
         return self._http_request("GET", f"/v1/minds/{mind_id}/cognition/balance")
 
+    def _wait_for_history_reply(self, alias: str, sent_prompt: str, timeout: int = 30) -> Optional[str]:
+        """Polls conversation history for actual Mind reply record."""
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                res = self._http_request("GET", f"/v1/messages/{alias}/history")
+                records = res if isinstance(res, list) else res.get("items", res.get("messages", []))
+                for rec in reversed(records):
+                    if isinstance(rec, dict):
+                        sender_type = rec.get("senderType")
+                        text = rec.get("messageText") or rec.get("text")
+                        if text and (sender_type in (0, 2) or rec.get("mindId") == REAL_PLATFORM_MIND_ID):
+                            if text != sent_prompt:
+                                return str(text)
+            except Exception:
+                pass
+            time.sleep(1.5)
+        return None
+
     def generate_completion(self, mind_id: str, prompt: str, alias: str = "greenroom-main") -> Dict[str, Any]:
         """
         Routes an actual production interaction through the real Mind via official Builder API.
-        Attempts conversation create & message send or mind completion endpoint.
+        Documented flow: ensure conversation -> send message -> wait for actual Mind reply.
+        Raises MindsExecutionError if no reply is received or messaging fails.
         """
-        try:
-            # 1. Ensure conversation exists
-            self.create_conversation(mind_id, alias=alias)
-            # 2. Send message to Mind conversation
-            send_res = self.send_message(alias=alias, message_text=prompt)
-            return {
-                "ok": True,
-                "mindId": mind_id,
-                "alias": alias,
-                "result": send_res,
-                "status": "COMPLETED_VIA_ANIMOCA_MINDS_BUILDER_API"
-            }
-        except Exception:
-            # Direct fallback completion attempt if messaging endpoint returns alternate schema
-            endpoint = f"/v1/minds/{mind_id}/completion"
-            res = self._http_request("POST", endpoint, data={"prompt": prompt})
-            return {
-                "ok": True,
-                "mindId": mind_id,
-                "result": res,
-                "status": "COMPLETED_VIA_ANIMOCA_MINDS_BUILDER_API"
-            }
+        if os.path.exists(self.bridge_script):
+            cmd = ["node", self.bridge_script, "interact", mind_id, prompt, alias]
+            env = os.environ.copy()
+            env["MINDS_BUILDER_API_KEY"] = self.builder_api_key
+            try:
+                proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=40)
+                if proc.stdout:
+                    res = json.loads(proc.stdout)
+                    if res.get("ok") and res.get("reply"):
+                        return {
+                            "ok": True,
+                            "mindId": mind_id,
+                            "alias": alias,
+                            "response": res["reply"],
+                            "status": "COMPLETED_VIA_ANIMOCA_MINDS_BUILDER_API"
+                        }
+                    err_msg = res.get("error", "No Mind reply received within timeout")
+                    raise MindsExecutionError(f"Animoca Minds Builder interaction failed: {err_msg}")
+                raise MindsExecutionError(f"Node bridge execution failed: {proc.stderr}")
+            except subprocess.TimeoutExpired as e:
+                raise MindsExecutionError("Animoca Minds Builder reply timed out waiting for Mind response") from e
+            except Exception as e:
+                if isinstance(e, MindsExecutionError):
+                    raise
+                # Fallthrough to direct REST conversation flow if Node execution fails
+
+        # Fallback Python REST conversation flow (create -> send -> wait for history reply)
+        self.create_conversation(mind_id, alias=alias)
+        self.send_message(alias=alias, message_text=prompt)
+
+        reply_text = self._wait_for_history_reply(alias=alias, sent_prompt=prompt, timeout=30)
+        if not reply_text:
+            raise MindsExecutionError("Successful sendMessage but no Mind reply was received within timeout")
+
+        return {
+            "ok": True,
+            "mindId": mind_id,
+            "alias": alias,
+            "response": reply_text,
+            "status": "COMPLETED_VIA_ANIMOCA_MINDS_BUILDER_API"
+        }
 
 
 class MindsSkill:
@@ -229,7 +297,6 @@ class MindsAgent:
         Raises MindsExecutionError if builder_client is missing or API call fails.
         Executes local mock ONLY when DEMO_MODE=true.
         """
-        # 1. Explicit Mock Mode Path (ONLY active when DEMO_MODE=true)
         if self.is_mock_mode:
             is_punchy = any("punchy" in r.lower() or "formal" in r.lower() for r in self.learned_rules)
             return {
@@ -241,7 +308,6 @@ class MindsAgent:
                 "status": "PROCESSED_LOCALLY_MOCK"
             }
 
-        # 2. Production Mode Path (DEMO_MODE=false)
         if not self.builder_client:
             raise MindsExecutionError(
                 f"Production Mode Error: Mind '{self.name}' has no active Animoca Minds Builder API client. "
@@ -253,7 +319,6 @@ class MindsAgent:
         full_prompt = f"System: {self.system_prompt}\nLearned Rules: {json.dumps(self.learned_rules)}\nContext: {ctx_str}\nInput: {prompt}"
 
         try:
-            # Route actual production interaction through real Mind UUID
             res = self.builder_client.generate_completion(
                 mind_id=self.remote_mind_id,
                 prompt=full_prompt
@@ -262,7 +327,7 @@ class MindsAgent:
                 "agent": self.name,
                 "mind_id": self.remote_mind_id,
                 "source": "Animoca_Minds_Builder_API",
-                "response": str(res),
+                "response": res.get("response", str(res)),
                 "learned_rules_active": self.learned_rules,
                 "status": "COMPLETED_VIA_ANIMOCA_MINDS_BUILDER_API"
             }
@@ -288,13 +353,17 @@ class GreenroomMindsIntegrationManager:
                     builder_api_key=self.builder_api_key,
                     base_url=self.base_url
                 )
-                # Verify integration by retrieving Mind 8208493e-f36b-1410-8466-00039ce7df11 through Builder API
-                mind_info = self.builder_client.get_mind(REAL_PLATFORM_MIND_ID)
-                if mind_info and mind_info.get("isEnabled", True) is not False:
+                mind_info = self.verify_real_mind()
+                if mind_info.get("verified") is True:
                     self.is_connected = True
                     self.real_mind_data = mind_info
                     print(f"[AnimocaMindsBuilder] Successfully verified real Mind ID {REAL_PLATFORM_MIND_ID} via Builder API.")
+                else:
+                    self.is_connected = False
+                    self.real_mind_data = mind_info
+                    print(f"[AnimocaMindsBuilder] Real Mind verification failed: {mind_info}")
             except Exception as e:
+                self.is_connected = False
                 if not self.demo_mode:
                     print(f"[AnimocaMindsBuilder] Failed to verify real Mind ID {REAL_PLATFORM_MIND_ID}: {e}")
 
@@ -302,7 +371,6 @@ class GreenroomMindsIntegrationManager:
         self.skills = self._init_skills()
 
         # Instantiate 4 Minds Agent Objects
-        # GreenroomCore is bound to the REAL platform Mind UUID
         self.agents: Dict[str, MindsAgent] = {
             "GreenroomCore": MindsAgent(
                 name="Greenroom Core Mind",
@@ -356,29 +424,41 @@ class GreenroomMindsIntegrationManager:
 
     def verify_real_mind(self) -> Dict[str, Any]:
         """
-        Retrieves the Mind through the official Builder API/client and verifies:
-        - mindId = 8208493e-f36b-1410-8466-00039ce7df11
-        - email = udophia@hellominds.ai
-        - walletAddress = 0xB675Ec9857776678aE540cF3248d898f015987Cb
-        - isEnabled = True
+        Hardened verification of the real platform Mind:
+        - mindId == 8208493e-f36b-1410-8466-00039ce7df11
+        - email == udophia@hellominds.ai
+        - walletAddress == 0xB675Ec9857776678aE540cF3248d898f015987Cb
+        - isEnabled == true
+
+        STRICT: Do NOT substitute expected values when fields are missing from the API response!
         """
         if not self.builder_client:
             raise MindsExecutionError("MINDS_BUILDER_API_KEY is missing. Cannot verify real Mind UUID.")
         
         mind_data = self.builder_client.get_mind(REAL_PLATFORM_MIND_ID)
         
-        # Verify required parameters
-        ret_id = mind_data.get("mindId") or mind_data.get("id") or REAL_PLATFORM_MIND_ID
-        ret_email = mind_data.get("email") or EXPECTED_MIND_EMAIL
-        ret_wallet = mind_data.get("walletAddress") or EXPECTED_MIND_WALLET
-        ret_enabled = mind_data.get("isEnabled", True)
+        ret_id = mind_data.get("mindId") if isinstance(mind_data, dict) else None
+        if not ret_id and isinstance(mind_data, dict):
+            ret_id = mind_data.get("id")
+
+        ret_email = mind_data.get("email") if isinstance(mind_data, dict) else None
+        ret_wallet = mind_data.get("walletAddress") if isinstance(mind_data, dict) else None
+        ret_enabled = mind_data.get("isEnabled") if isinstance(mind_data, dict) else None
+
+        # Strict checks: No default value substitution!
+        is_id_ok = (ret_id == REAL_PLATFORM_MIND_ID)
+        is_email_ok = (ret_email == EXPECTED_MIND_EMAIL)
+        is_wallet_ok = (ret_wallet == EXPECTED_MIND_WALLET)
+        is_enabled_ok = (ret_enabled is True)
+
+        verified = is_id_ok and is_email_ok and is_wallet_ok and is_enabled_ok
 
         return {
             "mindId": ret_id,
             "email": ret_email,
             "walletAddress": ret_wallet,
             "isEnabled": ret_enabled,
-            "verified": ret_id == REAL_PLATFORM_MIND_ID and ret_enabled is True
+            "verified": verified
         }
 
     def _init_skills(self) -> Dict[str, MindsSkill]:
@@ -570,16 +650,16 @@ class GreenroomMindsIntegrationManager:
             "builder_api_url": self.base_url,
             "real_platform_mind": {
                 "mindId": REAL_PLATFORM_MIND_ID,
-                "email": self.real_mind_data.get("email", EXPECTED_MIND_EMAIL),
-                "walletAddress": self.real_mind_data.get("walletAddress", EXPECTED_MIND_WALLET),
-                "isEnabled": self.real_mind_data.get("isEnabled", True) if self.is_connected else False
+                "email": self.real_mind_data.get("email"),
+                "walletAddress": self.real_mind_data.get("walletAddress"),
+                "isEnabled": self.real_mind_data.get("isEnabled")
             },
             "official_api_methods_used": [
-                "GET /v1/minds/{mindId}",
-                "GET /v1/auth/ping",
-                "POST /v1/conversations",
-                "POST /v1/messages",
-                "GET /v1/minds/{mindId}/cognition/balance"
+                "client.getMind(mindId)",
+                "client.ensureConversation(alias, mindId)",
+                "client.sendMessage({ alias, messageText })",
+                "client.waitForReply({ alias, timeoutMs, sentMessageText })",
+                "client.getCognitionBalance(mindId)"
             ],
             "demo_mode_active": self.demo_mode,
             "configuration_valid": not has_config_error,
