@@ -19,13 +19,13 @@
     "minimum_deal_size": 5000
   },
   "learned_voice_rules": [
-    "Avoid overly formal phrasing; keep tone punchy and emphasize beginner-friendly tips"
+    "Too formal. Make it punchier and emphasize beginner-friendly tips."
   ],
   "memory_nodes": [
     {
-      "node_id": "mem_1786280014477",
+      "node_id": "mem_1786280534718",
       "type": "video_script_analytics",
-      "timestamp": 1786280014.477194,
+      "timestamp": 1786280534.718467,
       "content": "Past video script analysis: 'Build a Custom AI Agent in 10 Mins'. Viewer retention: 78% at 30 seconds. Audience requests github links and setup walkthroughs.",
       "key_takeaways": [
         "Step-by-step technical overviews drive 3x audience retention compared to news recaps.",
@@ -33,13 +33,13 @@
       ]
     },
     {
-      "node_id": "mem_1786280014478",
+      "node_id": "mem_1786280534720",
       "type": "learned_preference",
-      "timestamp": 1786280014.4787734,
-      "content": "User Feedback Rule: Avoid overly formal phrasing; keep tone punchy and emphasize beginner-friendly tips",
+      "timestamp": 1786280534.7203867,
+      "content": "User Feedback Rule: Too formal. Make it punchier and emphasize beginner-friendly tips.",
       "key_takeaways": [
         "Explicit creator override on voice & tone",
-        "Avoid overly formal phrasing; keep tone punchy and emphasize beginner-friendly tips"
+        "Too formal. Make it punchier and emphasize beginner-friendly tips."
       ]
     }
   ]

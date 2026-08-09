@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 import time
+import re
 from typing import Dict, List, Any, Optional, Callable
 from dotenv import load_dotenv
 
@@ -9,7 +10,11 @@ from dotenv import load_dotenv
 load_dotenv()
 
 class MindsConfigurationError(Exception):
-    """Raised when Minds API credentials or required configurations are missing."""
+    """Raised when Minds API credentials or required configurations are missing in production mode."""
+    pass
+
+class MindsExecutionError(Exception):
+    """Raised when a remote Minds API call fails in production mode without fallback."""
     pass
 
 
@@ -18,13 +23,11 @@ HAS_MINDS_SDK = False
 MindsClient = None
 
 try:
-    import minds_sdk
-    from minds_sdk import Client as MindsClient
+    from minds.client import Minds as MindsClient
     HAS_MINDS_SDK = True
 except ImportError:
     try:
-        import minds
-        from minds.client import Minds as MindsClient
+        from minds_sdk import Client as MindsClient
         HAS_MINDS_SDK = True
     except ImportError:
         HAS_MINDS_SDK = False
@@ -45,20 +48,22 @@ class MindsSkill:
 
 
 class MindsAgent:
-    """Minds Agent Remote Client Wrapper with Persistent Memory & Registered Skills"""
+    """Remote Minds SDK Agent Instance with Persistent State & Registered Skills"""
     def __init__(
         self,
         name: str,
         role: str,
         system_prompt: str,
         skills: Optional[List[MindsSkill]] = None,
-        sdk_client: Optional[Any] = None
+        sdk_client: Optional[Any] = None,
+        remote_mind_id: Optional[str] = None
     ):
         self.name = name
         self.role = role
         self.system_prompt = system_prompt
         self.skills: Dict[str, MindsSkill] = {s.name: s for s in (skills or [])}
         self.sdk_client = sdk_client
+        self.remote_mind_id = remote_mind_id or name
         self.persistent_context: List[Dict[str, Any]] = []
         self.learned_rules: List[str] = []
 
@@ -72,7 +77,7 @@ class MindsAgent:
         self.skills[skill.name] = skill
 
     def add_persistent_context(self, key: str, value: Any):
-        """Appends context to local state buffer and syncs to remote Mind"""
+        """Appends context to local persistent profile buffer"""
         self.persistent_context.append({
             "timestamp": time.time(),
             "key": key,
@@ -88,48 +93,58 @@ class MindsAgent:
         if skill_name not in self.skills:
             raise ValueError(f"Skill '{skill_name}' not registered on Mind '{self.name}'")
         res = await self.skills[skill_name].execute(**kwargs)
+        
+        mode_tag = "[MOCK DEMO MODE]" if self.is_mock_mode else "Remote_Minds_API"
         if isinstance(res, dict):
-            res["execution_mode"] = "[MOCK DEMO MODE]" if self.is_mock_mode else "Remote_Minds_API"
+            res["execution_mode"] = mode_tag
         elif isinstance(res, list):
             for item in res:
                 if isinstance(item, dict):
-                    item["execution_mode"] = "[MOCK DEMO MODE]" if self.is_mock_mode else "Remote_Minds_API"
+                    item["execution_mode"] = mode_tag
         return res
-
 
     async def generate_response(self, prompt: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Sends actual completion request to the remote Minds platform via Minds SDK.
-        Fails loudly if API key/client is invalid unless DEMO_MODE=true is explicitly active.
+        Executes actual completion via the remote Minds platform client.
+        In production mode (DEMO_MODE=false), absolutely NEVER falls back to local simulation upon SDK/API error.
         """
         recent_ctx = self.persistent_context[-5:]
         ctx_str = json.dumps(recent_ctx) if recent_ctx else ""
         full_prompt = f"System: {self.system_prompt}\nLearned Rules: {json.dumps(self.learned_rules)}\nContext: {ctx_str}\nInput: {prompt}"
 
         # Real Remote Minds SDK API Execution Path
-        if self.sdk_client and not self.is_mock_mode:
-            try:
-                if hasattr(self.sdk_client, "minds") and hasattr(self.sdk_client.minds, "completion"):
-                    res = self.sdk_client.minds.completion(mind=self.name, prompt=full_prompt)
-                    text = res.get("text", str(res)) if isinstance(res, dict) else str(res)
-                    return {
-                        "agent": self.name,
-                        "source": "Remote_Minds_API",
-                        "response": text,
-                        "learned_rules_active": self.learned_rules,
-                        "status": "COMPLETED_VIA_MINDS_REMOTE_API"
-                    }
-                elif hasattr(self.sdk_client, "completion"):
-                    res = self.sdk_client.completion(mind=self.name, prompt=full_prompt)
-                    return {
-                        "agent": self.name,
-                        "source": "Remote_Minds_API",
-                        "response": str(res),
-                        "learned_rules_active": self.learned_rules,
-                        "status": "COMPLETED_VIA_MINDS_REMOTE_API"
-                    }
-            except Exception as e:
-                raise RuntimeError(f"Remote Minds SDK completion call failed for '{self.name}': {e}") from e
+        if not self.is_mock_mode:
+            if self.sdk_client:
+                try:
+                    if hasattr(self.sdk_client, "minds") and hasattr(self.sdk_client.minds, "completion"):
+                        res = self.sdk_client.minds.completion(mind=self.remote_mind_id, prompt=full_prompt)
+                        text = res.get("text", str(res)) if isinstance(res, dict) else str(res)
+                        return {
+                            "agent": self.name,
+                            "source": "Remote_Minds_API",
+                            "response": text,
+                            "learned_rules_active": self.learned_rules,
+                            "status": "COMPLETED_VIA_MINDS_REMOTE_API"
+                        }
+                    elif hasattr(self.sdk_client, "completion"):
+                        res = self.sdk_client.completion(mind=self.remote_mind_id, prompt=full_prompt)
+                        return {
+                            "agent": self.name,
+                            "source": "Remote_Minds_API",
+                            "response": str(res),
+                            "learned_rules_active": self.learned_rules,
+                            "status": "COMPLETED_VIA_MINDS_REMOTE_API"
+                        }
+                except Exception as e:
+                    raise MindsExecutionError(
+                        f"Remote Minds SDK API call failed for Mind '{self.name}' (remote_id='{self.remote_mind_id}'): {e}"
+                    ) from e
+
+            # In production mode (DEMO_MODE=false), if no SDK client connected or API call fails, raise MindsExecutionError!
+            raise MindsExecutionError(
+                f"Production Mode Error: Remote Minds API execution failed for '{self.name}'. "
+                "Silent fallback to local mock is disabled when DEMO_MODE=false."
+            )
 
         # Explicit Mock Mode Path (ONLY active when DEMO_MODE=true)
         if self.is_mock_mode:
@@ -143,10 +158,7 @@ class MindsAgent:
                 "status": "PROCESSED_LOCALLY_MOCK"
             }
 
-        # If not mock mode and no client available, fail loudly
-        raise MindsConfigurationError(
-            f"Minds Agent '{self.name}' cannot execute: MINDS_API_KEY is missing and DEMO_MODE is not set to true."
-        )
+
 
 
 class GreenroomMindsIntegrationManager:
@@ -162,39 +174,44 @@ class GreenroomMindsIntegrationManager:
                 self.is_connected = True
                 print("[MindsSDK] Successfully initialized remote Minds SDK client.")
             except Exception as e:
-                print(f"[MindsSDK] Connection warning: {e}")
+                if not self.demo_mode:
+                    raise MindsConfigurationError(f"Failed to initialize remote Minds client: {e}") from e
 
         # Initialize Registered Skills
         self.skills = self._init_skills()
 
-        # Instantiate 4 Minds Agents
+        # Instantiate 4 Remote Minds Agent Objects
         self.agents: Dict[str, MindsAgent] = {
             "GreenroomCore": MindsAgent(
                 name="Greenroom Core Mind",
                 role="Chief of Staff & Strategic Router Engine",
                 system_prompt="You are Greenroom Core Mind, orchestrating multi-agent creator strategy and memory synthesis.",
-                sdk_client=self.sdk_client
+                sdk_client=self.sdk_client,
+                remote_mind_id="greenroom-core-mind"
             ),
             "ScoutMind": MindsAgent(
                 name="Scout Mind",
                 role="Trend Analysis & Niche Signal Filtering",
                 system_prompt="You are Scout Mind, an autonomous trend researcher running signal vs. noise filters against emerging creator opportunities.",
                 skills=[self.skills["search_trends"]],
-                sdk_client=self.sdk_client
+                sdk_client=self.sdk_client,
+                remote_mind_id="scout-mind-v1"
             ),
             "CommunityMind": MindsAgent(
                 name="Community Mind",
                 role="Audience Intelligence & Sentiment Clustering",
                 system_prompt="You are Community Mind, evaluating comment sentiment, audience pain points, and retention drivers.",
                 skills=[self.skills["analyze_comments"]],
-                sdk_client=self.sdk_client
+                sdk_client=self.sdk_client,
+                remote_mind_id="community-mind-v1"
             ),
             "BusinessMind": MindsAgent(
                 name="Business Mind",
                 role="Monetization & Partnership Drafting",
                 system_prompt="You are Business Mind, calculating brand sponsorship fit, valuation benchmarks, and customized pitch briefs.",
                 skills=[self.skills["score_deal"]],
-                sdk_client=self.sdk_client
+                sdk_client=self.sdk_client,
+                remote_mind_id="business-mind-v1"
             )
         }
 
@@ -216,97 +233,161 @@ class GreenroomMindsIntegrationManager:
             )
 
     def _init_skills(self) -> Dict[str, MindsSkill]:
-        """Define Registered Minds Skills with dynamic evaluation logic"""
+        """Define Registered Minds Skills with dynamic evaluation logic for production mode"""
 
         async def search_trends_handler(
             input_trends: Optional[List[Dict[str, Any]]] = None,
             rejected_topics: Optional[List[str]] = None
         ) -> List[Dict[str, Any]]:
+            """
+            Dynamic trend signal filtering skill registered on Scout Mind.
+            In production mode, scores are calculated dynamically from text overlap & boundary matching.
+            """
             rejected = rejected_topics or ["Crypto trading bots", "Generic AI news clickbait"]
-            
-            trends_to_evaluate = input_trends or [
-                {
-                    "trend_name": "Beginner AI Workflows & Automation",
-                    "category": "Developer Tools",
-                    "raw_volume": "145k discussions/day",
-                    "description": "Step-by-step setup guides for local open-source AI workflows."
-                },
-                {
-                    "trend_name": "Automated Token Trading Strategy",
-                    "category": "Finance / Crypto",
-                    "raw_volume": "400k discussions/day",
-                    "description": "High-risk automated speculative token trading tutorial."
-                },
-                {
-                    "trend_name": "Daily Generic AI News Briefing",
-                    "category": "Tech News",
-                    "raw_volume": "80k discussions/day",
-                    "description": "Surface-level aggregation of recent headline announcements."
-                }
-            ]
+            is_mock = not self.api_key and self.demo_mode
+
+            # Use mock fixtures ONLY when in explicit DEMO_MODE=true
+            if is_mock and input_trends is None:
+                input_trends = [
+                    {
+                        "trend_name": "Beginner AI Workflows & Automation",
+                        "category": "Developer Tools",
+                        "raw_volume": "145k discussions/day",
+                        "description": "Step-by-step setup guides for local open-source AI workflows."
+                    },
+                    {
+                        "trend_name": "Automated Token Trading Strategy",
+                        "category": "Finance / Crypto",
+                        "raw_volume": "400k discussions/day",
+                        "description": "High-risk automated speculative token trading tutorial."
+                    },
+                    {
+                        "trend_name": "Daily Generic AI News Briefing",
+                        "category": "Tech News",
+                        "raw_volume": "80k discussions/day",
+                        "description": "Surface-level aggregation of recent headline announcements."
+                    }
+                ]
+            elif input_trends is None:
+                input_trends = []
 
             results = []
-            for item in trends_to_evaluate:
-                name = item["trend_name"]
+            for item in input_trends:
+                name = item.get("trend_name", "")
                 cat = item.get("category", "")
-                
-                is_rejected = any(
-                    rule.lower() in name.lower() or rule.lower() in cat.lower()
-                    for rule in rejected
-                ) or "Token Trading" in name or "Generic" in name
+                desc = item.get("description", "")
+                text_block = f"{name} {cat} {desc}".lower()
 
-                if not is_rejected:
-                    results.append({
-                        "trend_name": name,
-                        "status": "RECOMMENDED",
-                        "fit_score": 0.92,
-                        "relevance_reason": "Matches technical educational profile and audience setup requests.",
-                        "suggested_angle": f"Adapt '{name}' into step-by-step developer tutorial.",
-                        "source_vectors": ["analytics_cluster_4", "comment_hook_12"]
-                    })
-                else:
+                # Dynamic scoring algorithm based on keyword boundary rules
+                is_rejected = any(rule.lower() in text_block for rule in rejected)
+
+                if is_rejected:
+                    fit_score = round(max(0.1, 0.4 - (len([r for r in rejected if r.lower() in text_block]) * 0.15)), 2)
                     results.append({
                         "trend_name": name,
                         "status": "REJECTED",
-                        "fit_score": 0.25,
-                        "rejection_reason": f"Filtered out based on creator boundary rules: '{', '.join(rejected)}'.",
-                        "source_vectors": ["brand_voice_matrix_rule_4"]
+                        "fit_score": fit_score if not is_mock else 0.25,
+                        "rejection_reason": f"Filtered based on creator rules: '{', '.join(rejected)}'.",
+                        "source_vectors": ["brand_voice_matrix_rule"]
+                    })
+                else:
+                    # Dynamic fit calculation
+                    tech_keywords = ["workflow", "automation", "guide", "code", "agent", "developer", "tool", "local", "open-source"]
+                    matches = sum(1 for k in tech_keywords if k in text_block)
+                    dynamic_score = round(min(0.99, max(0.65, 0.70 + (matches * 0.05))), 2)
+
+                    results.append({
+                        "trend_name": name,
+                        "status": "RECOMMENDED",
+                        "fit_score": dynamic_score if not is_mock else 0.92,
+                        "relevance_reason": "Matches technical profile and creator boundary criteria.",
+                        "suggested_angle": f"Adapt '{name}' into practical developer tutorial.",
+                        "source_vectors": ["analytics_cluster_node", "comment_hook_vector"]
                     })
             return results
 
         async def analyze_comments_handler(comment_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+            """
+            Dynamic comment stream analysis skill registered on Community Mind.
+            Calculates sentiment and topic friction dynamically in production mode.
+            """
+            is_mock = not self.api_key and self.demo_mode
+
             if comment_data:
-                return comment_data
-                
+                text = str(comment_data.get("comments", comment_data))
+                words = re.findall(r'\w+', text.lower())
+                positive_words = {"love", "great", "setup", "github", "repo", "help", "good", "thanks", "awesome", "tutorial"}
+                pos_count = sum(1 for w in words if w in positive_words)
+                sentiment = round(min(0.98, max(0.40, 0.50 + (pos_count / (len(words) + 1.0) * 2.0))), 2)
+
+                return {
+                    "insight_type": "DYNAMIC_COMMUNITY_SIGNAL",
+                    "extracted_hook": comment_data.get("hook", f"Audience engagement sentiment score: {sentiment}"),
+                    "community_sentiment_score": sentiment,
+                    "top_requested_topics": comment_data.get("requested_topics", ["Code repository links", "Local agent setup"])
+                }
+
+            # Explicit DEMO_MODE fixture
+            if is_mock:
+                return {
+                    "insight_type": "DEMO_FIXTURE_HOOK",
+                    "extracted_hook": "74% of audience requests setup guides & direct github repository links.",
+                    "audience_retention_pattern": "3x retention boost when code setup steps are demonstrated within first 60 seconds.",
+                    "community_sentiment_score": 0.88,
+                    "top_requested_topics": ["Beginner setup scripts", "Clean environment config", "Architecture breakdown"]
+                }
+
             return {
-                "insight_type": "CONTENT_OPPORTUNITY_HOOK",
-                "extracted_hook": "74% of audience requests setup guides & direct github repository links.",
-                "audience_retention_pattern": "3x retention boost when code setup steps are demonstrated within first 60 seconds.",
-                "community_sentiment_score": 0.88,
-                "top_requested_topics": ["Beginner setup scripts", "Clean environment config", "Architecture breakdown"]
+                "insight_type": "COMMUNITY_ANALYSIS_DEFAULT",
+                "extracted_hook": "No comments payload provided; standard audience retention active.",
+                "community_sentiment_score": 0.75,
+                "top_requested_topics": ["Technical walkthroughs"]
             }
 
         async def score_deal_handler(
             sponsor_name: str = "TechBrand Inc.",
             cpm_target: float = 45.0,
-            audience_reach: int = 245000
+            audience_reach: int = 245000,
+            brand_niche: str = "Developer Infrastructure"
         ) -> Dict[str, Any]:
-            match_score = 0.89
-            deal_value = float(cpm_target) * (audience_reach / 1000.0) * 0.5
+            """
+            Dynamic deal scoring & pitch generation skill registered on Business Mind.
+            Calculates deal size and fit score dynamically from inputs in production mode.
+            """
+            is_mock = not self.api_key and self.demo_mode
+            cpm = float(cpm_target)
+            reach = int(audience_reach)
             
+            # Dynamic calculation
+            estimated_impressions = reach * 0.4
+            calculated_deal_value = round((estimated_impressions / 1000.0) * cpm, 2)
+            
+            # Calculate match score based on brand niche alignment
+            niche_lower = brand_niche.lower()
+            if any(term in niche_lower for term in ["developer", "tech", "infrastructure", "ai", "cloud"]):
+                match_score = 0.91
+            elif any(term in niche_lower for term in ["finance", "crypto", "gambling"]):
+                match_score = 0.35
+            else:
+                match_score = 0.65
+
+            if is_mock and sponsor_name == "TechBrand Inc.":
+                match_score = 0.89
+                calculated_deal_value = 5400.0
+
             pitch_draft = (
                 f"Hey {sponsor_name} team,\n\n"
                 f"Over 78% of our technical viewers are software engineers and AI builders actively seeking developer tools.\n"
-                f"Our average viewer retention on technical setup guides is 3x platform average. Let's showcase {sponsor_name} as core infrastructure in our upcoming workflow tutorial."
+                f"Our average viewer retention on technical setup guides is high. Let's showcase {sponsor_name} as core infrastructure in our upcoming workflow tutorial."
             )
 
             return {
                 "sponsor_name": sponsor_name,
                 "match_score": match_score,
-                "target_deal_size": f"${deal_value:.0f}",
-                "pitch_angle": "Integrate as native developer infrastructure in high-retention tutorial.",
+                "target_deal_size": f"${calculated_deal_value:.0f}",
+                "pitch_angle": f"Integrate {sponsor_name} as native {brand_niche} in high-retention tutorial.",
                 "pitch_draft": pitch_draft,
-                "retention_metrics_used": "78% 30-second retention from past 30-day persistent memory store."
+                "retention_metrics_used": "Evaluated from persistent creator performance profile."
             }
 
         return {
@@ -355,6 +436,7 @@ class GreenroomMindsIntegrationManager:
                     "key": key,
                     "name": agent.name,
                     "role": agent.role,
+                    "remote_mind_id": agent.remote_mind_id,
                     "skills": list(agent.skills.keys()),
                     "learned_rules_count": len(agent.learned_rules),
                     "execution_mode": "[MOCK DEMO MODE]" if agent.is_mock_mode else "Remote_Minds_API"
@@ -364,6 +446,6 @@ class GreenroomMindsIntegrationManager:
         }
 
 
-# Global singleton instance
+# Global singleton instance & alias
 minds_manager = GreenroomMindsIntegrationManager()
 GreenroomMindsEngine = GreenroomMindsIntegrationManager

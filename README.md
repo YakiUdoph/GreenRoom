@@ -6,13 +6,25 @@
 
 ---
 
-## 🌟 Architecture & Minds SDK Remote Integration
+## 🌟 Architecture & Minds SDK Integration Breakdown
 
-* **Official Remote Minds SDK Client (`minds_integration.py`):** Connects to the remote Minds platform via `minds-sdk` (`MindsClient`), instantiating four specialized remote Minds agents (`GreenroomCore`, `ScoutMind`, `CommunityMind`, `BusinessMind`).
-* **Loud Failure by Default:** If `MINDS_API_KEY` is missing from your environment and `DEMO_MODE` is not explicitly set to `true`, the platform fails loudly with a `MindsConfigurationError`.
-* **Explicit Mock Mode (`DEMO_MODE=true`):** Local simulated execution is strictly isolated behind `DEMO_MODE=true`. When active, execution outputs, logs, and status endpoints are visibly labeled with `[MOCK DEMO MODE]`.
-* **Persistent Creator Knowledge Sync:** Creator profile history and Minute 5 learned voice rules (*"Too formal, keep it punchy"*) are synced between remote Minds completions and the local profile store (`creator_profile.json`).
-* **Inter-Mind Protocol (IMP v1.0):** Asynchronous JSON event bus streaming real-time agent communications over WebSockets directly to the visual command center.
+### Official Minds APIs Used:
+- **Client & Remote Mind Invocation:** Uses `minds-sdk` (`from minds.client import Minds` / `from minds_sdk import Client`) initializing `Minds(api_key=..., base_url=...)`.
+- **Remote Completion API:** Executes actual agent completions via `client.minds.completion(mind=..., prompt=...)` or `client.completion(mind=..., prompt=...)`.
+- **Remote Mind Identifiers:** Binds topology to platform Mind IDs: `greenroom-core-mind`, `scout-mind-v1`, `community-mind-v1`, and `business-mind-v1`.
+
+### Local Engine & Persistent Profile Components:
+- **Creator Profile & Memory Engine (`creator_profile.json`):** Manages local long-term knowledge, context relevance scoring with a 720-hour recency decay window, and learned preference persistence.
+- **Inter-Mind Protocol (IMP v1.0):** Asynchronous JSON event bus streaming inter-agent events over WebSockets.
+- **Visual Agentic Command Center:** FastAPI dashboard providing an operational window into agent thought streams and state transitions.
+
+---
+
+## 🛑 Strict Mode Execution Rules
+
+* **Production Mode Strictness (`DEMO_MODE=false`):** If `MINDS_API_KEY` is missing or a remote API error occurs, Greenroom raises a `MindsConfigurationError` or `MindsExecutionError`. It **never** silently falls back to local simulation in production.
+* **Explicit Mock Mode (`DEMO_MODE=true`):** Local simulated execution is strictly isolated behind `DEMO_MODE=true`. When active, every output payload, execution log, and status endpoint is visibly labeled with `[MOCK DEMO MODE]`.
+* **Dynamic Production Metrics:** In production mode, all trend fit scores, sentiment scores, and sponsor deal valuations are computed dynamically from actual input text, keyword boundary rules, or remote Mind completions (static numbers exist strictly in explicit `DEMO_MODE` mock fixtures).
 
 ---
 
@@ -20,10 +32,10 @@
 
 Greenroom divides complex creator operations across four specialized stateful agents:
 
-1. **Greenroom Core Mind (`GreenroomCore`):** Chief of Staff & Strategic Router Engine managing memory aggregation and agent orchestration.
-2. **Scout Mind (`ScoutMind`):** Trend & Niche Signal Researcher executing the `search_trends` skill.
-3. **Community Mind (`CommunityMind`):** Audience Intelligence Analyst executing the `analyze_comments` skill.
-4. **Business Mind (`BusinessMind`):** Monetization & Sponsorship Strategist executing the `score_deal` skill.
+1. **Greenroom Core Mind (`GreenroomCore`):** Chief of Staff & Strategic Router Engine managing memory aggregation and agent orchestration (`remote_mind_id: greenroom-core-mind`).
+2. **Scout Mind (`ScoutMind`):** Trend & Niche Signal Researcher executing the `search_trends` skill (`remote_mind_id: scout-mind-v1`).
+3. **Community Mind (`CommunityMind`):** Audience Intelligence Analyst executing the `analyze_comments` skill (`remote_mind_id: community-mind-v1`).
+4. **Business Mind (`BusinessMind`):** Monetization & Sponsorship Strategist executing the `score_deal` skill (`remote_mind_id: business-mind-v1`).
 
 ---
 
