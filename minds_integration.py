@@ -318,5 +318,9 @@ class GreenroomMindsIntegrationManager:
         }
 
 
+# Export class alias for backwards compatibility
+GreenroomMindsEngine = GreenroomMindsIntegrationManager
+
 # Global singleton instance
 minds_manager = GreenroomMindsIntegrationManager()
+
