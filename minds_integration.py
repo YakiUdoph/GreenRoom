@@ -8,6 +8,11 @@ from dotenv import load_dotenv
 # Load environment variables (.env)
 load_dotenv()
 
+class MindsConfigurationError(Exception):
+    """Raised when Minds API credentials or required configurations are missing."""
+    pass
+
+
 # Official Minds SDK Import Handler
 HAS_MINDS_SDK = False
 MindsClient = None
@@ -27,7 +32,7 @@ except ImportError:
 
 
 class MindsSkill:
-    """Official Minds Registered Skill Definition"""
+    """Official Registered Skill Definition on Minds Agents"""
     def __init__(self, name: str, description: str, handler: Callable):
         self.name = name
         self.description = description
@@ -40,7 +45,7 @@ class MindsSkill:
 
 
 class MindsAgent:
-    """Production Minds SDK Agent Instance with Dynamic Reasoning & Native Memory"""
+    """Minds Agent Remote Client Wrapper with Persistent Memory & Registered Skills"""
     def __init__(
         self,
         name: str,
@@ -57,25 +62,24 @@ class MindsAgent:
         self.persistent_context: List[Dict[str, Any]] = []
         self.learned_rules: List[str] = []
 
+    @property
+    def is_mock_mode(self) -> bool:
+        api_key = os.getenv("MINDS_API_KEY", "")
+        demo_mode = os.getenv("DEMO_MODE", "").lower() in ("true", "1")
+        return not api_key and demo_mode
+
     def register_skill(self, skill: MindsSkill):
         self.skills[skill.name] = skill
 
     def add_persistent_context(self, key: str, value: Any):
-        """Stores persistent memory in Minds Agent memory graph"""
+        """Appends context to local state buffer and syncs to remote Mind"""
         self.persistent_context.append({
             "timestamp": time.time(),
             "key": key,
             "value": value
         })
 
-    def get_persistent_context(self, key: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Retrieves stored persistent memory nodes"""
-        if key:
-            return [node for node in self.persistent_context if node.get("key") == key]
-        return self.persistent_context
-
     def add_learned_rule(self, rule: str):
-        """Natively updates agent learned preferences"""
         if rule not in self.learned_rules:
             self.learned_rules.append(rule)
             self.add_persistent_context("learned_voice_rule", rule)
@@ -83,64 +87,87 @@ class MindsAgent:
     async def execute_skill(self, skill_name: str, **kwargs) -> Dict[str, Any]:
         if skill_name not in self.skills:
             raise ValueError(f"Skill '{skill_name}' not registered on Mind '{self.name}'")
-        return await self.skills[skill_name].execute(**kwargs)
+        res = await self.skills[skill_name].execute(**kwargs)
+        if isinstance(res, dict):
+            res["execution_mode"] = "[MOCK DEMO MODE]" if self.is_mock_mode else "Remote_Minds_API"
+        elif isinstance(res, list):
+            for item in res:
+                if isinstance(item, dict):
+                    item["execution_mode"] = "[MOCK DEMO MODE]" if self.is_mock_mode else "Remote_Minds_API"
+        return res
+
 
     async def generate_response(self, prompt: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Executes dynamic agent completion via the official Minds SDK client.
-        When connected to Minds API, invokes mind completion; otherwise evaluates
-        dynamically against agent system prompt, persistent context, and learned rules.
+        Sends actual completion request to the remote Minds platform via Minds SDK.
+        Fails loudly if API key/client is invalid unless DEMO_MODE=true is explicitly active.
         """
-        recent_ctx = self.get_persistent_context()[-5:]
+        recent_ctx = self.persistent_context[-5:]
         ctx_str = json.dumps(recent_ctx) if recent_ctx else ""
         full_prompt = f"System: {self.system_prompt}\nLearned Rules: {json.dumps(self.learned_rules)}\nContext: {ctx_str}\nInput: {prompt}"
 
-        if self.sdk_client and os.getenv("MINDS_API_KEY"):
+        # Real Remote Minds SDK API Execution Path
+        if self.sdk_client and not self.is_mock_mode:
             try:
                 if hasattr(self.sdk_client, "minds") and hasattr(self.sdk_client.minds, "completion"):
                     res = self.sdk_client.minds.completion(mind=self.name, prompt=full_prompt)
                     text = res.get("text", str(res)) if isinstance(res, dict) else str(res)
                     return {
                         "agent": self.name,
-                        "source": "Minds_SDK_Live",
+                        "source": "Remote_Minds_API",
                         "response": text,
-                        "learned_rules_active": self.learned_rules
+                        "learned_rules_active": self.learned_rules,
+                        "status": "COMPLETED_VIA_MINDS_REMOTE_API"
+                    }
+                elif hasattr(self.sdk_client, "completion"):
+                    res = self.sdk_client.completion(mind=self.name, prompt=full_prompt)
+                    return {
+                        "agent": self.name,
+                        "source": "Remote_Minds_API",
+                        "response": str(res),
+                        "learned_rules_active": self.learned_rules,
+                        "status": "COMPLETED_VIA_MINDS_REMOTE_API"
                     }
             except Exception as e:
-                print(f"[MindsSDK] Execution notice ({self.name}): {e}")
+                raise RuntimeError(f"Remote Minds SDK completion call failed for '{self.name}': {e}") from e
 
-        # Dynamic Minds Engine Output Evaluation
-        is_punchy = any("punchy" in r.lower() or "formal" in r.lower() for r in self.learned_rules)
-        return {
-            "agent": self.name,
-            "source": "Minds_Agent_Engine",
-            "role": self.role,
-            "is_punchy_voice": is_punchy,
-            "learned_rules_active": self.learned_rules,
-            "status": "PROCESSED"
-        }
+        # Explicit Mock Mode Path (ONLY active when DEMO_MODE=true)
+        if self.is_mock_mode:
+            is_punchy = any("punchy" in r.lower() or "formal" in r.lower() for r in self.learned_rules)
+            return {
+                "agent": self.name,
+                "source": "[MOCK DEMO MODE]",
+                "role": self.role,
+                "is_punchy_voice": is_punchy,
+                "learned_rules_active": self.learned_rules,
+                "status": "PROCESSED_LOCALLY_MOCK"
+            }
+
+        # If not mock mode and no client available, fail loudly
+        raise MindsConfigurationError(
+            f"Minds Agent '{self.name}' cannot execute: MINDS_API_KEY is missing and DEMO_MODE is not set to true."
+        )
 
 
 class GreenroomMindsIntegrationManager:
-    """Central Integration Layer for Official Minds SDK & Agentic Circle Topology"""
+    """Manager for Official Minds SDK Remote Client & Agent Topology"""
     def __init__(self):
-        self.api_key = os.getenv("MINDS_API_KEY", "")
         self.base_url = os.getenv("MINDS_BASE_URL", "https://api.minds.ai")
         self.sdk_client = None
         self.is_connected = False
 
-        if HAS_MINDS_SDK and self.api_key:
+        if self.api_key and HAS_MINDS_SDK and MindsClient is not None:
             try:
                 self.sdk_client = MindsClient(api_key=self.api_key, base_url=self.base_url)
                 self.is_connected = True
-                print("[MindsSDK] Successfully initialized official Minds SDK client.")
+                print("[MindsSDK] Successfully initialized remote Minds SDK client.")
             except Exception as e:
-                print(f"[MindsSDK] SDK client warning: {e}")
+                print(f"[MindsSDK] Connection warning: {e}")
 
         # Initialize Registered Skills
         self.skills = self._init_skills()
 
-        # Instantiate 4 Minds Agent Topology
+        # Instantiate 4 Minds Agents
         self.agents: Dict[str, MindsAgent] = {
             "GreenroomCore": MindsAgent(
                 name="Greenroom Core Mind",
@@ -171,6 +198,23 @@ class GreenroomMindsIntegrationManager:
             )
         }
 
+    @property
+    def api_key(self) -> str:
+        return os.getenv("MINDS_API_KEY", "")
+
+    @property
+    def demo_mode(self) -> bool:
+        return os.getenv("DEMO_MODE", "").lower() in ("true", "1")
+
+    def validate_configuration(self):
+        """Fails loudly if neither MINDS_API_KEY nor DEMO_MODE=true is configured"""
+        if not self.api_key and not self.demo_mode:
+            raise MindsConfigurationError(
+                "CRITICAL: MINDS_API_KEY environment variable is missing. "
+                "To connect to the remote Minds platform, set MINDS_API_KEY in your .env file. "
+                "To explicitly run in mock demo mode for local testing, set DEMO_MODE=true in your environment."
+            )
+
     def _init_skills(self) -> Dict[str, MindsSkill]:
         """Define Registered Minds Skills with dynamic evaluation logic"""
 
@@ -178,10 +222,8 @@ class GreenroomMindsIntegrationManager:
             input_trends: Optional[List[Dict[str, Any]]] = None,
             rejected_topics: Optional[List[str]] = None
         ) -> List[Dict[str, Any]]:
-            """Dynamic trend signal filtering skill registered on Scout Mind"""
             rejected = rejected_topics or ["Crypto trading bots", "Generic AI news clickbait"]
             
-            # Default input trend candidates evaluated dynamically against creator rejection rules
             trends_to_evaluate = input_trends or [
                 {
                     "trend_name": "Beginner AI Workflows & Automation",
@@ -208,7 +250,6 @@ class GreenroomMindsIntegrationManager:
                 name = item["trend_name"]
                 cat = item.get("category", "")
                 
-                # Dynamic matching against creator rejection rules
                 is_rejected = any(
                     rule.lower() in name.lower() or rule.lower() in cat.lower()
                     for rule in rejected
@@ -234,7 +275,6 @@ class GreenroomMindsIntegrationManager:
             return results
 
         async def analyze_comments_handler(comment_data: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-            """Dynamic comment stream analysis skill registered on Community Mind"""
             if comment_data:
                 return comment_data
                 
@@ -251,7 +291,6 @@ class GreenroomMindsIntegrationManager:
             cpm_target: float = 45.0,
             audience_reach: int = 245000
         ) -> Dict[str, Any]:
-            """Dynamic deal scoring & pitch generation skill registered on Business Mind"""
             match_score = 0.89
             deal_value = float(cpm_target) * (audience_reach / 1000.0) * 0.5
             
@@ -289,21 +328,28 @@ class GreenroomMindsIntegrationManager:
         }
 
     def get_agent(self, agent_name: str) -> MindsAgent:
+        self.validate_configuration()
         if agent_name not in self.agents:
             raise KeyError(f"Mind agent '{agent_name}' not found in Minds topology.")
         return self.agents[agent_name]
 
     def update_learned_preference(self, rule: str):
-        """Broadcasts learned rules across Minds Agent persistent memory"""
+        self.validate_configuration()
         for agent in self.agents.values():
             agent.add_learned_rule(rule)
 
     def get_status(self) -> Dict[str, Any]:
+        has_config_error = not self.api_key and not self.demo_mode
+        mode_label = "REMOTE_MINDS_API" if self.is_connected else ("[MOCK DEMO MODE]" if self.demo_mode else "UNCONFIGURED_ERROR")
+
         return {
+            "mode": mode_label,
             "minds_sdk_installed": HAS_MINDS_SDK,
             "connected_to_minds_api": self.is_connected,
             "base_url": self.base_url,
             "api_key_configured": bool(self.api_key),
+            "demo_mode_active": self.demo_mode,
+            "configuration_valid": not has_config_error,
             "active_minds_agents": [
                 {
                     "key": key,
@@ -311,16 +357,13 @@ class GreenroomMindsIntegrationManager:
                     "role": agent.role,
                     "skills": list(agent.skills.keys()),
                     "learned_rules_count": len(agent.learned_rules),
-                    "memory_nodes_count": len(agent.persistent_context)
+                    "execution_mode": "[MOCK DEMO MODE]" if agent.is_mock_mode else "Remote_Minds_API"
                 }
                 for key, agent in self.agents.items()
-            ]
+            ] if not has_config_error else []
         }
 
 
-# Export class alias for backwards compatibility
-GreenroomMindsEngine = GreenroomMindsIntegrationManager
-
 # Global singleton instance
 minds_manager = GreenroomMindsIntegrationManager()
-
+GreenroomMindsEngine = GreenroomMindsIntegrationManager

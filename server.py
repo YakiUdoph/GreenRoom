@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import time
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 
@@ -15,13 +16,13 @@ from pydantic import BaseModel
 
 from memory_engine import memory_tool
 from imp_protocol import imp_bus, IMPMessage
-from minds_integration import minds_manager
+from minds_integration import minds_manager, MindsConfigurationError
 from agents import GreenroomCoreMind, ScoutMind, CommunityMind, BusinessMind
 from demo_runner import demo_runner_tool
 
 app = FastAPI(
-    title="Greenroom: Persistent Multi-Mind Creator Engine (Minds SDK Layer)",
-    version="1.1.0"
+    title="Greenroom: Persistent Multi-Mind Creator Engine (Remote Minds SDK Integration)",
+    version="1.2.0"
 )
 
 app.add_middleware(
@@ -31,6 +32,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Exception Handler for Missing Credentials without DEMO_MODE
+@app.exception_handler(MindsConfigurationError)
+async def minds_config_exception_handler(request, exc: MindsConfigurationError):
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "MINDS_CONFIGURATION_ERROR",
+            "message": str(exc),
+            "help": "Set MINDS_API_KEY in your .env file to run with live Minds API, or set DEMO_MODE=true for explicit local mock demo testing."
+        }
+    )
+
 
 # Connected WebSocket clients
 class ConnectionManager:
@@ -85,7 +99,7 @@ def get_state():
 
 @app.get("/api/minds/status")
 def get_minds_status():
-    """Returns official Minds SDK connectivity, API configuration, and registered Mind agent topology."""
+    """Returns official Minds SDK connectivity, API configuration, and execution mode."""
     return minds_manager.get_status()
 
 @app.get("/api/imp/history")
@@ -100,6 +114,9 @@ def reset_state():
 
 @app.post("/api/demo/step/{step_id}")
 async def run_demo_step(step_id: int, request: Optional[FeedbackRequest] = None):
+    # Validate Minds configuration before executing step
+    minds_manager.validate_configuration()
+
     if step_id == 1:
         res = await demo_runner_tool.run_minute_1()
     elif step_id == 2:
@@ -123,6 +140,7 @@ async def run_demo_step(step_id: int, request: Optional[FeedbackRequest] = None)
 
 @app.post("/api/demo/full")
 async def run_full_demo():
+    minds_manager.validate_configuration()
     results = await demo_runner_tool.run_full_demo()
     return {
         "status": "success",
@@ -133,6 +151,7 @@ async def run_full_demo():
 
 @app.post("/api/action/feedback")
 async def process_feedback(req: FeedbackRequest):
+    minds_manager.validate_configuration()
     res = await demo_runner_tool.run_minute_5(custom_feedback=req.feedback)
     return {
         "status": "success",
@@ -157,7 +176,6 @@ async def approve_action(payload: Dict[str, Any]):
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     try:
-        # Send initial snapshot
         await websocket.send_json({
             "type": "INITIAL_SNAPSHOT",
             "imp_history": imp_bus.get_history(limit=20),

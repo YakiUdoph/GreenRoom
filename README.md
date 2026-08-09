@@ -1,21 +1,18 @@
-# Greenroom — The Persistent Multi-Mind Creator Engine
+# Greenroom — Persistent Multi-Mind Creator Engine
 
-> Built natively on Google Antigravity & the **Official Minds SDK** for the **Creative Minds Jam** Hackathon.
+> Built on Google Antigravity & the **Official Minds SDK** for the **Creative Minds Jam** Hackathon.
 
-**Greenroom** is an always-on, persistent multi-agent creator staff built using Minds technology and the official `minds-sdk` framework. Instead of acting as another context-less chatbot wrapper or static SaaS analytics dashboard, Greenroom creates an autonomous, self-learning digital staff that accumulates long-term knowledge regarding a creator’s identity, audience behavior, performance benchmarks, and commercial goals.
+**Greenroom** is an always-on multi-agent creator staff built using the official `minds-sdk` framework. Instead of acting as another context-less chatbot wrapper or static SaaS analytics dashboard, Greenroom creates an autonomous digital staff that accumulates long-term knowledge regarding a creator’s identity, audience behavior, performance benchmarks, and commercial goals.
 
 ---
 
-## 🌟 Key Architecture & Minds SDK Integration
+## 🌟 Architecture & Minds SDK Remote Integration
 
-* **Official Minds SDK Layer (`minds_integration.py`):** Instantiates 4 autonomous Minds agents with registered skills, LLM completions, and native Minds state persistence.
-* **Registered Minds Skills:** Agent capabilities are encapsulated as official registered skills:
-  * `search_trends`: Autonomous trend signal vs. noise filtering (Scout Mind)
-  * `analyze_comments`: Audience sentiment & engagement hook extraction (Community Mind)
-  * `score_deal`: Sponsorship brand-fit scoring & pitch generation (Business Mind)
-* **Native Agent Memory Persistence ("The Magic Moment"):** Demonstrates deterministic rule adaptation where Minute 5 user feedback (*"Too formal, keep it punchy"*) updates persistent context natively across the Minds agent topology and `creator_profile.json`.
+* **Official Remote Minds SDK Client (`minds_integration.py`):** Connects to the remote Minds platform via `minds-sdk` (`MindsClient`), instantiating four specialized remote Minds agents (`GreenroomCore`, `ScoutMind`, `CommunityMind`, `BusinessMind`).
+* **Loud Failure by Default:** If `MINDS_API_KEY` is missing from your environment and `DEMO_MODE` is not explicitly set to `true`, the platform fails loudly with a `MindsConfigurationError`.
+* **Explicit Mock Mode (`DEMO_MODE=true`):** Local simulated execution is strictly isolated behind `DEMO_MODE=true`. When active, execution outputs, logs, and status endpoints are visibly labeled with `[MOCK DEMO MODE]`.
+* **Persistent Creator Knowledge Sync:** Creator profile history and Minute 5 learned voice rules (*"Too formal, keep it punchy"*) are synced between remote Minds completions and the local profile store (`creator_profile.json`).
 * **Inter-Mind Protocol (IMP v1.0):** Asynchronous JSON event bus streaming real-time agent communications over WebSockets directly to the visual command center.
-* **Agentic Window UI:** Clean FastAPI WebSocket dashboard acting purely as a window into real-time agent thought streams, skill executions, and state transitions.
 
 ---
 
@@ -33,7 +30,7 @@ Greenroom divides complex creator operations across four specialized stateful ag
 ## 🛠️ Tech Stack & System Components
 
 * **Orchestration & IDE:** Google Antigravity
-* **Agent Framework:** Official `minds-sdk` (Minds API & Persistent Context Engine)
+* **Agent Framework:** Official `minds-sdk` (Remote Minds API Client)
 * **Backend Framework:** Python 3.10+, FastAPI, Uvicorn, Pydantic, `python-dotenv`
 * **Minds Integration & Persistence:** `minds_integration.py`, `memory_engine.py` (`creator_profile.json`)
 * **Protocols & Prompts:** `imp_protocol.py`, `agent_prompts.py`
@@ -44,14 +41,18 @@ Greenroom divides complex creator operations across four specialized stateful ag
 
 ## 🔐 Environment Configuration
 
-Create a `.env` file in the root directory to configure your Minds API credentials:
+Create a `.env` file in the root directory:
 
 ```env
+# Remote Minds API Credentials
 MINDS_API_KEY=your_minds_api_key_here
 MINDS_BASE_URL=https://api.minds.ai
+
+# Explicit Local Demo Mock Flag (Optional, set to true for offline testing without API key)
+DEMO_MODE=false
 ```
 
-*(Note: If `MINDS_API_KEY` is not provided, Greenroom seamlessly operates via the native Minds local engine, ensuring complete test suite and offline demo stability.)*
+> **Note on Loud Failure:** If `MINDS_API_KEY` is not provided and `DEMO_MODE` is `false` or unset, Greenroom will raise a `MindsConfigurationError` on startup/execution to prevent unannounced mock fallback.
 
 ---
 
@@ -70,30 +71,26 @@ source venv/bin/activate  # On Windows use: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Run Automated System Test Suite
-Verify Minds SDK initialization, registered skill execution, persistent memory state sync, IMP event bus, and Minute 1–5 workflows:
-
+### 3. Run System Test Suite
 ```bash
 python test_greenroom.py
 ```
 
 ### 4. Launch Local Command Center
-Start the FastAPI server:
-
 ```bash
 python server.py
 ```
 
 Open your browser and navigate to:
 * **Visual Command Center:** `http://127.0.0.1:8000`
-* **Minds SDK Status Endpoint:** `http://127.0.0.1:8000/api/minds/status`
+* **Minds Status Endpoint:** `http://127.0.0.1:8000/api/minds/status`
 
 ---
 
 ## 🎬 5-Minute Demo Flow
 
-1. **Minute 1 — Morning Intelligence Brief (Zero-State Ingestion):** Core Mind ingests initial creator script analytics and retention metrics into persistent memory.
-2. **Minute 2 — Opportunity Radar & Trend Matching (`ScoutMind`):** Scout Mind executes the `search_trends` registered skill to flag high-signal niche opportunities.
-3. **Minute 3 — Deep Audience Sentiment Analysis (`CommunityMind`):** Community Mind executes `analyze_comments` to analyze audience retention drivers and code setup demands.
+1. **Minute 1 — Zero-State Profile Ingestion:** Core Mind ingests initial creator script analytics and retention metrics into persistent profile state.
+2. **Minute 2 — Autonomous Trend Filtering (`ScoutMind`):** Scout Mind executes `search_trends` to filter high-signal niche opportunities against creator boundaries.
+3. **Minute 3 — Deep Audience Sentiment Analysis (`CommunityMind`):** Community Mind executes `analyze_comments` to evaluate audience retention drivers and code setup requests.
 4. **Minute 4 — Sponsorship Fit & Automated Pitch Generation (`BusinessMind`):** Business Mind executes `score_deal` to evaluate brand match score and generate targeted pitch proposals.
-5. **Minute 5 — Autonomous Feedback Loop & Memory Consolidation ("The Magic Moment"):** System processes user feedback (*"Too formal, keep it punchy"*), updating native Minds agent context and `creator_profile.json` so all future outputs automatically reflect the learned voice preference.
+5. **Minute 5 — Autonomous Feedback Loop & Memory Consolidation ("The Magic Moment"):** System processes user feedback (*"Too formal, keep it punchy"*), syncing learned voice rules to remote Minds agent completions and `creator_profile.json`.

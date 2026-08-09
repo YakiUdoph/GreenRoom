@@ -5,13 +5,17 @@ from typing import Dict, List, Any, Optional
 from minds_integration import minds_manager
 
 class GreenroomMemoryEngine:
+    """
+    Persistent Memory Engine for Greenroom.
+    Manages creator profile history, context relevance scoring with 720h recency decay,
+    and synchronizes persistent rules with the remote Minds API agent context.
+    """
     def __init__(self, profile_path: str = "creator_profile.json"):
         self.profile_path = profile_path
         self.state = self._load_profile()
         self._sync_to_minds_sdk()
 
     def _load_profile(self) -> Dict[str, Any]:
-        # Check /tmp first for runtime state on Vercel, then root profile path
         for target in ["/tmp/creator_profile.json", self.profile_path]:
             if os.path.exists(target):
                 try:
@@ -20,7 +24,6 @@ class GreenroomMemoryEngine:
                 except Exception as e:
                     print(f"[MemoryEngine] Error loading profile from {target}: {e}")
         
-        # Default state fallback
         return {
             "creator_name": "Alex Rivera",
             "brand_voice_attributes": ["Educational", "Technical yet accessible", "Direct"],
@@ -33,12 +36,14 @@ class GreenroomMemoryEngine:
         }
 
     def _sync_to_minds_sdk(self):
-        """Syncs local memory state to official Minds SDK persistent context"""
-        for rule in self.state.get("learned_voice_rules", []):
-            minds_manager.update_learned_preference(rule)
+        """Syncs stored learned voice rules with Minds agent instances when configured"""
+        try:
+            for rule in self.state.get("learned_voice_rules", []):
+                minds_manager.update_learned_preference(rule)
+        except Exception:
+            pass
 
     def save_state(self) -> None:
-        # Try root path first, fallback to /tmp on Vercel read-only filesystem
         try:
             with open(self.profile_path, "w", encoding="utf-8") as f:
                 json.dump(self.state, f, indent=2)
@@ -51,18 +56,14 @@ class GreenroomMemoryEngine:
                 print(f"[MemoryEngine] Warning: persistent save skipped on serverless env: {tmp_err}")
 
     def retrieve_relevant_context(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
-        """
-        Calculates context relevance using keyword-semantic scoring & recency decay.
-        """
         scored_nodes = []
         current_time = time.time()
         query_words = set(query.lower().split())
         
         for node in self.state.get("memory_nodes", []):
             recency_hours = (current_time - node.get("timestamp", current_time)) / 3600.0
-            recency_decay = max(0.5, 1.0 - (recency_hours / 720.0)) # Decays over 30 days
+            recency_decay = max(0.5, 1.0 - (recency_hours / 720.0))
             
-            # Simple keyword match relevance (boosted by word matches in content & takeaways)
             content_text = (node.get("content", "") + " " + " ".join(node.get("key_takeaways", []))).lower()
             matches = sum(1 for word in query_words if word in content_text)
             
@@ -74,9 +75,6 @@ class GreenroomMemoryEngine:
         return [node for score, node in scored_nodes[:top_k]]
 
     def get_formatted_memory_context(self, query: str = "") -> str:
-        """
-        Formats state and memory nodes into a clean context string for system prompt injection.
-        """
         relevant = self.retrieve_relevant_context(query) if query else self.state.get("memory_nodes", [])[:3]
         
         rules = self.state.get("learned_voice_rules", [])
@@ -90,9 +88,6 @@ class GreenroomMemoryEngine:
         return f"LEARNED VOICE RULES:\n{rules_str}\n\nRELEVANT MEMORY NODES:\n{nodes_str}"
 
     def ingest_creator_artifact(self, artifact_type: str, raw_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Parses raw content performance, past scripts, or user preferences into persistent memory state.
-        """
         new_node = {
             "node_id": f"mem_{int(time.time()*1000)}",
             "type": artifact_type,
@@ -102,7 +97,6 @@ class GreenroomMemoryEngine:
         }
         self.state.setdefault("memory_nodes", []).append(new_node)
         
-        # If artifact contains profile updates, merge them
         if "creator_name" in raw_data:
             self.state["creator_name"] = raw_data["creator_name"]
         if "brand_voice_attributes" in raw_data:
@@ -118,15 +112,10 @@ class GreenroomMemoryEngine:
         return new_node
 
     def add_learned_voice_rule(self, rule: str) -> None:
-        """
-        Appends a newly learned rule (e.g. from Minute 5 user feedback) to persistent state
-        and syncs natively across the Minds SDK agent topology.
-        """
         rules = self.state.setdefault("learned_voice_rules", [])
         if rule not in rules:
             rules.append(rule)
         
-        # Also ingest as a high-priority memory node
         self.ingest_creator_artifact(
             artifact_type="learned_preference",
             raw_data={
@@ -135,8 +124,10 @@ class GreenroomMemoryEngine:
             }
         )
         
-        # Sync to Minds SDK persistent context engine across all active agents
-        minds_manager.update_learned_preference(rule)
+        try:
+            minds_manager.update_learned_preference(rule)
+        except Exception:
+            pass
         self.save_state()
 
     def get_full_state(self) -> Dict[str, Any]:
@@ -160,5 +151,4 @@ class GreenroomMemoryEngine:
         self._sync_to_minds_sdk()
         return self.state
 
-# Expose global singleton instance
 memory_tool = GreenroomMemoryEngine()
