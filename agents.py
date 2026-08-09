@@ -36,9 +36,9 @@ class ScoutMind:
         results = []
         for item in evaluated_trends:
             status = item.get("status", "RECOMMENDED")
-            confidence = item.get("fit_score", 0.75)
+            confidence = item.get("fit_score", 0.50)
             
-            # Record persistent context in Minds Agent local state
+            # Record context node in Minds Agent in-process list
             self.minds_agent.add_persistent_context("trend_evaluated", item)
 
             await imp_bus.publish(IMPMessage(
@@ -66,7 +66,7 @@ class CommunityMind:
     async def analyze_audience_signals(self, comment_stream: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         payload = await self.minds_agent.execute_skill("analyze_comments", comment_data=comment_stream)
         self.minds_agent.add_persistent_context("audience_signal", payload)
-        score = payload.get("community_sentiment_score", 0.75)
+        score = payload.get("community_sentiment_score", 0.50)
 
         await imp_bus.publish(IMPMessage(
             sender_mind="CommunityMind",
@@ -102,7 +102,7 @@ class BusinessMind:
             cpm_target=cpm,
             brand_niche=brand_niche
         )
-        match_score = payload.get("match_score", 0.75)
+        match_score = payload.get("match_score", 0.50)
         self.minds_agent.add_persistent_context("deal_pitch", payload)
 
         await imp_bus.publish(IMPMessage(
@@ -161,6 +161,10 @@ class GreenroomCoreMind:
         is_punchy = any("punchy" in r.lower() or "formal" in r.lower() for r in learned_rules)
         custom_terminal_rule = any("terminal" in r.lower() or "open-source" in r.lower() for r in learned_rules)
 
+        # Retrieve cited nodes dynamically from local memory engine
+        relevant_nodes = self.memory.retrieve_relevant_context(trend_name)
+        cited_ids = [n.get("node_id") for n in relevant_nodes] if relevant_nodes else ["profile_brand_voice"]
+
         if custom_terminal_rule:
             script_concept = (
                 f"⚡ ADAPTED SCRIPT CONCEPT: {trend_name} (OPEN-SOURCE TERMINAL FOCUS)\n\n"
@@ -185,11 +189,11 @@ class GreenroomCoreMind:
             script_concept = (
                 f"PREMIUM SCRIPT CONCEPT: {trend_name}\n\n"
                 f"[INTENDED AUDIENCE]\n"
-                f"Software Engineers & AI Builders (22-35 age bracket).\n\n"
+                f"Software Engineers & AI Builders.\n\n"
                 f"[CONTENT STRUCTURE]\n"
-                f"1. Executive Summary & Problem Framing (0:00 - 0:30)\n"
-                f"2. Architecture & Environment Setup (0:30 - 2:00)\n"
-                f"3. Live Code Execution & Benchmark Analysis (2:00 - 4:30)\n"
+                f"1. Executive Summary & Problem Framing\n"
+                f"2. Architecture & Environment Setup\n"
+                f"3. Live Code Execution & Benchmark Analysis\n"
                 f"4. Key Takeaways & Community Setup Guide Link"
             )
 
@@ -197,7 +201,7 @@ class GreenroomCoreMind:
             "trend_name": trend_name,
             "script_concept": script_concept,
             "is_punchy_voice": is_punchy or custom_terminal_rule,
-            "cited_memory_nodes": [n.get("node_id") for n in self.memory.retrieve_relevant_context(trend_name)],
+            "cited_memory_nodes": cited_ids,
             "learned_rules_applied": learned_rules,
             "minds_source": agent_response.get("source", "Remote_Minds_API"),
             "minds_status": agent_response.get("status", "COMPLETED")
@@ -217,7 +221,7 @@ class GreenroomCoreMind:
     async def process_user_feedback(self, feedback_text: str) -> Dict[str, Any]:
         """
         Minute 5 Proof of Learning:
-        1. Persists user feedback rule into memory engine and Minds agent state.
+        1. Persists user feedback rule into local memory engine and Minds agent state context.
         2. Re-synthesizes strategy, dynamically proving preference adaptation.
         """
         # Save exact rule to persistent memory engine
@@ -232,7 +236,7 @@ class GreenroomCoreMind:
             "extracted_learned_rule": feedback_text,
             "persistent_state_updated": True,
             "updated_script": rewritten["script_concept"],
-            "proof_of_learning": "Learned voice rule persisted in profile state and applied to subsequent strategy synthesis."
+            "proof_of_learning": "Learned voice rule persisted in local profile state and applied to subsequent strategy synthesis."
         }
 
         await imp_bus.publish(IMPMessage(

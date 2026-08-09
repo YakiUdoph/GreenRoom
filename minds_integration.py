@@ -48,7 +48,7 @@ class MindsSkill:
 
 
 class MindsAgent:
-    """Remote Minds SDK Agent Instance with Persistent State & Registered Skills"""
+    """Remote Minds SDK Agent Instance with In-Process Context & Registered Skills"""
     def __init__(
         self,
         name: str,
@@ -77,7 +77,7 @@ class MindsAgent:
         self.skills[skill.name] = skill
 
     def add_persistent_context(self, key: str, value: Any):
-        """Appends context to local persistent profile buffer"""
+        """Appends context node to in-process memory list"""
         self.persistent_context.append({
             "timestamp": time.time(),
             "key": key,
@@ -85,6 +85,7 @@ class MindsAgent:
         })
 
     def add_learned_rule(self, rule: str):
+        """Appends learned preference to local profile and agent context"""
         if rule not in self.learned_rules:
             self.learned_rules.append(rule)
             self.add_persistent_context("learned_voice_rule", rule)
@@ -105,48 +106,11 @@ class MindsAgent:
 
     async def generate_response(self, prompt: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
-        Executes actual completion via the remote Minds platform client.
-        In production mode (DEMO_MODE=false), absolutely NEVER falls back to local simulation upon SDK/API error.
+        Sends completion request to remote Minds platform via Minds SDK when DEMO_MODE=false.
+        Raises MindsExecutionError if sdk_client is missing or API call fails.
+        Executes local mock ONLY when DEMO_MODE=true.
         """
-        recent_ctx = self.persistent_context[-5:]
-        ctx_str = json.dumps(recent_ctx) if recent_ctx else ""
-        full_prompt = f"System: {self.system_prompt}\nLearned Rules: {json.dumps(self.learned_rules)}\nContext: {ctx_str}\nInput: {prompt}"
-
-        # Real Remote Minds SDK API Execution Path
-        if not self.is_mock_mode:
-            if self.sdk_client:
-                try:
-                    if hasattr(self.sdk_client, "minds") and hasattr(self.sdk_client.minds, "completion"):
-                        res = self.sdk_client.minds.completion(mind=self.remote_mind_id, prompt=full_prompt)
-                        text = res.get("text", str(res)) if isinstance(res, dict) else str(res)
-                        return {
-                            "agent": self.name,
-                            "source": "Remote_Minds_API",
-                            "response": text,
-                            "learned_rules_active": self.learned_rules,
-                            "status": "COMPLETED_VIA_MINDS_REMOTE_API"
-                        }
-                    elif hasattr(self.sdk_client, "completion"):
-                        res = self.sdk_client.completion(mind=self.remote_mind_id, prompt=full_prompt)
-                        return {
-                            "agent": self.name,
-                            "source": "Remote_Minds_API",
-                            "response": str(res),
-                            "learned_rules_active": self.learned_rules,
-                            "status": "COMPLETED_VIA_MINDS_REMOTE_API"
-                        }
-                except Exception as e:
-                    raise MindsExecutionError(
-                        f"Remote Minds SDK API call failed for Mind '{self.name}' (remote_id='{self.remote_mind_id}'): {e}"
-                    ) from e
-
-            # In production mode (DEMO_MODE=false), if no SDK client connected or API call fails, raise MindsExecutionError!
-            raise MindsExecutionError(
-                f"Production Mode Error: Remote Minds API execution failed for '{self.name}'. "
-                "Silent fallback to local mock is disabled when DEMO_MODE=false."
-            )
-
-        # Explicit Mock Mode Path (ONLY active when DEMO_MODE=true)
+        # 1. Explicit Mock Mode Path (ONLY active when DEMO_MODE=true)
         if self.is_mock_mode:
             is_punchy = any("punchy" in r.lower() or "formal" in r.lower() for r in self.learned_rules)
             return {
@@ -158,7 +122,46 @@ class MindsAgent:
                 "status": "PROCESSED_LOCALLY_MOCK"
             }
 
+        # 2. Production Mode Path (DEMO_MODE=false)
+        # If sdk_client is missing when DEMO_MODE=false, raise MindsExecutionError immediately without fallback!
+        if not self.sdk_client:
+            raise MindsExecutionError(
+                f"Production Mode Error: Minds Agent '{self.name}' has no active Minds SDK client. "
+                "Set MINDS_API_KEY in your environment or pass DEMO_MODE=true for local testing."
+            )
 
+        recent_ctx = self.persistent_context[-5:]
+        ctx_str = json.dumps(recent_ctx) if recent_ctx else ""
+        full_prompt = f"System: {self.system_prompt}\nLearned Rules: {json.dumps(self.learned_rules)}\nContext: {ctx_str}\nInput: {prompt}"
+
+        try:
+            if hasattr(self.sdk_client, "minds") and hasattr(self.sdk_client.minds, "completion"):
+                res = self.sdk_client.minds.completion(mind=self.remote_mind_id, prompt=full_prompt)
+                text = res.get("text", str(res)) if isinstance(res, dict) else str(res)
+                return {
+                    "agent": self.name,
+                    "source": "Remote_Minds_API",
+                    "response": text,
+                    "learned_rules_active": self.learned_rules,
+                    "status": "COMPLETED_VIA_MINDS_REMOTE_API"
+                }
+            elif hasattr(self.sdk_client, "completion"):
+                res = self.sdk_client.completion(mind=self.remote_mind_id, prompt=full_prompt)
+                return {
+                    "agent": self.name,
+                    "source": "Remote_Minds_API",
+                    "response": str(res),
+                    "learned_rules_active": self.learned_rules,
+                    "status": "COMPLETED_VIA_MINDS_REMOTE_API"
+                }
+            else:
+                raise MindsExecutionError(f"Minds SDK client lacks completion method for Mind '{self.name}'.")
+        except Exception as e:
+            if isinstance(e, MindsExecutionError):
+                raise
+            raise MindsExecutionError(
+                f"Remote Minds SDK API call failed for Mind '{self.name}' (remote_id='{self.remote_mind_id}'): {e}"
+            ) from e
 
 
 class GreenroomMindsIntegrationManager:
@@ -246,7 +249,7 @@ class GreenroomMindsIntegrationManager:
             rejected = rejected_topics or ["Crypto trading bots", "Generic AI news clickbait"]
             is_mock = not self.api_key and self.demo_mode
 
-            # Use mock fixtures ONLY when in explicit DEMO_MODE=true
+            # Fixed demo fixtures exist ONLY inside explicit DEMO_MODE=true
             if is_mock and input_trends is None:
                 input_trends = [
                     {
@@ -282,24 +285,35 @@ class GreenroomMindsIntegrationManager:
                 is_rejected = any(rule.lower() in text_block for rule in rejected)
 
                 if is_rejected:
-                    fit_score = round(max(0.1, 0.4 - (len([r for r in rejected if r.lower() in text_block]) * 0.15)), 2)
+                    # Dynamic fit calculation for rejected topics
+                    rejection_count = sum(1 for r in rejected if r.lower() in text_block)
+                    fit_score = round(max(0.05, 0.40 - (rejection_count * 0.15)), 2)
+                    
+                    # DEMO_MODE fixture override ONLY
+                    if is_mock and "Token Trading" in name:
+                        fit_score = 0.25
+
                     results.append({
                         "trend_name": name,
                         "status": "REJECTED",
-                        "fit_score": fit_score if not is_mock else 0.25,
+                        "fit_score": fit_score,
                         "rejection_reason": f"Filtered based on creator rules: '{', '.join(rejected)}'.",
                         "source_vectors": ["brand_voice_matrix_rule"]
                     })
                 else:
-                    # Dynamic fit calculation
+                    # Dynamic fit calculation for recommended topics
                     tech_keywords = ["workflow", "automation", "guide", "code", "agent", "developer", "tool", "local", "open-source"]
                     matches = sum(1 for k in tech_keywords if k in text_block)
-                    dynamic_score = round(min(0.99, max(0.65, 0.70 + (matches * 0.05))), 2)
+                    dynamic_score = round(min(0.99, max(0.60, 0.70 + (matches * 0.08))), 2)
+
+                    # DEMO_MODE fixture override ONLY
+                    if is_mock and "Beginner AI Workflows" in name:
+                        dynamic_score = 0.92
 
                     results.append({
                         "trend_name": name,
                         "status": "RECOMMENDED",
-                        "fit_score": dynamic_score if not is_mock else 0.92,
+                        "fit_score": dynamic_score,
                         "relevance_reason": "Matches technical profile and creator boundary criteria.",
                         "suggested_angle": f"Adapt '{name}' into practical developer tutorial.",
                         "source_vectors": ["analytics_cluster_node", "comment_hook_vector"]
@@ -327,20 +341,20 @@ class GreenroomMindsIntegrationManager:
                     "top_requested_topics": comment_data.get("requested_topics", ["Code repository links", "Local agent setup"])
                 }
 
-            # Explicit DEMO_MODE fixture
+            # Explicit DEMO_MODE fixture ONLY
             if is_mock:
                 return {
                     "insight_type": "DEMO_FIXTURE_HOOK",
-                    "extracted_hook": "74% of audience requests setup guides & direct github repository links.",
-                    "audience_retention_pattern": "3x retention boost when code setup steps are demonstrated within first 60 seconds.",
+                    "extracted_hook": "High audience demand for setup guides & direct github repository links.",
+                    "audience_retention_pattern": "Audience retention boost demonstrated when code setup steps are shown.",
                     "community_sentiment_score": 0.88,
                     "top_requested_topics": ["Beginner setup scripts", "Clean environment config", "Architecture breakdown"]
                 }
 
             return {
                 "insight_type": "COMMUNITY_ANALYSIS_DEFAULT",
-                "extracted_hook": "No comments payload provided; standard audience retention active.",
-                "community_sentiment_score": 0.75,
+                "extracted_hook": "Standard audience retention active.",
+                "community_sentiment_score": 0.70,
                 "top_requested_topics": ["Technical walkthroughs"]
             }
 
@@ -362,30 +376,31 @@ class GreenroomMindsIntegrationManager:
             estimated_impressions = reach * 0.4
             calculated_deal_value = round((estimated_impressions / 1000.0) * cpm, 2)
             
-            # Calculate match score based on brand niche alignment
+            # Dynamic match score based on brand niche alignment
             niche_lower = brand_niche.lower()
             if any(term in niche_lower for term in ["developer", "tech", "infrastructure", "ai", "cloud"]):
-                match_score = 0.91
+                match_score = 0.90
             elif any(term in niche_lower for term in ["finance", "crypto", "gambling"]):
-                match_score = 0.35
+                match_score = 0.30
             else:
-                match_score = 0.65
+                match_score = 0.60
 
+            # DEMO_MODE fixture override ONLY
             if is_mock and sponsor_name == "TechBrand Inc.":
                 match_score = 0.89
                 calculated_deal_value = 5400.0
 
             pitch_draft = (
                 f"Hey {sponsor_name} team,\n\n"
-                f"Over 78% of our technical viewers are software engineers and AI builders actively seeking developer tools.\n"
-                f"Our average viewer retention on technical setup guides is high. Let's showcase {sponsor_name} as core infrastructure in our upcoming workflow tutorial."
+                f"Our technical viewers are software engineers and AI builders actively seeking developer tools.\n"
+                f"Our viewer retention on technical setup guides is high. Let's showcase {sponsor_name} as core infrastructure in our upcoming workflow tutorial."
             )
 
             return {
                 "sponsor_name": sponsor_name,
                 "match_score": match_score,
                 "target_deal_size": f"${calculated_deal_value:.0f}",
-                "pitch_angle": f"Integrate {sponsor_name} as native {brand_niche} in high-retention tutorial.",
+                "pitch_angle": f"Integrate {sponsor_name} as native {brand_niche} in tutorial.",
                 "pitch_draft": pitch_draft,
                 "retention_metrics_used": "Evaluated from persistent creator performance profile."
             }
