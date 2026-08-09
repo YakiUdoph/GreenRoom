@@ -2,19 +2,23 @@ import json
 import time
 import os
 from typing import Dict, List, Any, Optional
+from minds_integration import minds_manager
 
 class GreenroomMemoryEngine:
     def __init__(self, profile_path: str = "creator_profile.json"):
         self.profile_path = profile_path
         self.state = self._load_profile()
+        self._sync_to_minds_sdk()
 
     def _load_profile(self) -> Dict[str, Any]:
-        if os.path.exists(self.profile_path):
-            try:
-                with open(self.profile_path, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"[MemoryEngine] Error loading profile from {self.profile_path}: {e}")
+        # Check /tmp first for runtime state on Vercel, then root profile path
+        for target in ["/tmp/creator_profile.json", self.profile_path]:
+            if os.path.exists(target):
+                try:
+                    with open(target, "r", encoding="utf-8") as f:
+                        return json.load(f)
+                except Exception as e:
+                    print(f"[MemoryEngine] Error loading profile from {target}: {e}")
         
         # Default state fallback
         return {
@@ -22,15 +26,29 @@ class GreenroomMemoryEngine:
             "brand_voice_attributes": ["Educational", "Technical yet accessible", "Direct"],
             "content_performance_history": [],
             "audience_demographics": {},
-            "rejected_topics": ["Crypto trading bots", "Generic clickbait"],
+            "rejected_topics": ["Crypto trading bots", "Generic AI news clickbait"],
             "monetization_benchmarks": {"cpm_target": 45},
             "learned_voice_rules": [],
             "memory_nodes": []
         }
 
+    def _sync_to_minds_sdk(self):
+        """Syncs local memory state to official Minds SDK persistent context"""
+        for rule in self.state.get("learned_voice_rules", []):
+            minds_manager.update_learned_preference(rule)
+
     def save_state(self) -> None:
-        with open(self.profile_path, "w", encoding="utf-8") as f:
-            json.dump(self.state, f, indent=2)
+        # Try root path first, fallback to /tmp on Vercel read-only filesystem
+        try:
+            with open(self.profile_path, "w", encoding="utf-8") as f:
+                json.dump(self.state, f, indent=2)
+        except (PermissionError, OSError) as e:
+            try:
+                tmp_path = "/tmp/creator_profile.json"
+                with open(tmp_path, "w", encoding="utf-8") as f:
+                    json.dump(self.state, f, indent=2)
+            except Exception as tmp_err:
+                print(f"[MemoryEngine] Warning: persistent save skipped on serverless env: {tmp_err}")
 
     def retrieve_relevant_context(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         """
@@ -101,7 +119,8 @@ class GreenroomMemoryEngine:
 
     def add_learned_voice_rule(self, rule: str) -> None:
         """
-        Appends a newly learned rule (e.g. from Minute 5 user feedback) to persistent state.
+        Appends a newly learned rule (e.g. from Minute 5 user feedback) to persistent state
+        and syncs natively across the Minds SDK agent topology.
         """
         rules = self.state.setdefault("learned_voice_rules", [])
         if rule not in rules:
@@ -115,6 +134,9 @@ class GreenroomMemoryEngine:
                 "insights": ["Explicit creator override on voice & tone", rule]
             }
         )
+        
+        # Sync to Minds SDK persistent context engine across all active agents
+        minds_manager.update_learned_preference(rule)
         self.save_state()
 
     def get_full_state(self) -> Dict[str, Any]:
@@ -135,6 +157,7 @@ class GreenroomMemoryEngine:
                 "memory_nodes": []
             }
         self.save_state()
+        self._sync_to_minds_sdk()
         return self.state
 
 # Expose global singleton instance

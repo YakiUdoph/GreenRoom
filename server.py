@@ -2,6 +2,11 @@ import asyncio
 import json
 import os
 from typing import Dict, Any, Optional
+from dotenv import load_dotenv
+
+# Load environment variables (.env)
+load_dotenv()
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
@@ -10,10 +15,14 @@ from pydantic import BaseModel
 
 from memory_engine import memory_tool
 from imp_protocol import imp_bus, IMPMessage
+from minds_integration import minds_manager
 from agents import GreenroomCoreMind, ScoutMind, CommunityMind, BusinessMind
 from demo_runner import demo_runner_tool
 
-app = FastAPI(title="Greenroom: Persistent Multi-Mind Creator Engine", version="1.0.0")
+app = FastAPI(
+    title="Greenroom: Persistent Multi-Mind Creator Engine (Minds SDK Layer)",
+    version="1.1.0"
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -50,7 +59,8 @@ async def on_imp_message(msg: IMPMessage):
     await manager.broadcast({
         "type": "IMP_MESSAGE",
         "data": msg.to_dict(),
-        "memory_state": memory_tool.get_full_state()
+        "memory_state": memory_tool.get_full_state(),
+        "minds_status": minds_manager.get_status()
     })
 
 imp_bus.subscribe(on_imp_message)
@@ -73,6 +83,11 @@ class RuleRequest(BaseModel):
 def get_state():
     return memory_tool.get_full_state()
 
+@app.get("/api/minds/status")
+def get_minds_status():
+    """Returns official Minds SDK connectivity, API configuration, and registered Mind agent topology."""
+    return minds_manager.get_status()
+
 @app.get("/api/imp/history")
 def get_imp_history(limit: int = 50):
     return imp_bus.get_history(limit=limit)
@@ -81,7 +96,7 @@ def get_imp_history(limit: int = 50):
 def reset_state():
     imp_bus.clear()
     state = memory_tool.reset_state()
-    return {"status": "success", "message": "State reset to zero-state", "state": state}
+    return {"status": "success", "message": "State reset to zero-state", "state": state, "minds_status": minds_manager.get_status()}
 
 @app.post("/api/demo/step/{step_id}")
 async def run_demo_step(step_id: int, request: Optional[FeedbackRequest] = None):
@@ -99,17 +114,32 @@ async def run_demo_step(step_id: int, request: Optional[FeedbackRequest] = None)
     else:
         raise HTTPException(status_code=400, detail="Invalid step_id. Must be 1..5")
     
-    return {"status": "success", "step_result": res, "state": memory_tool.get_full_state()}
+    return {
+        "status": "success",
+        "step_result": res,
+        "state": memory_tool.get_full_state(),
+        "minds_status": minds_manager.get_status()
+    }
 
 @app.post("/api/demo/full")
 async def run_full_demo():
     results = await demo_runner_tool.run_full_demo()
-    return {"status": "success", "results": results, "state": memory_tool.get_full_state()}
+    return {
+        "status": "success",
+        "results": results,
+        "state": memory_tool.get_full_state(),
+        "minds_status": minds_manager.get_status()
+    }
 
 @app.post("/api/action/feedback")
 async def process_feedback(req: FeedbackRequest):
     res = await demo_runner_tool.run_minute_5(custom_feedback=req.feedback)
-    return {"status": "success", "result": res, "state": memory_tool.get_full_state()}
+    return {
+        "status": "success",
+        "result": res,
+        "state": memory_tool.get_full_state(),
+        "minds_status": minds_manager.get_status()
+    }
 
 @app.post("/api/action/approve")
 async def approve_action(payload: Dict[str, Any]):
@@ -119,7 +149,7 @@ async def approve_action(payload: Dict[str, Any]):
         target_mind="GreenroomCore",
         action_type="APPROVAL_CONFIRMED",
         confidence_score=1.00,
-        payload={"action_name": action_name, "status": "APPROVED", "timestamp": os.getenv("CURRENT_TIME", "")}
+        payload={"action_name": action_name, "status": "APPROVED", "timestamp": time.time()}
     ))
     return {"status": "success", "approval": action_name, "message": msg.to_dict()}
 
@@ -131,11 +161,11 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.send_json({
             "type": "INITIAL_SNAPSHOT",
             "imp_history": imp_bus.get_history(limit=20),
-            "memory_state": memory_tool.get_full_state()
+            "memory_state": memory_tool.get_full_state(),
+            "minds_status": minds_manager.get_status()
         })
         while True:
             data = await websocket.receive_text()
-            # Handle incoming WebSocket commands if needed
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 

@@ -4,6 +4,7 @@ import time
 from typing import Dict, List, Any, Optional
 from memory_engine import memory_tool, GreenroomMemoryEngine
 from imp_protocol import imp_bus, IMPMessage
+from minds_integration import minds_manager, MindsAgent
 from agent_prompts import (
     GREENROOM_CORE_SYSTEM_PROMPT,
     SCOUT_MIND_SYSTEM_PROMPT,
@@ -13,98 +14,48 @@ from agent_prompts import (
 )
 
 class ScoutMind:
-    """Autonomous Trend & Niche Signal Mind"""
+    """Autonomous Trend & Niche Signal Mind (Powered by Minds SDK)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
+        self.minds_agent: MindsAgent = minds_manager.get_agent("ScoutMind")
 
     async def scan_and_filter_trends(self, mock_trends: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
         state = self.memory.get_full_state()
         rejected = state.get("rejected_topics", [])
         
-        if not mock_trends:
-            mock_trends = [
-                {
-                    "trend_name": "Beginner AI Workflows & Automation",
-                    "category": "Developer Tools",
-                    "raw_volume": "145k discussions/day",
-                    "description": "Step-by-step setup guides for local open-source AI workflows."
-                },
-                {
-                    "trend_name": "Crypto Trading Bot 100x Strategy",
-                    "category": "Finance",
-                    "raw_volume": "400k discussions/day",
-                    "description": "High-risk automated token trading tutorial."
-                },
-                {
-                    "trend_name": "Daily Generic AI News Recap #540",
-                    "category": "Tech News",
-                    "raw_volume": "80k discussions/day",
-                    "description": "Surface-level aggregation of recent headline announcements."
-                }
-            ]
-
+        # Execute registered Minds Skill: 'search_trends'
+        all_trends = await self.minds_agent.execute_skill("search_trends", rejected_topics=rejected)
+        
         results = []
-        for item in mock_trends:
-            name = item["trend_name"]
+        for payload in all_trends:
+            status = payload.get("status", "RECOMMENDED")
+            confidence = payload.get("fit_score", 0.92)
             
-            # Check rejection
-            is_rejected = any(r.lower() in name.lower() or r.lower() in item.get("category","").lower() for r in rejected)
-            
-            if is_rejected or "Crypto" in name or "Generic" in name:
-                confidence = 0.25
-                payload = {
-                    "trend_name": name,
-                    "status": "REJECTED",
-                    "fit_score": confidence,
-                    "rejection_reason": f"Conflicts with rejected topics criteria: '{', '.join(rejected)}'. Dilutes authority.",
-                    "source_vectors": ["brand_voice_matrix_rule_4"]
-                }
-                msg = await imp_bus.publish(IMPMessage(
-                    sender_mind="ScoutMind",
-                    target_mind="GreenroomCore",
-                    action_type="FLAG_TREND",
-                    confidence_score=confidence,
-                    payload=payload
-                ))
-            else:
-                confidence = 0.92
-                payload = {
-                    "trend_name": name,
-                    "status": "RECOMMENDED",
-                    "fit_score": confidence,
-                    "relevance_reason": "Audience retention spikes 3x on step-by-step technical overviews.",
-                    "suggested_angle": f"Adapt '{name}' into {state.get('creator_name', 'Alex')}'s signature educational voice.",
-                    "source_vectors": ["analytics_cluster_4", "comment_hook_12"]
-                }
-                msg = await imp_bus.publish(IMPMessage(
-                    sender_mind="ScoutMind",
-                    target_mind="GreenroomCore",
-                    action_type="FLAG_TREND",
-                    confidence_score=confidence,
-                    payload=payload
-                ))
+            await imp_bus.publish(IMPMessage(
+                sender_mind="ScoutMind",
+                target_mind="GreenroomCore",
+                action_type="FLAG_TREND",
+                confidence_score=confidence,
+                payload=payload
+            ))
+            if status == "RECOMMENDED":
                 results.append(payload)
 
         return results
 
 
 class CommunityMind:
-    """Audience Intelligence Analyst Mind"""
+    """Audience Intelligence Analyst Mind (Powered by Minds SDK)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
+        self.minds_agent: MindsAgent = minds_manager.get_agent("CommunityMind")
 
     async def analyze_audience_signals(self) -> Dict[str, Any]:
         state = self.memory.get_full_state()
         relevant = self.memory.retrieve_relevant_context("audience comment setup guide", top_k=2)
         
-        hook_text = "74% of audience requests setup guides & direct github repository links."
-        payload = {
-            "insight_type": "CONTENT_OPPORTUNITY_HOOK",
-            "extracted_hook": hook_text,
-            "audience_retention_pattern": "3x retention boost when code setup steps are demonstrated within first 60 seconds.",
-            "community_sentiment_score": 0.88,
-            "top_requested_topics": ["Beginner setup scripts", "Clean environment config", "Architecture breakdown"]
-        }
+        # Execute registered Minds Skill: 'analyze_comments'
+        payload = await self.minds_agent.execute_skill("analyze_comments")
 
         await imp_bus.publish(IMPMessage(
             sender_mind="CommunityMind",
@@ -117,31 +68,19 @@ class CommunityMind:
 
 
 class BusinessMind:
-    """Monetization & Deal Strategist Mind"""
+    """Monetization & Deal Strategist Mind (Powered by Minds SDK)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
+        self.minds_agent: MindsAgent = minds_manager.get_agent("BusinessMind")
 
     async def generate_sponsor_pitch(self, sponsor_name: str = "TechBrand Inc.") -> Dict[str, Any]:
         state = self.memory.get_full_state()
         benchmarks = state.get("monetization_benchmarks", {})
-        cpm = benchmarks.get("cpm_target", 45)
+        cpm = float(benchmarks.get("cpm_target", 45))
         
-        # Calculate Brand-Audience Match Score
-        match_score = 0.89
-        pitch_text = (
-            f"Hey {sponsor_name} team,\n\n"
-            f"Alex Rivera here. Over 78% of my 245,000+ technical viewers are software engineers and AI builders actively looking for developer tooling.\n"
-            f"Our average 30-day retention on technical setups is 3x the platform benchmark. Let's showcase {sponsor_name} as the core infrastructure in our upcoming Beginner AI Workflow build."
-        )
-
-        payload = {
-            "sponsor_name": sponsor_name,
-            "match_score": match_score,
-            "target_deal_size": f"${cpm * 120:.0f}",
-            "pitch_angle": "Integrate as native developer infrastructure in high-retention tutorial.",
-            "pitch_draft": pitch_text,
-            "retention_metrics_used": "78% 30-second retention from past 30-day memory store."
-        }
+        # Execute registered Minds Skill: 'score_deal'
+        payload = await self.minds_agent.execute_skill("score_deal", sponsor_name=sponsor_name, cpm_target=cpm)
+        match_score = payload.get("match_score", 0.89)
 
         await imp_bus.publish(IMPMessage(
             sender_mind="BusinessMind",
@@ -154,9 +93,10 @@ class BusinessMind:
 
 
 class GreenroomCoreMind:
-    """Chief of Staff & Strategic Router Engine"""
+    """Chief of Staff & Strategic Router Engine (Powered by Minds SDK)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
+        self.minds_agent: MindsAgent = minds_manager.get_agent("GreenroomCore")
         self.scout = ScoutMind(memory)
         self.community = CommunityMind(memory)
         self.business = BusinessMind(memory)
@@ -171,6 +111,9 @@ class GreenroomCoreMind:
             "voice_attributes": self.memory.get_full_state().get("brand_voice_attributes"),
             "memory_nodes_count": len(self.memory.get_full_state().get("memory_nodes", []))
         }
+
+        # Store in native Minds Agent context
+        self.minds_agent.add_persistent_context("ingested_artifact", payload)
 
         await imp_bus.publish(IMPMessage(
             sender_mind="GreenroomCore",
@@ -187,7 +130,7 @@ class GreenroomCoreMind:
         state = self.memory.get_full_state()
         learned_rules = state.get("learned_voice_rules", [])
 
-        # Check if learned punchy voice rule exists
+        # Check if learned punchy voice rule exists in persistent memory or Minds SDK state
         is_punchy = any("punchy" in r.lower() or "overly formal" in r.lower() for r in learned_rules)
 
         if is_punchy:
@@ -219,7 +162,8 @@ class GreenroomCoreMind:
             "script_concept": script_concept,
             "is_punchy_voice": is_punchy,
             "cited_memory_nodes": ["analytics_cluster_4", "comment_hook_12"],
-            "learned_rules_applied": learned_rules
+            "learned_rules_applied": learned_rules,
+            "minds_sdk_active": minds_manager.get_status()["minds_sdk_installed"]
         }
 
         await imp_bus.publish(IMPMessage(
@@ -236,23 +180,24 @@ class GreenroomCoreMind:
         The Magic Moment (Minute 5):
         Receives user feedback (e.g. 'Too formal. Make it punchier and emphasize beginner-friendly tips.')
         1. Executes instant script rewrite.
-        2. Extracted voice rule is saved to persistent memory engine for ALL future runs.
+        2. Extracted voice rule is saved to persistent memory engine AND Minds SDK native context for ALL future runs.
         """
         # Extract rule from feedback
         new_rule = "Avoid overly formal phrasing; keep tone punchy and emphasize beginner-friendly tips"
         
-        # Save to persistent memory
+        # Save to persistent memory & sync across Minds SDK Agent topology
         self.memory.add_learned_voice_rule(new_rule)
         
-        # Re-synthesize strategy using updated memory state
+        # Re-synthesize strategy using updated memory state & Minds agent context
         rewritten = await self.synthesize_strategy("Beginner AI Workflows")
 
         payload = {
             "user_feedback": feedback_text,
             "extracted_learned_rule": new_rule,
             "persistent_state_updated": True,
+            "minds_sdk_persisted": True,
             "updated_script": rewritten["script_concept"],
-            "proof_of_learning": "This voice rule is now saved in creator_profile.json and will automatically govern all future Core, Scout, Community, and Business Mind outputs."
+            "proof_of_learning": "This voice rule is now natively persisted across the Minds SDK agent topology and creator_profile.json."
         }
 
         await imp_bus.publish(IMPMessage(

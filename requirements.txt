@@ -1,4 +1,6 @@
+minds-sdk
 fastapi
 uvicorn
 pydantic
 starlette
+python-dotenv
