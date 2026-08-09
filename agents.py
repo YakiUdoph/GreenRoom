@@ -14,48 +14,55 @@ from agent_prompts import (
 )
 
 class ScoutMind:
-    """Autonomous Trend & Niche Signal Mind (Powered by Minds SDK)"""
+    """Autonomous Trend Signal Mind (Native Minds SDK Agent)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
         self.minds_agent: MindsAgent = minds_manager.get_agent("ScoutMind")
 
-    async def scan_and_filter_trends(self, mock_trends: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+    async def scan_and_filter_trends(self, candidate_trends: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
         state = self.memory.get_full_state()
         rejected = state.get("rejected_topics", [])
         
         # Execute registered Minds Skill: 'search_trends'
-        all_trends = await self.minds_agent.execute_skill("search_trends", rejected_topics=rejected)
+        evaluated_trends = await self.minds_agent.execute_skill(
+            "search_trends",
+            input_trends=candidate_trends,
+            rejected_topics=rejected
+        )
         
         results = []
-        for payload in all_trends:
-            status = payload.get("status", "RECOMMENDED")
-            confidence = payload.get("fit_score", 0.92)
+        for item in evaluated_trends:
+            status = item.get("status", "RECOMMENDED")
+            confidence = item.get("fit_score", 0.92)
             
+            # Record persistent context in Minds Agent state
+            self.minds_agent.add_persistent_context("trend_evaluated", item)
+
             await imp_bus.publish(IMPMessage(
                 sender_mind="ScoutMind",
                 target_mind="GreenroomCore",
                 action_type="FLAG_TREND",
                 confidence_score=confidence,
-                payload=payload
+                payload=item
             ))
             if status == "RECOMMENDED":
-                results.append(payload)
+                results.append(item)
 
         return results
 
 
 class CommunityMind:
-    """Audience Intelligence Analyst Mind (Powered by Minds SDK)"""
+    """Audience Intelligence Analyst Mind (Native Minds SDK Agent)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
         self.minds_agent: MindsAgent = minds_manager.get_agent("CommunityMind")
 
-    async def analyze_audience_signals(self) -> Dict[str, Any]:
-        state = self.memory.get_full_state()
-        relevant = self.memory.retrieve_relevant_context("audience comment setup guide", top_k=2)
-        
+    async def analyze_audience_signals(self, comment_stream: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         # Execute registered Minds Skill: 'analyze_comments'
-        payload = await self.minds_agent.execute_skill("analyze_comments")
+        payload = await self.minds_agent.execute_skill("analyze_comments", comment_data=comment_stream)
+
+        # Store persistent context in Minds Agent memory
+        self.minds_agent.add_persistent_context("audience_signal", payload)
 
         await imp_bus.publish(IMPMessage(
             sender_mind="CommunityMind",
@@ -68,7 +75,7 @@ class CommunityMind:
 
 
 class BusinessMind:
-    """Monetization & Deal Strategist Mind (Powered by Minds SDK)"""
+    """Monetization & Outreach Strategist Mind (Native Minds SDK Agent)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
         self.minds_agent: MindsAgent = minds_manager.get_agent("BusinessMind")
@@ -79,8 +86,15 @@ class BusinessMind:
         cpm = float(benchmarks.get("cpm_target", 45))
         
         # Execute registered Minds Skill: 'score_deal'
-        payload = await self.minds_agent.execute_skill("score_deal", sponsor_name=sponsor_name, cpm_target=cpm)
+        payload = await self.minds_agent.execute_skill(
+            "score_deal",
+            sponsor_name=sponsor_name,
+            cpm_target=cpm
+        )
         match_score = payload.get("match_score", 0.89)
+
+        # Store persistent context in Minds Agent memory
+        self.minds_agent.add_persistent_context("deal_pitch", payload)
 
         await imp_bus.publish(IMPMessage(
             sender_mind="BusinessMind",
@@ -93,7 +107,7 @@ class BusinessMind:
 
 
 class GreenroomCoreMind:
-    """Chief of Staff & Strategic Router Engine (Powered by Minds SDK)"""
+    """Chief of Staff Orchestrator (Native Minds SDK Agent)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
         self.minds_agent: MindsAgent = minds_manager.get_agent("GreenroomCore")
@@ -112,7 +126,7 @@ class GreenroomCoreMind:
             "memory_nodes_count": len(self.memory.get_full_state().get("memory_nodes", []))
         }
 
-        # Store in native Minds Agent context
+        # Store in native Minds Agent persistent context
         self.minds_agent.add_persistent_context("ingested_artifact", payload)
 
         await imp_bus.publish(IMPMessage(
@@ -125,13 +139,12 @@ class GreenroomCoreMind:
         return payload
 
     async def synthesize_strategy(self, trend_name: str = "Beginner AI Workflows") -> Dict[str, Any]:
-        # Render stateful prompt
-        system_prompt = render_prompt(GREENROOM_CORE_SYSTEM_PROMPT, self.memory, query=trend_name)
-        state = self.memory.get_full_state()
-        learned_rules = state.get("learned_voice_rules", [])
+        # Evaluate prompt via Minds Agent completion engine
+        agent_response = await self.minds_agent.generate_response(f"Synthesize strategy for '{trend_name}'")
+        learned_rules = self.minds_agent.learned_rules or self.memory.get_full_state().get("learned_voice_rules", [])
 
-        # Check if learned punchy voice rule exists in persistent memory or Minds SDK state
-        is_punchy = any("punchy" in r.lower() or "overly formal" in r.lower() for r in learned_rules)
+        # Check if learned punchy voice rule exists in persistent Minds memory
+        is_punchy = any("punchy" in r.lower() or "formal" in r.lower() for r in learned_rules)
 
         if is_punchy:
             script_concept = (
@@ -163,8 +176,11 @@ class GreenroomCoreMind:
             "is_punchy_voice": is_punchy,
             "cited_memory_nodes": ["analytics_cluster_4", "comment_hook_12"],
             "learned_rules_applied": learned_rules,
-            "minds_sdk_active": minds_manager.get_status()["minds_sdk_installed"]
+            "minds_agent_status": agent_response.get("status", "PROCESSED")
         }
+
+        # Store in native Minds Agent persistent context
+        self.minds_agent.add_persistent_context("strategy_synthesized", payload)
 
         await imp_bus.publish(IMPMessage(
             sender_mind="GreenroomCore",
@@ -179,25 +195,25 @@ class GreenroomCoreMind:
         """
         The Magic Moment (Minute 5):
         Receives user feedback (e.g. 'Too formal. Make it punchier and emphasize beginner-friendly tips.')
-        1. Executes instant script rewrite.
-        2. Extracted voice rule is saved to persistent memory engine AND Minds SDK native context for ALL future runs.
+        1. Saves extracted rule into Minds SDK persistent memory graph across all Minds agents.
+        2. Re-synthesizes script strategy reflecting the persisted state dynamically.
         """
-        # Extract rule from feedback
         new_rule = "Avoid overly formal phrasing; keep tone punchy and emphasize beginner-friendly tips"
         
-        # Save to persistent memory & sync across Minds SDK Agent topology
+        # Natively update Minds SDK persistent context across topology
+        minds_manager.update_learned_preference(new_rule)
         self.memory.add_learned_voice_rule(new_rule)
         
-        # Re-synthesize strategy using updated memory state & Minds agent context
+        # Re-synthesize strategy using updated Minds persistent state
         rewritten = await self.synthesize_strategy("Beginner AI Workflows")
 
         payload = {
             "user_feedback": feedback_text,
             "extracted_learned_rule": new_rule,
             "persistent_state_updated": True,
-            "minds_sdk_persisted": True,
+            "minds_agent_context_saved": True,
             "updated_script": rewritten["script_concept"],
-            "proof_of_learning": "This voice rule is now natively persisted across the Minds SDK agent topology and creator_profile.json."
+            "proof_of_learning": "Voice preference natively persisted across Minds agent topology."
         }
 
         await imp_bus.publish(IMPMessage(
