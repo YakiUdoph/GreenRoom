@@ -4,7 +4,7 @@ async function main() {
   const args = process.argv.slice(2);
   const command = args[0];
 
-  const apiKey = process.env.MINDS_BUILDER_API_KEY || process.env.MINDS_API_KEY;
+  const apiKey = process.env.MINDS_BUILDER_API_KEY;
 
   if (!apiKey && command !== "help") {
     console.log(JSON.stringify({ ok: false, error: "MINDS_BUILDER_API_KEY environment variable is missing" }));
@@ -26,18 +26,37 @@ async function main() {
       if (!mindId || !prompt) throw new Error("mindId and prompt required");
 
       await client.ensureConversation(alias, mindId);
+
+      const before = await client.getLatestHistoryFingerprint(alias);
       await client.sendMessage({ alias, messageText: prompt });
 
       const timeoutMs = parseInt(process.env.MINDS_REPLY_TIMEOUT_MS || "30000", 10);
-      const outcome = await client.waitForReply({ alias, timeoutMs, sentMessageText: prompt });
+      const outcome = await client.waitForReply({
+        alias,
+        timeoutMs,
+        afterFingerprint: before,
+        sentMessageText: prompt,
+      });
 
       if (outcome.timedOut || !outcome.reply) {
-        console.log(JSON.stringify({ ok: false, error: "Mind reply timed out without response", timedOut: true }));
+        console.log(JSON.stringify({
+          ok: false,
+          error: "Mind reply timed out without response",
+          timedOut: true,
+          afterFingerprint: before
+        }));
         process.exit(1);
       }
 
       const replyText = outcome.reply.messageText || outcome.reply.text || JSON.stringify(outcome.reply);
-      console.log(JSON.stringify({ ok: true, reply: replyText, mindId, alias, record: outcome.reply }));
+      console.log(JSON.stringify({
+        ok: true,
+        reply: replyText,
+        mindId,
+        alias,
+        afterFingerprint: before,
+        record: outcome.reply
+      }));
     } else if (command === "cognition-balance") {
       const mindId = args[1];
       if (!mindId) throw new Error("mindId required");

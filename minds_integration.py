@@ -172,51 +172,51 @@ class AnimocaMindsBuilderClient:
 
     def generate_completion(self, mind_id: str, prompt: str, alias: str = "greenroom-main") -> Dict[str, Any]:
         """
-        Routes an actual production interaction through the real Mind via official Builder API.
-        Documented flow: ensure conversation -> send message -> wait for actual Mind reply.
-        Raises MindsExecutionError if no reply is received or messaging fails.
+        Routes production interaction through real Mind using ONLY the official @animocabrands/minds-client-lib bridge.
+        Raises MindsExecutionError if Node is unavailable, minds_bridge.mjs fails, client-lib errors, or waitForReply times out.
+        NO Python direct REST messaging fallback is permitted.
         """
-        if os.path.exists(self.bridge_script):
-            cmd = ["node", self.bridge_script, "interact", mind_id, prompt, alias]
-            env = os.environ.copy()
-            env["MINDS_BUILDER_API_KEY"] = self.builder_api_key
-            try:
-                proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=40)
-                if proc.stdout:
-                    res = json.loads(proc.stdout)
-                    if res.get("ok") and res.get("reply"):
-                        return {
-                            "ok": True,
-                            "mindId": mind_id,
-                            "alias": alias,
-                            "response": res["reply"],
-                            "status": "COMPLETED_VIA_ANIMOCA_MINDS_BUILDER_API"
-                        }
-                    err_msg = res.get("error", "No Mind reply received within timeout")
-                    raise MindsExecutionError(f"Animoca Minds Builder interaction failed: {err_msg}")
-                raise MindsExecutionError(f"Node bridge execution failed: {proc.stderr}")
-            except subprocess.TimeoutExpired as e:
-                raise MindsExecutionError("Animoca Minds Builder reply timed out waiting for Mind response") from e
-            except Exception as e:
-                if isinstance(e, MindsExecutionError):
-                    raise
-                # Fallthrough to direct REST conversation flow if Node execution fails
+        if not os.path.exists(self.bridge_script):
+            raise MindsExecutionError(
+                "Official @animocabrands/minds-client-lib Node bridge (minds_bridge.mjs) is missing. "
+                "Production message completion requires the official Minds client library."
+            )
 
-        # Fallback Python REST conversation flow (create -> send -> wait for history reply)
-        self.create_conversation(mind_id, alias=alias)
-        self.send_message(alias=alias, message_text=prompt)
+        cmd = ["node", self.bridge_script, "interact", mind_id, prompt, alias]
+        env = os.environ.copy()
+        env["MINDS_BUILDER_API_KEY"] = self.builder_api_key
 
-        reply_text = self._wait_for_history_reply(alias=alias, sent_prompt=prompt, timeout=30)
-        if not reply_text:
-            raise MindsExecutionError("Successful sendMessage but no Mind reply was received within timeout")
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, env=env, timeout=40)
+        except FileNotFoundError as e:
+            raise MindsExecutionError("Node.js runtime executable ('node') is not available in system PATH.") from e
+        except subprocess.TimeoutExpired as e:
+            raise MindsExecutionError("Animoca Minds Builder reply timed out waiting for Mind response") from e
+        except Exception as e:
+            raise MindsExecutionError(f"Failed to execute official Minds client-lib bridge: {e}") from e
+
+        if not proc.stdout:
+            err_msg = proc.stderr.strip() if proc.stderr else "Empty process stdout"
+            raise MindsExecutionError(f"Official Minds client-lib bridge execution failed: {err_msg}")
+
+        try:
+            res = json.loads(proc.stdout)
+        except Exception as e:
+            raise MindsExecutionError(f"Official Minds client-lib bridge returned invalid JSON output: {proc.stdout.strip()}") from e
+
+        if not res.get("ok") or not res.get("reply"):
+            err_msg = res.get("error", "No Mind reply received within timeout")
+            raise MindsExecutionError(f"Animoca Minds Builder interaction failed: {err_msg}")
 
         return {
             "ok": True,
             "mindId": mind_id,
             "alias": alias,
-            "response": reply_text,
+            "response": res["reply"],
+            "afterFingerprint": res.get("afterFingerprint"),
             "status": "COMPLETED_VIA_ANIMOCA_MINDS_BUILDER_API"
         }
+
 
 
 class MindsSkill:
@@ -258,7 +258,7 @@ class MindsAgent:
 
     @property
     def is_mock_mode(self) -> bool:
-        api_key = os.getenv("MINDS_BUILDER_API_KEY") or os.getenv("MINDS_API_KEY") or ""
+        api_key = os.getenv("MINDS_BUILDER_API_KEY", "")
         demo_mode = os.getenv("DEMO_MODE", "").lower() in ("true", "1")
         return not api_key and demo_mode
 
@@ -407,7 +407,7 @@ class GreenroomMindsIntegrationManager:
 
     @property
     def builder_api_key(self) -> str:
-        return os.getenv("MINDS_BUILDER_API_KEY") or os.getenv("MINDS_API_KEY") or ""
+        return os.getenv("MINDS_BUILDER_API_KEY", "")
 
     @property
     def demo_mode(self) -> bool:

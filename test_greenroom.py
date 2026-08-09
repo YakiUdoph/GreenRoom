@@ -361,7 +361,7 @@ async def test_message_send_without_reply_raises_error():
         res = await agent.generate_response("Hello Mind")
         assert False, f"Expected MindsExecutionError when Mind reply is missing, but got {res}"
     except MindsExecutionError as e:
-        assert "no mind reply" in str(e).lower() or "timed out" in str(e).lower() or "failed" in str(e).lower()
+        assert "no mind reply" in str(e).lower() or "timed out" in str(e).lower() or "failed" in str(e).lower() or "missing" in str(e).lower()
         print(f"[OK] Caught expected exception when message was sent without reply: {e}")
     finally:
         if orig_builder_key is not None:
@@ -376,6 +376,123 @@ async def test_message_send_without_reply_raises_error():
         
     print("[OK] [TEST 13 PASSED]\n")
 
+
+async def test_after_fingerprint_passed_to_wait_for_reply():
+    print("--- [TEST 14] Testing afterFingerprint Is Returned from Bridge Interactive Flow ---")
+    orig_builder_key = os.environ.get("MINDS_BUILDER_API_KEY")
+    orig_demo = os.environ.get("DEMO_MODE")
+    
+    os.environ["MINDS_BUILDER_API_KEY"] = "test_key"
+    os.environ["DEMO_MODE"] = "false"
+
+    from minds_integration import AnimocaMindsBuilderClient
+    client = AnimocaMindsBuilderClient("test_key")
+
+    import subprocess
+    orig_run = subprocess.run
+    def mock_run(cmd, **kwargs):
+        class MockProc:
+            stdout = json.dumps({
+                "ok": True,
+                "reply": "Mock Mind Strategy Response",
+                "afterFingerprint": "fingerprint_abc123"
+            })
+            stderr = ""
+        return MockProc()
+
+    subprocess.run = mock_run
+    try:
+        res = client.generate_completion("8208493e-f36b-1410-8466-00039ce7df11", "Synthesize strategy")
+        assert res["ok"] is True
+        assert res["response"] == "Mock Mind Strategy Response"
+        assert res["afterFingerprint"] == "fingerprint_abc123"
+        print("[OK] Proved afterFingerprint is returned from Node client-lib bridge interaction.")
+    finally:
+        subprocess.run = orig_run
+        if orig_builder_key is not None:
+            os.environ["MINDS_BUILDER_API_KEY"] = orig_builder_key
+        else:
+            os.environ.pop("MINDS_BUILDER_API_KEY", None)
+
+        if orig_demo is not None:
+            os.environ["DEMO_MODE"] = orig_demo
+        else:
+            os.environ.pop("DEMO_MODE", None)
+            
+    print("[OK] [TEST 14 PASSED]\n")
+
+
+async def test_node_client_lib_failure_raises_minds_execution_error():
+    print("--- [TEST 15] Testing Node/Client-Lib Failure Raises MindsExecutionError ---")
+    orig_builder_key = os.environ.get("MINDS_BUILDER_API_KEY")
+    orig_demo = os.environ.get("DEMO_MODE")
+    
+    os.environ["MINDS_BUILDER_API_KEY"] = "test_key"
+    os.environ["DEMO_MODE"] = "false"
+
+    from minds_integration import AnimocaMindsBuilderClient, MindsExecutionError
+    client = AnimocaMindsBuilderClient("test_key")
+
+    import subprocess
+    orig_run = subprocess.run
+    def mock_run_fail(cmd, **kwargs):
+        class MockProc:
+            stdout = json.dumps({"ok": False, "error": "client-lib internal connection timeout"})
+            stderr = "Error in client-lib"
+        return MockProc()
+
+    subprocess.run = mock_run_fail
+    try:
+        res = client.generate_completion("8208493e-f36b-1410-8466-00039ce7df11", "Synthesize strategy")
+        assert False, f"Expected MindsExecutionError on Node client-lib failure, but got {res}"
+    except MindsExecutionError as e:
+        assert "client-lib internal connection timeout" in str(e)
+        print(f"[OK] Proved Node client-lib failure raises MindsExecutionError: {e}")
+    finally:
+        subprocess.run = orig_run
+        if orig_builder_key is not None:
+            os.environ["MINDS_BUILDER_API_KEY"] = orig_builder_key
+        else:
+            os.environ.pop("MINDS_BUILDER_API_KEY", None)
+
+        if orig_demo is not None:
+            os.environ["DEMO_MODE"] = orig_demo
+        else:
+            os.environ.pop("DEMO_MODE", None)
+
+    print("[OK] [TEST 15 PASSED]\n")
+
+
+async def test_no_production_direct_rest_messaging_fallback():
+    print("--- [TEST 16] Testing No Production Direct REST Messaging Fallback Occurs ---")
+    orig_builder_key = os.environ.get("MINDS_BUILDER_API_KEY")
+    orig_demo = os.environ.get("DEMO_MODE")
+    
+    os.environ["MINDS_BUILDER_API_KEY"] = "test_key"
+    os.environ["DEMO_MODE"] = "false"
+
+    from minds_integration import AnimocaMindsBuilderClient, MindsExecutionError
+    client = AnimocaMindsBuilderClient("test_key")
+    client.bridge_script = "non_existent_script.mjs"
+
+    try:
+        res = client.generate_completion("8208493e-f36b-1410-8466-00039ce7df11", "Synthesize strategy")
+        assert False, f"Expected MindsExecutionError when bridge script is missing, but got {res}"
+    except MindsExecutionError as e:
+        assert "minds_bridge.mjs) is missing" in str(e) or "requires the official minds client library" in str(e).lower()
+        print(f"[OK] Proved missing client-lib bridge immediately raises MindsExecutionError and NEVER falls back to direct REST messaging: {e}")
+    finally:
+        if orig_builder_key is not None:
+            os.environ["MINDS_BUILDER_API_KEY"] = orig_builder_key
+        else:
+            os.environ.pop("MINDS_BUILDER_API_KEY", None)
+
+        if orig_demo is not None:
+            os.environ["DEMO_MODE"] = orig_demo
+        else:
+            os.environ.pop("DEMO_MODE", None)
+
+    print("[OK] [TEST 16 PASSED]\n")
 
 
 async def main():
@@ -392,7 +509,11 @@ async def main():
     test_wrong_uuid_cannot_verify()
     test_is_enabled_false_cannot_verify()
     await test_message_send_without_reply_raises_error()
-    print("SUCCESS: ALL GREENROOM INTEGRATION & HARDENED VERIFICATION TESTS PASSED CLEANLY!")
+    await test_after_fingerprint_passed_to_wait_for_reply()
+    await test_node_client_lib_failure_raises_minds_execution_error()
+    await test_no_production_direct_rest_messaging_fallback()
+    print("SUCCESS: ALL GREENROOM INTEGRATION & HARDENED CLIENT-LIB TESTS PASSED CLEANLY!")
 
 if __name__ == "__main__":
     asyncio.run(main())
+

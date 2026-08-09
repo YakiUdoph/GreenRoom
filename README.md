@@ -18,7 +18,7 @@
 ### Official Client-Lib Node Bridge (`minds_bridge.mjs`):
 - Production Mind interactions run through an internal Node bridge script importing the official `@animocabrands/minds-client-lib` SDK (`createMindsClient`).
 - **Strict Verification (`verify_real_mind`):** Verification requires the API response itself to contain all 4 matching fields: `mindId == 8208493e-f36b-1410-8466-00039ce7df11`, `email == udophia@hellominds.ai`, `walletAddress == 0xB675Ec9857776678aE540cF3248d898f015987Cb`, and `isEnabled == true`. Missing or mismatched fields evaluate `verified = false` and prevent the "Remote Minds Connected" status.
-- **Documented Conversation Flow:** Production messaging uses the official conversation flow: `ensureConversation` -> `sendMessage` -> `waitForReply`. Successful `sendMessage` without a Mind reply raises a `MindsExecutionError` and is **never** marked as completed.
+- **Documented Conversation Flow:** Production messaging uses the official `@animocabrands/minds-client-lib` conversation flow: `ensureConversation` -> `getLatestHistoryFingerprint` -> `sendMessage` -> `waitForReply({ afterFingerprint, sentMessageText })`. Production completion exclusively relies on this client library; Node or client-lib errors immediately raise `MindsExecutionError` with zero silent REST messaging fallback.
 
 ### Clear Architecture Separation:
 1. **Real Platform Mind (`8208493e-f36b-1410-8466-00039ce7df11`):** The real remote platform Mind created on Animoca Brands Builder, handling strategy completions and remote interactions.
