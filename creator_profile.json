@@ -1,0 +1,46 @@
+{
+  "creator_name": "Alex Rivera",
+  "brand_voice_attributes": [
+    "Educational",
+    "Technical yet accessible",
+    "Direct and energetic",
+    "Data-driven storytelling"
+  ],
+  "content_performance_history": [],
+  "audience_demographics": {
+    "primary_age": "22-35"
+  },
+  "rejected_topics": [
+    "Crypto trading bots",
+    "Generic AI news clickbait"
+  ],
+  "monetization_benchmarks": {
+    "cpm_target": 45,
+    "minimum_deal_size": 5000
+  },
+  "learned_voice_rules": [
+    "Avoid overly formal phrasing; keep tone punchy and emphasize beginner-friendly tips"
+  ],
+  "memory_nodes": [
+    {
+      "node_id": "mem_1786276556337",
+      "type": "video_script_analytics",
+      "timestamp": 1786276556.3374093,
+      "content": "Past video script analysis: 'Build a Custom AI Agent in 10 Mins'. Viewer retention: 78% at 30 seconds. Audience requests github links and setup walkthroughs.",
+      "key_takeaways": [
+        "Step-by-step technical overviews drive 3x audience retention compared to news recaps.",
+        "High engagement on code repository links."
+      ]
+    },
+    {
+      "node_id": "mem_1786276556339",
+      "type": "learned_preference",
+      "timestamp": 1786276556.3395808,
+      "content": "User Feedback Rule: Avoid overly formal phrasing; keep tone punchy and emphasize beginner-friendly tips",
+      "key_takeaways": [
+        "Explicit creator override on voice & tone",
+        "Avoid overly formal phrasing; keep tone punchy and emphasize beginner-friendly tips"
+      ]
+    }
+  ]
+}
