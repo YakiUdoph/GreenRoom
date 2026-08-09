@@ -436,10 +436,12 @@ class GreenroomMindsIntegrationManager:
 
     def get_status(self) -> Dict[str, Any]:
         has_config_error = not self.api_key and not self.demo_mode
-        mode_label = "REMOTE_MINDS_API" if self.is_connected else ("[MOCK DEMO MODE]" if self.demo_mode else "UNCONFIGURED_ERROR")
+        mode_label = "production" if self.is_connected else ("demo" if self.demo_mode else "unconfigured")
 
         return {
             "mode": mode_label,
+            "connected": self.is_connected,
+            "is_mock": self.demo_mode,
             "minds_sdk_installed": HAS_MINDS_SDK,
             "connected_to_minds_api": self.is_connected,
             "base_url": self.base_url,
@@ -459,6 +461,7 @@ class GreenroomMindsIntegrationManager:
                 for key, agent in self.agents.items()
             ] if not has_config_error else []
         }
+
 
 
 # Global singleton instance & alias

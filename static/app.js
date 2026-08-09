@@ -8,7 +8,39 @@ let impMessages = [];
 document.addEventListener('DOMContentLoaded', () => {
   initWebSocket();
   fetchInitialState();
+  fetchMindsStatus();
 });
+
+// Fetch health/status endpoint on load
+function fetchMindsStatus() {
+  fetch('/api/minds/status')
+    .then(res => res.json())
+    .then(data => {
+      updateStatusBadge(data);
+    })
+    .catch(() => {
+      const statusEl = document.getElementById('connection-status');
+      if (statusEl) {
+        statusEl.className = 'px-3 py-1 bg-amber-950 text-amber-400 border border-amber-800 rounded-full text-xs flex items-center gap-2 font-medium';
+        statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> 🟡 MOCK DEMO MODE — 4 Simulated Minds';
+      }
+    });
+}
+
+function updateStatusBadge(data) {
+  const statusEl = document.getElementById('connection-status');
+  if (!statusEl) return;
+  if ((data.mode === 'production' || data.mode === 'REMOTE_MINDS_API') && data.connected) {
+    statusEl.className = 'px-3 py-1 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-full text-xs flex items-center gap-2 font-medium';
+    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> 🟢 Remote Minds Connected — 4 Minds';
+  } else if (data.mode === 'demo' || data.is_mock || data.demo_mode_active) {
+    statusEl.className = 'px-3 py-1 bg-amber-950 text-amber-400 border border-amber-800 rounded-full text-xs flex items-center gap-2 font-medium';
+    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> 🟡 MOCK DEMO MODE — 4 Simulated Minds';
+  } else {
+    statusEl.className = 'px-3 py-1 bg-rose-950 text-rose-400 border border-rose-800 rounded-full text-xs flex items-center gap-2 font-medium';
+    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500"></span> 🔴 Minds API Disconnected';
+  }
+}
 
 // WebSocket Connection
 function initWebSocket() {
@@ -19,12 +51,15 @@ function initWebSocket() {
 
   ws.onopen = () => {
     console.log('[Greenroom] WebSocket connected');
-    document.getElementById('connection-status').textContent = '4 Minds Active';
   };
+
 
   ws.onmessage = (event) => {
     try {
       const data = JSON.parse(event.data);
+      if (data.minds_status) {
+        updateStatusBadge(data.minds_status);
+      }
       if (data.type === 'INITIAL_SNAPSHOT') {
         impMessages = data.imp_history || [];
         currentMemoryState = data.memory_state || {};
@@ -42,6 +77,7 @@ function initWebSocket() {
       console.error('[Greenroom] WS Parse Error:', err);
     }
   };
+
 
   ws.onclose = () => {
     document.getElementById('connection-status').textContent = 'Connecting...';
