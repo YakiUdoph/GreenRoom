@@ -5,6 +5,7 @@ import sys
 
 def test_loud_failure_when_unconfigured():
     print("--- [TEST 1] Testing Loud Failure when Unconfigured ---")
+    orig_builder_key = os.environ.pop("MINDS_BUILDER_API_KEY", None)
     orig_key = os.environ.pop("MINDS_API_KEY", None)
     orig_demo = os.environ.pop("DEMO_MODE", None)
     
@@ -14,11 +15,13 @@ def test_loud_failure_when_unconfigured():
         
         try:
             mgr.validate_configuration()
-            assert False, "Expected MindsConfigurationError when MINDS_API_KEY is missing and DEMO_MODE is not true."
+            assert False, "Expected MindsConfigurationError when MINDS_BUILDER_API_KEY is missing and DEMO_MODE is not true."
         except MindsConfigurationError as e:
             print(f"[OK] Caught expected loud failure configuration exception: {e}")
             
     finally:
+        if orig_builder_key is not None:
+            os.environ["MINDS_BUILDER_API_KEY"] = orig_builder_key
         if orig_key is not None:
             os.environ["MINDS_API_KEY"] = orig_key
         if orig_demo is not None:
@@ -28,15 +31,16 @@ def test_loud_failure_when_unconfigured():
 
 async def test_production_mode_execution_error_without_fallback():
     print("--- [TEST 2] Testing Production Mode (DEMO_MODE=false) Strict Failure ---")
+    orig_builder_key = os.environ.get("MINDS_BUILDER_API_KEY")
     orig_key = os.environ.get("MINDS_API_KEY")
     orig_demo = os.environ.get("DEMO_MODE")
     
-    os.environ["MINDS_API_KEY"] = "invalid_test_key"
+    os.environ["MINDS_BUILDER_API_KEY"] = "invalid_test_key"
     os.environ["DEMO_MODE"] = "false"
     
     try:
         from minds_integration import MindsAgent, MindsExecutionError
-        agent = MindsAgent("TestMind", "Test Role", "Test Prompt", sdk_client=None)
+        agent = MindsAgent("TestMind", "Test Role", "Test Prompt", builder_client=None)
         
         try:
             # Must raise MindsExecutionError, NEVER fallback to mock response when DEMO_MODE=false
@@ -46,6 +50,11 @@ async def test_production_mode_execution_error_without_fallback():
             print(f"[OK] Caught expected MindsExecutionError in production mode without fallback: {e}")
             
     finally:
+        if orig_builder_key is not None:
+            os.environ["MINDS_BUILDER_API_KEY"] = orig_builder_key
+        else:
+            os.environ.pop("MINDS_BUILDER_API_KEY", None)
+            
         if orig_key is not None:
             os.environ["MINDS_API_KEY"] = orig_key
         else:
@@ -60,32 +69,37 @@ async def test_production_mode_execution_error_without_fallback():
 
 
 async def test_sdk_exception_never_returns_mock_engine():
-    print("--- [TEST 3] Testing SDK Exception in DEMO_MODE=false Cannot Return Mock Engine ---")
+    print("--- [TEST 3] Testing Builder API Exception in DEMO_MODE=false Cannot Return Mock Engine ---")
+    orig_builder_key = os.environ.get("MINDS_BUILDER_API_KEY")
     orig_key = os.environ.get("MINDS_API_KEY")
     orig_demo = os.environ.get("DEMO_MODE")
     
-    os.environ["MINDS_API_KEY"] = "invalid_key"
+    os.environ["MINDS_BUILDER_API_KEY"] = "invalid_key"
     os.environ["DEMO_MODE"] = "false"
     
-    class FailingSDKClient:
-        class MindsSubClient:
-            def completion(self, mind, prompt):
-                raise Exception("Simulated SDK Remote Connection Timeout / Error")
-        minds = MindsSubClient()
+    class FailingBuilderClient:
+        def generate_completion(self, mind_id, prompt):
+            from minds_integration import MindsExecutionError
+            raise MindsExecutionError("Simulated Animoca Minds Builder API Connection Timeout / Error")
 
     try:
         from minds_integration import MindsAgent, MindsExecutionError
-        failing_client = FailingSDKClient()
-        agent = MindsAgent("TestMind", "Test Role", "Test Prompt", sdk_client=failing_client)
+        failing_client = FailingBuilderClient()
+        agent = MindsAgent("TestMind", "Test Role", "Test Prompt", builder_client=failing_client)
         
         try:
             res = await agent.generate_response("Test prompt")
-            assert False, "SDK exception must raise MindsExecutionError, not return mock response!"
+            assert False, "Builder API exception must raise MindsExecutionError, not return mock response!"
         except MindsExecutionError as e:
-            assert "Simulated SDK Remote Connection Timeout" in str(e)
-            print("[OK] Verified: SDK exception in DEMO_MODE=false raised MindsExecutionError and NEVER returned source='Minds_Agent_Engine'.")
+            assert "Simulated Animoca Minds Builder API Connection Timeout" in str(e)
+            print("[OK] Verified: API exception in DEMO_MODE=false raised MindsExecutionError and NEVER returned mock engine response.")
             
     finally:
+        if orig_builder_key is not None:
+            os.environ["MINDS_BUILDER_API_KEY"] = orig_builder_key
+        else:
+            os.environ.pop("MINDS_BUILDER_API_KEY", None)
+
         if orig_key is not None:
             os.environ["MINDS_API_KEY"] = orig_key
         else:
@@ -113,7 +127,6 @@ def test_explicit_demo_mode():
         assert status["mode"] in ("demo", "[MOCK DEMO MODE]")
         print(f"[OK] Status mode correctly labeled: {status['mode']}")
 
-        
         agent = mgr.get_agent("ScoutMind")
         assert agent.is_mock_mode is True
         print("[OK] ScoutMind explicitly tagged with is_mock_mode=True.")
@@ -196,6 +209,58 @@ async def test_demo_runner_flow():
     print("[OK] [TEST 6 PASSED]\n")
 
 
+def test_real_mind_builder_api_integration():
+    print("--- [TEST 7] Production Integration Test: Real Platform Mind UUID Verification ---")
+    key = os.environ.get("MINDS_BUILDER_API_KEY") or os.environ.get("MINDS_API_KEY")
+    if not key:
+        print("[SKIP] Production integration test skipped: MINDS_BUILDER_API_KEY not provided.")
+        print("[OK] [TEST 7 SKIPPED CLEANLY]\n")
+        return
+
+    from minds_integration import GreenroomMindsIntegrationManager, REAL_PLATFORM_MIND_ID, EXPECTED_MIND_EMAIL, EXPECTED_MIND_WALLET
+    mgr = GreenroomMindsIntegrationManager()
+    res = mgr.verify_real_mind()
+
+    assert res["mindId"] == REAL_PLATFORM_MIND_ID, f"Expected mindId={REAL_PLATFORM_MIND_ID}, got {res.get('mindId')}"
+    assert res["email"] == EXPECTED_MIND_EMAIL, f"Expected email={EXPECTED_MIND_EMAIL}, got {res.get('email')}"
+    assert res["walletAddress"] == EXPECTED_MIND_WALLET, f"Expected walletAddress={EXPECTED_MIND_WALLET}, got {res.get('walletAddress')}"
+    assert res["isEnabled"] is True, f"Expected isEnabled=True, got {res.get('isEnabled')}"
+    assert res["verified"] is True
+
+    print(f"[OK] Successfully verified Real Platform Mind via official Animoca Minds Builder API:")
+    print(f"     mindId:        {res['mindId']}")
+    print(f"     email:         {res['email']}")
+    print(f"     walletAddress: {res['walletAddress']}")
+    print(f"     isEnabled:     {res['isEnabled']}")
+    print("[OK] [TEST 7 PASSED]\n")
+
+
+def test_verify_real_mind_parsing():
+    print("--- [TEST 8] Testing Real Platform Mind Response Validation ---")
+    from minds_integration import GreenroomMindsIntegrationManager, REAL_PLATFORM_MIND_ID, EXPECTED_MIND_EMAIL, EXPECTED_MIND_WALLET
+    
+    class MockBuilderClient:
+        def get_mind(self, mind_id):
+            return {
+                "mindId": "8208493e-f36b-1410-8466-00039ce7df11",
+                "email": "udophia@hellominds.ai",
+                "walletAddress": "0xB675Ec9857776678aE540cF3248d898f015987Cb",
+                "isEnabled": True
+            }
+
+    mgr = GreenroomMindsIntegrationManager()
+    mgr.builder_client = MockBuilderClient()
+    
+    res = mgr.verify_real_mind()
+    assert res["mindId"] == REAL_PLATFORM_MIND_ID
+    assert res["email"] == EXPECTED_MIND_EMAIL
+    assert res["walletAddress"] == EXPECTED_MIND_WALLET
+    assert res["isEnabled"] is True
+    assert res["verified"] is True
+    print("[OK] Verified real Mind response parsing & validation logic.")
+    print("[OK] [TEST 8 PASSED]\n")
+
+
 async def main():
     test_loud_failure_when_unconfigured()
     await test_production_mode_execution_error_without_fallback()
@@ -203,7 +268,9 @@ async def main():
     test_explicit_demo_mode()
     await test_local_creator_profile_persistence_and_adaptation()
     await test_demo_runner_flow()
-    print("SUCCESS: ALL 6 GREENROOM INTEGRATION AUDIT TESTS PASSED CLEANLY!")
+    test_real_mind_builder_api_integration()
+    test_verify_real_mind_parsing()
+    print("SUCCESS: ALL GREENROOM INTEGRATION & COMPLIANCE TESTS PASSED CLEANLY!")
 
 if __name__ == "__main__":
     asyncio.run(main())

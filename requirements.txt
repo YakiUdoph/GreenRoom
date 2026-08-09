@@ -1,4 +1,3 @@
-minds-sdk
 fastapi
 uvicorn
 pydantic

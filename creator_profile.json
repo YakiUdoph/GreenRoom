@@ -18,29 +18,6 @@
     "cpm_target": 45,
     "minimum_deal_size": 5000
   },
-  "learned_voice_rules": [
-    "Too formal. Make it punchier and emphasize beginner-friendly tips."
-  ],
-  "memory_nodes": [
-    {
-      "node_id": "mem_1786281658228",
-      "type": "video_script_analytics",
-      "timestamp": 1786281658.2285357,
-      "content": "Past video script analysis: 'Build a Custom AI Agent in 10 Mins'. Viewer retention: 78% at 30 seconds. Audience requests github links and setup walkthroughs.",
-      "key_takeaways": [
-        "Step-by-step technical overviews drive 3x audience retention compared to news recaps.",
-        "High engagement on code repository links."
-      ]
-    },
-    {
-      "node_id": "mem_1786281658229",
-      "type": "learned_preference",
-      "timestamp": 1786281658.2296672,
-      "content": "User Feedback Rule: Too formal. Make it punchier and emphasize beginner-friendly tips.",
-      "key_takeaways": [
-        "Explicit creator override on voice & tone",
-        "Too formal. Make it punchier and emphasize beginner-friendly tips."
-      ]
-    }
-  ]
+  "learned_voice_rules": [],
+  "memory_nodes": []
 }

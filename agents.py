@@ -14,7 +14,7 @@ from agent_prompts import (
 )
 
 class ScoutMind:
-    """Autonomous Trend Signal Mind (Remote Minds SDK Agent Client)"""
+    """Autonomous Trend Signal Specialist (Greenroom Local Orchestration Engine)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
 
@@ -26,7 +26,7 @@ class ScoutMind:
         state = self.memory.get_full_state()
         rejected = state.get("rejected_topics", [])
         
-        # Execute registered Minds Skill: 'search_trends'
+        # Execute registered Skill: 'search_trends'
         evaluated_trends = await self.minds_agent.execute_skill(
             "search_trends",
             input_trends=candidate_trends,
@@ -38,7 +38,6 @@ class ScoutMind:
             status = item.get("status", "RECOMMENDED")
             confidence = item.get("fit_score", 0.50)
             
-            # Record context node in Minds Agent in-process list
             self.minds_agent.add_persistent_context("trend_evaluated", item)
 
             await imp_bus.publish(IMPMessage(
@@ -55,7 +54,7 @@ class ScoutMind:
 
 
 class CommunityMind:
-    """Audience Intelligence Analyst Mind (Remote Minds SDK Agent Client)"""
+    """Audience Intelligence Specialist (Greenroom Local Orchestration Engine)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
 
@@ -79,7 +78,7 @@ class CommunityMind:
 
 
 class BusinessMind:
-    """Monetization & Outreach Strategist Mind (Remote Minds SDK Agent Client)"""
+    """Monetization & Outreach Specialist (Greenroom Local Orchestration Engine)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
 
@@ -116,7 +115,7 @@ class BusinessMind:
 
 
 class GreenroomCoreMind:
-    """Chief of Staff Orchestrator (Remote Minds SDK Agent Client)"""
+    """Chief of Staff Orchestrator (Bound to Real Platform Mind 8208493e-f36b-1410-8466-00039ce7df11)"""
     def __init__(self, memory: GreenroomMemoryEngine = memory_tool):
         self.memory = memory
         self.scout = ScoutMind(memory)
@@ -203,9 +202,10 @@ class GreenroomCoreMind:
             "is_punchy_voice": is_punchy or custom_terminal_rule,
             "cited_memory_nodes": cited_ids,
             "learned_rules_applied": learned_rules,
-            "minds_source": agent_response.get("source", "Remote_Minds_API"),
+            "minds_source": agent_response.get("source", "Animoca_Minds_Builder_API"),
             "minds_status": agent_response.get("status", "COMPLETED")
         }
+
 
         self.minds_agent.add_persistent_context("strategy_synthesized", payload)
 

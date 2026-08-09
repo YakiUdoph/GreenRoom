@@ -1,48 +1,49 @@
-# Greenroom — Persistent Multi-Mind Creator Engine
+# Greenroom — Persistent Creator Engine
 
-> Built on Google Antigravity & the **Official Minds SDK** for the **Creative Minds Jam** Hackathon.
+> Built on Google Antigravity & the **Official Animoca Brands Minds Builder API** ([build.hellominds.ai](https://build.hellominds.ai)).
 
-**Greenroom** is an always-on multi-agent creator staff built using the official `minds-sdk` framework. Instead of acting as another context-less chatbot wrapper or static SaaS analytics dashboard, Greenroom creates an autonomous digital staff that accumulates long-term knowledge regarding a creator’s identity, audience behavior, performance benchmarks, and commercial goals.
+**Greenroom** is an always-on multi-agent creator staff built using the official Animoca Brands Minds Builder API. Instead of acting as another context-less chatbot wrapper or static SaaS analytics dashboard, Greenroom creates an autonomous digital staff that accumulates long-term knowledge regarding a creator’s identity, audience behavior, performance benchmarks, and commercial goals.
 
 ---
 
-## 🌟 Architecture & Minds SDK Integration Breakdown
+## 🌟 Architecture & Official Minds Builder API Integration
 
-### Official Minds APIs Used:
-- **Client & Remote Mind Invocation:** Uses `minds-sdk` (`from minds.client import Minds` / `from minds_sdk import Client`) initializing `Minds(api_key=..., base_url=...)`.
-- **Remote Completion API:** Executes actual agent completions via `client.minds.completion(mind=..., prompt=...)` or `client.completion(mind=..., prompt=...)`.
-- **Remote Mind Identifiers:** Binds topology to platform Mind IDs: `greenroom-core-mind`, `scout-mind-v1`, `community-mind-v1`, and `business-mind-v1`.
+### Real Platform Mind:
+- **Platform Mind UUID:** Bound to official platform Mind UUID `8208493e-f36b-1410-8466-00039ce7df11`.
+- **Mind Email:** `udophia@hellominds.ai`
+- **Mind Wallet:** `0xB675Ec9857776678aE540cF3248d898f015987Cb`
+- **Builder API Endpoint:** `https://api.build.hellominds.ai`
+- **Authentication:** `MINDS_BUILDER_API_KEY` sent via HTTP header `X-Api-Key`.
 
-### Local Engine & Persistent Profile Components:
-- **Creator Profile & Memory Engine (`creator_profile.json`):** Manages local long-term knowledge, context relevance scoring with a 720-hour recency decay window, and learned preference persistence.
-- **Inter-Mind Protocol (IMP v1.0):** Asynchronous JSON event bus streaming inter-agent events over WebSockets.
-- **Visual Agentic Command Center:** FastAPI dashboard providing an operational window into agent thought streams and state transitions.
+### Clear Architecture Separation:
+1. **Real Platform Mind (`8208493e-f36b-1410-8466-00039ce7df11`):** The real remote platform Mind created on Animoca Brands Builder, handling strategy completions and remote interactions.
+2. **Greenroom Local Specialist Orchestration:** In-process Python specialist agents (`ScoutMind`, `CommunityMind`, `BusinessMind`) that execute domain-specific skills (trend signal filtering, audience sentiment analysis, sponsorship deal scoring) locally before feeding structured context to the Core Mind.
+3. **Local Creator Profile Persistence (`creator_profile.json`):** Stores long-term creator memory, voice rules, recency decay scoring, and learned preferences locally.
 
 ---
 
 ## 🛑 Strict Mode Execution Rules
 
-* **Production Mode Strictness (`DEMO_MODE=false`):** If `MINDS_API_KEY` is missing or a remote API error occurs, Greenroom raises a `MindsConfigurationError` or `MindsExecutionError`. It **never** silently falls back to local simulation in production.
+* **Production Mode Strictness (`DEMO_MODE=false`):** If `MINDS_BUILDER_API_KEY` is missing or a remote API call fails, Greenroom raises a `MindsConfigurationError` or `MindsExecutionError`. It **never** silently falls back to local simulation in production mode.
 * **Explicit Mock Mode (`DEMO_MODE=true`):** Local simulated execution is strictly isolated behind `DEMO_MODE=true`. When active, every output payload, execution log, and status endpoint is visibly labeled with `[MOCK DEMO MODE]`.
 * **Dynamic Production Metrics:** In production mode, all trend fit scores, sentiment scores, and sponsor deal valuations are computed dynamically from actual input text, keyword boundary rules, or remote Mind completions (static numbers exist strictly in explicit `DEMO_MODE` mock fixtures).
 
 ---
 
-## 🤖 The Multi-Mind Staff Topology
+## 🤖 Greenroom Staff Topology
 
-Greenroom divides complex creator operations across four specialized stateful agents:
-
-1. **Greenroom Core Mind (`GreenroomCore`):** Chief of Staff & Strategic Router Engine managing memory aggregation and agent orchestration (`remote_mind_id: greenroom-core-mind`).
-2. **Scout Mind (`ScoutMind`):** Trend & Niche Signal Researcher executing the `search_trends` skill (`remote_mind_id: scout-mind-v1`).
-3. **Community Mind (`CommunityMind`):** Audience Intelligence Analyst executing the `analyze_comments` skill (`remote_mind_id: community-mind-v1`).
-4. **Business Mind (`BusinessMind`):** Monetization & Sponsorship Strategist executing the `score_deal` skill (`remote_mind_id: business-mind-v1`).
+1. **Greenroom Core Mind (`GreenroomCore`):** Chief of Staff & Strategic Router Engine managing memory aggregation and agent orchestration (`remote_mind_id: 8208493e-f36b-1410-8466-00039ce7df11`).
+2. **Scout Mind (`ScoutMind`):** Local Trend & Niche Signal Researcher executing the `search_trends` skill.
+3. **Community Mind (`CommunityMind`):** Local Audience Intelligence Analyst executing the `analyze_comments` skill.
+4. **Business Mind (`BusinessMind`):** Local Monetization & Sponsorship Strategist executing the `score_deal` skill.
 
 ---
 
-## 🛠️ Tech Stack & System Components
+## 🛠️ Tech Stack & System Tools
 
 * **Orchestration & IDE:** Google Antigravity
-* **Agent Framework:** Official `minds-sdk` (Remote Minds API Client)
+* **Platform API:** Animoca Brands Minds Builder API (`https://api.build.hellominds.ai`)
+* **Official Client Tooling:** `@animocabrands/minds-cli` & `@animocabrands/minds-client-lib`
 * **Backend Framework:** Python 3.10+, FastAPI, Uvicorn, Pydantic, `python-dotenv`
 * **Minds Integration & Persistence:** `minds_integration.py`, `memory_engine.py` (`creator_profile.json`)
 * **Protocols & Prompts:** `imp_protocol.py`, `agent_prompts.py`
@@ -53,18 +54,17 @@ Greenroom divides complex creator operations across four specialized stateful ag
 
 ## 🔐 Environment Configuration
 
-Create a `.env` file in the root directory:
+Create a `.env` file in the root directory (gitignored):
 
 ```env
-# Remote Minds API Credentials
-MINDS_API_KEY=your_minds_api_key_here
-MINDS_BASE_URL=https://api.minds.ai
+# Official Animoca Brands Minds Builder API Credentials
+MINDS_BUILDER_API_KEY=your_builder_api_key_here
 
 # Explicit Local Demo Mock Flag (Optional, set to true for offline testing without API key)
 DEMO_MODE=false
 ```
 
-> **Note on Loud Failure:** If `MINDS_API_KEY` is not provided and `DEMO_MODE` is `false` or unset, Greenroom will raise a `MindsConfigurationError` on startup/execution to prevent unannounced mock fallback.
+> **Note on Loud Failure:** If `MINDS_BUILDER_API_KEY` is not provided and `DEMO_MODE` is `false` or unset, Greenroom will raise a `MindsConfigurationError` on startup/execution to prevent unannounced mock fallback.
 
 ---
 
@@ -105,4 +105,4 @@ Open your browser and navigate to:
 2. **Minute 2 — Autonomous Trend Filtering (`ScoutMind`):** Scout Mind executes `search_trends` to filter high-signal niche opportunities against creator boundaries.
 3. **Minute 3 — Deep Audience Sentiment Analysis (`CommunityMind`):** Community Mind executes `analyze_comments` to evaluate audience retention drivers and code setup requests.
 4. **Minute 4 — Sponsorship Fit & Automated Pitch Generation (`BusinessMind`):** Business Mind executes `score_deal` to evaluate brand match score and generate targeted pitch proposals.
-5. **Minute 5 — Autonomous Feedback Loop & Memory Consolidation ("The Magic Moment"):** System processes user feedback (*"Too formal, keep it punchy"*), syncing learned voice rules to remote Minds agent completions and `creator_profile.json`.
+5. **Minute 5 — Autonomous Feedback Loop & Memory Consolidation ("The Magic Moment"):** System processes user feedback (*"Too formal, keep it punchy"*), syncing learned voice rules to remote Mind completions and `creator_profile.json`.

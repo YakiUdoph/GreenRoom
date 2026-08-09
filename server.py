@@ -21,7 +21,7 @@ from agents import GreenroomCoreMind, ScoutMind, CommunityMind, BusinessMind
 from demo_runner import demo_runner_tool
 
 app = FastAPI(
-    title="Greenroom: Persistent Multi-Mind Creator Engine (Remote Minds SDK Integration)",
+    title="Greenroom: Persistent Creator Engine (Animoca Brands Minds Builder API Integration)",
     version="1.2.0"
 )
 
@@ -39,9 +39,9 @@ async def minds_config_exception_handler(request, exc: MindsConfigurationError):
     return JSONResponse(
         status_code=500,
         content={
-            "error": "MINDS_CONFIGURATION_ERROR",
+            "error": "MINDS_BUILDER_CONFIGURATION_ERROR",
             "message": str(exc),
-            "help": "Set MINDS_API_KEY in your .env file to run with live Minds API, or set DEMO_MODE=true for explicit local mock demo testing."
+            "help": "Set MINDS_BUILDER_API_KEY in your .env file to run with live Animoca Minds Builder API, or set DEMO_MODE=true for explicit local mock demo testing."
         }
     )
 

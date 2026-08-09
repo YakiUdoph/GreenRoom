@@ -31,15 +31,16 @@ function fetchMindsStatus() {
 function updateStatusBadge(data) {
   const statusEl = document.getElementById('connection-status');
   if (!statusEl) return;
-  if ((data.mode === 'production' || data.mode === 'REMOTE_MINDS_API') && data.connected) {
+  if (data.mode === 'production' && data.connected) {
+    const mindIdSnippet = data.real_platform_mind?.mindId ? ` (${data.real_platform_mind.mindId.slice(0, 8)}...)` : '';
     statusEl.className = 'px-3 py-1 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-full text-xs flex items-center gap-2 font-medium';
-    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> 🟢 Remote Minds Connected — 4 Minds';
+    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> 🟢 Remote Minds Connected — Real Platform Mind${mindIdSnippet}`;
   } else if (data.mode === 'demo' || data.is_mock || data.demo_mode_active) {
     statusEl.className = 'px-3 py-1 bg-amber-950 text-amber-400 border border-amber-800 rounded-full text-xs flex items-center gap-2 font-medium';
-    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> 🟡 MOCK DEMO MODE — 4 Simulated Minds';
+    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> 🟡 MOCK DEMO MODE — Offline Development Mode';
   } else {
     statusEl.className = 'px-3 py-1 bg-rose-950 text-rose-400 border border-rose-800 rounded-full text-xs flex items-center gap-2 font-medium';
-    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500"></span> 🔴 Minds API Disconnected';
+    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500"></span> 🔴 Animoca Minds Builder Disconnected';
   }
 }
 
