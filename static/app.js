@@ -21,10 +21,11 @@ function fetchMindsStatus() {
     .catch(() => {
       const statusEl = document.getElementById('connection-status');
       if (statusEl) {
-        statusEl.className = 'px-3 py-1 bg-amber-950 text-amber-400 border border-amber-800 rounded-full text-xs flex items-center gap-2 font-medium';
-        statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> 🟡 MOCK DEMO MODE — 4 Simulated Minds';
+        statusEl.className = 'px-3 py-1 bg-slate-900 text-slate-400 border border-slate-800 rounded-full text-xs flex items-center gap-2 font-medium';
+        statusEl.innerHTML = '⚠️ Minds Status Unavailable';
       }
     });
+
 }
 
 function updateStatusBadge(data) {
