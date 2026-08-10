@@ -188,9 +188,13 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
 
 
-# Mount static frontend
+# Mount static frontend (Prefers built React app in frontend/dist if present, falls back to legacy static)
+frontend_dist = os.path.join(os.path.dirname(__file__), "frontend", "dist")
 static_dir = os.path.join(os.path.dirname(__file__), "static")
-if os.path.exists(static_dir):
+
+if os.path.exists(frontend_dist):
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="dist")
+elif os.path.exists(static_dir):
     app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
 
 if __name__ == "__main__":
