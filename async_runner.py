@@ -10,16 +10,25 @@ from persistence import get_persistence_store, PersistenceStore
 def publish_qstash_job(target_url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Publishes a background execution job to Upstash QStash REST API.
-    Uses http.client.HTTPSConnection to preserve double-slashes in target_url path without urllib normalization.
+    Reads QSTASH_URL or automatically retries regional QStash hosts if region mismatch occurs.
     """
     token = os.getenv("QSTASH_TOKEN")
     if not token:
         return {"published": False, "reason": "QSTASH_TOKEN environment variable not set"}
 
     import http.client
+    from urllib.parse import urlparse
 
     if not target_url.startswith("http"):
         target_url = f"https://{target_url}"
+
+    env_url = os.getenv("QSTASH_URL", "")
+    primary_host = urlparse(env_url).netloc if env_url else "qstash.upstash.io"
+
+    candidate_hosts = [primary_host]
+    for fallback in ["qstash-us-east-1.upstash.io", "qstash-us-west-1.upstash.io", "qstash-eu-west-1.upstash.io", "qstash.upstash.io"]:
+        if fallback not in candidate_hosts:
+            candidate_hosts.append(fallback)
 
     path = f"/v2/publish/{target_url}"
     headers = {
@@ -28,21 +37,28 @@ def publish_qstash_job(target_url: str, payload: Dict[str, Any]) -> Dict[str, An
         "Upstash-Retries": "2"
     }
 
-    try:
-        conn = http.client.HTTPSConnection("qstash.upstash.io", timeout=10)
-        conn.request("POST", path, body=json.dumps(payload), headers=headers)
-        resp = conn.getresponse()
-        resp_body = resp.read().decode("utf-8")
-        conn.close()
+    last_error = ""
+    for host in candidate_hosts:
+        try:
+            conn = http.client.HTTPSConnection(host, timeout=10)
+            conn.request("POST", path, body=json.dumps(payload), headers=headers)
+            resp = conn.getresponse()
+            resp_body = resp.read().decode("utf-8")
+            conn.close()
 
-        if resp.status in (200, 201, 202):
-            res_data = json.loads(resp_body) if resp_body else {}
-            return {"published": True, "messageId": res_data.get("messageId")}
-        else:
-            return {"published": False, "reason": f"QStash HTTP {resp.status}: {resp_body}"}
-    except Exception as e:
-        print(f"[QStash] Publish failed: {e}")
-        return {"published": False, "reason": str(e)}
+            if resp.status in (200, 201, 202):
+                res_data = json.loads(resp_body) if resp_body else {}
+                return {"published": True, "messageId": res_data.get("messageId"), "host": host}
+            
+            last_error = f"QStash HTTP {resp.status} on {host}: {resp_body}"
+            # If error is not a region mismatch 404, don't try other regions
+            if resp.status != 404 or "not found in this region" not in resp_body:
+                break
+        except Exception as e:
+            last_error = f"Connection error on {host}: {e}"
+
+    return {"published": False, "reason": last_error}
+
 
 
 
