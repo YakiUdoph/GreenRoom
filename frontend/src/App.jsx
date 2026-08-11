@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useGreenroomState } from './hooks/useGreenroomState';
 import { useGreenroomSocket } from './hooks/useGreenroomSocket';
 import { useMousePosition } from './hooks/useMousePosition';
@@ -6,6 +7,7 @@ import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
 
 import { Sidebar } from './components/layout/Sidebar';
+import { CursorSpotlight } from './components/motion/CursorSpotlight';
 import { PayloadModal } from './components/ui/PayloadModal';
 
 import { HomePage } from './pages/HomePage';
@@ -19,7 +21,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState('memory');
   const [isExecuting, setIsExecuting] = useState(false);
 
-  // Enable Cursor-Aware Motion Physics Hook
+  // Enable Cursor-Aware Spotlight Physics
   useMousePosition();
 
   // Initialize WebSocket Lifecycle
@@ -116,17 +118,13 @@ export function App() {
     }
   };
 
-  // Feedback Submission
-  const handleSubmitFeedback = async (feedbackText) => {
-    await handleRunStep(5, feedbackText);
-  };
-
-  // Render Page Selection
+  // Render Page Selection with AnimatePresence
   const renderPage = () => {
     switch (activeTab) {
       case 'home':
         return (
           <HomePage
+            key="home"
             memoryState={memoryState}
             activeCards={activeCards}
             onNavigate={(tab) => setActiveTab(tab)}
@@ -137,6 +135,7 @@ export function App() {
       case 'mind':
         return (
           <MindPage
+            key="mind"
             mindsStatus={mindsStatus}
             onRunStep={handleRunStep}
             isExecuting={isExecuting}
@@ -145,6 +144,7 @@ export function App() {
       case 'intelligence':
         return (
           <IntelligencePage
+            key="intelligence"
             impMessages={impMessages}
             onInspectPayload={(msg) => greenroomStore.openPayloadModal(msg)}
             onRunStep={handleRunStep}
@@ -154,6 +154,7 @@ export function App() {
       case 'actions':
         return (
           <ActionsPage
+            key="actions"
             activeCards={activeCards}
             onApproveSponsorship={handleApproveSponsorship}
             isExecuting={isExecuting}
@@ -162,6 +163,7 @@ export function App() {
       case 'system':
         return (
           <SystemPage
+            key="system"
             mindsStatus={mindsStatus}
             memoryState={memoryState}
             impMessages={impMessages}
@@ -174,18 +176,23 @@ export function App() {
         );
       case 'memory':
       default:
-        return <MemoryPage memoryState={memoryState} />;
+        return <MemoryPage key="memory" memoryState={memoryState} />;
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-[#09090b] text-zinc-100 font-sans selection:bg-emerald-500 selection:text-zinc-950">
+    <div className="min-h-screen flex bg-[#09090b] text-zinc-100 font-sans selection:bg-emerald-500 selection:text-zinc-950 relative overflow-hidden">
+      {/* Dynamic Ambient Cursor Spotlight */}
+      <CursorSpotlight />
+
       {/* Left Sidebar Navigation */}
       <Sidebar activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab)} />
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto">
-        {renderPage()}
+      {/* Main Content Area with AnimatePresence Tab Transitions */}
+      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto z-10">
+        <AnimatePresence mode="wait">
+          {renderPage()}
+        </AnimatePresence>
       </main>
 
       {/* Payload Modal Inspector */}
