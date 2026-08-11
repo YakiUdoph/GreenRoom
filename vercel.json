@@ -1,6 +1,10 @@
 {
   "builds": [
     {
+      "src": "api/briefing-worker.mjs",
+      "use": "@vercel/node"
+    },
+    {
       "src": "server.py",
       "use": "@vercel/python"
     },
@@ -10,6 +14,10 @@
     }
   ],
   "routes": [
+    {
+      "src": "/api/briefing-worker",
+      "dest": "api/briefing-worker.mjs"
+    },
     {
       "src": "/api/(.*)",
       "dest": "server.py"

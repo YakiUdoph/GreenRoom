@@ -67,7 +67,7 @@ class QStashJobRunner:
     async def enqueue_run(self, worker_target_url: str, run_id: Optional[str] = None) -> Dict[str, Any]:
         """
         Creates run_id, persists status = QUEUED, publishes job to QStash,
-        and returns IMMEDIATELY without invoking agent execution.
+        and returns IMMEDIATELY without invoking agent execution in Python process.
         """
         rid = run_id or f"run_{uuid.uuid4().hex[:8]}"
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
@@ -83,19 +83,40 @@ class QStashJobRunner:
 
         payload = {"run_id": rid, "queued_at": now_iso}
 
-        # Publish to QStash if configured
-        qstash_res = publish_qstash_job(worker_target_url, payload)
-        
-        execution_mode = "QSTASH_BACKGROUND_JOB" if qstash_res.get("published") else "DIRECT_QUEUED"
+        token = os.getenv("QSTASH_TOKEN")
+        if token:
+            qstash_res = publish_qstash_job(worker_target_url, payload)
+            if not qstash_res.get("published"):
+                err_msg = f"QStash publish failed: {qstash_res.get('reason')}"
+                self.save_status(rid, status="FAILED", error=err_msg)
+                return {
+                    "run_id": rid,
+                    "status": "FAILED",
+                    "queued_at": now_iso,
+                    "execution_mode": "QSTASH_BACKGROUND_JOB",
+                    "qstash_published": False,
+                    "error": err_msg
+                }
 
+            return {
+                "run_id": rid,
+                "status": "QUEUED",
+                "queued_at": now_iso,
+                "execution_mode": "QSTASH_BACKGROUND_JOB",
+                "qstash_published": True,
+                "message": "Autonomous job queued to QStash."
+            }
+
+        # Local testing mode without QSTASH_TOKEN
         return {
             "run_id": rid,
             "status": "QUEUED",
             "queued_at": now_iso,
-            "execution_mode": execution_mode,
-            "qstash_published": qstash_res.get("published", False),
-            "message": "Autonomous job queued successfully."
+            "execution_mode": "LOCAL_ASYNC_QUEUE",
+            "qstash_published": False,
+            "message": "Autonomous job queued locally."
         }
+
 
     async def execute_worker_job(self, core_mind, run_id: str) -> Dict[str, Any]:
         """

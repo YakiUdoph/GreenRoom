@@ -270,6 +270,8 @@ class AnimocaMindsBuilderClient:
 
 
 
+
+
 class MindsSkill:
     """Official Registered Skill Definition on Local Specialist Engines"""
     def __init__(self, name: str, description: str, handler: Callable):
@@ -695,8 +697,10 @@ class GreenroomMindsIntegrationManager:
 
 
     def get_status(self) -> Dict[str, Any]:
+        from persistence import get_persistence_store
         has_config_error = not self.builder_api_key and not self.demo_mode
         mode_label = "production" if self.is_connected else ("demo" if self.demo_mode else "unconfigured")
+        store = get_persistence_store()
 
         return {
             "mode": mode_label,
@@ -704,6 +708,8 @@ class GreenroomMindsIntegrationManager:
             "is_mock": self.demo_mode,
             "builder_api_configured": bool(self.builder_api_key),
             "builder_api_url": self.base_url,
+            "qstash_configured": bool(os.getenv("QSTASH_TOKEN")),
+            "persistence_mode": store.mode_label,
             "real_platform_mind": {
                 "mindId": REAL_PLATFORM_MIND_ID,
                 "email": self.real_mind_data.get("email"),
@@ -722,7 +728,7 @@ class GreenroomMindsIntegrationManager:
             "greenroom_topology": {
                 "real_platform_mind_id": REAL_PLATFORM_MIND_ID,
                 "local_orchestration": ["ScoutMind", "CommunityMind", "BusinessMind"],
-                "local_persistence": "creator_profile.json"
+                "local_persistence": store.mode_label
             },
             "active_minds_agents": [
                 {
@@ -737,6 +743,7 @@ class GreenroomMindsIntegrationManager:
                 for key, agent in self.agents.items()
             ] if not has_config_error else []
         }
+
 
 
 # Global singleton instance & alias

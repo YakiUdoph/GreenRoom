@@ -140,30 +140,29 @@ async def trigger_briefing(request: Request, req: Optional[TriggerBriefingReques
     """
     minds_manager.validate_configuration()
     
-    # Construct QStash worker webhook target URL
+    # Construct QStash worker webhook target URL pointing to native Node serverless function
     host = request.headers.get("host", "localhost:8000")
     scheme = "https" if "https" in request.url.scheme or "vercel.app" in host else "http"
-    worker_url = f"{scheme}://{host}/api/briefing/worker"
-
-    accelerated = req.accelerated if req else True
+    worker_url = f"{scheme}://{host}/api/briefing-worker"
 
     # Enqueue job immediately (status = QUEUED)
     res = await qstash_runner.enqueue_run(worker_url)
     run_id = res["run_id"]
 
-    # In local/demo mode or accelerated execution without QStash token, trigger background worker task
-    if accelerated or not os.getenv("QSTASH_TOKEN"):
+    # Local fallback execution ONLY when explicitly running in DEMO_MODE=true without QStash token
+    if not os.getenv("QSTASH_TOKEN") and os.getenv("DEMO_MODE", "").lower() in ("true", "1"):
         core = GreenroomCoreMind(memory_tool)
         asyncio.create_task(qstash_runner.execute_worker_job(core, run_id))
 
     return {
         "status": "success",
         "run_id": run_id,
-        "job_status": "QUEUED",
+        "job_status": res.get("status", "QUEUED"),
         "execution_mode": res.get("execution_mode", "QUEUED"),
         "qstash_published": res.get("qstash_published", False),
         "minds_status": minds_manager.get_status()
     }
+
 
 @app.post("/api/briefing/worker")
 async def briefing_worker(request: Request):

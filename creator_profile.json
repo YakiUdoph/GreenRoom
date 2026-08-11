@@ -25,9 +25,9 @@
   ],
   "memory_nodes": [
     {
-      "node_id": "mem_1786450152575",
+      "node_id": "mem_1786452260900",
       "type": "video_script_analytics",
-      "timestamp": 1786450152.5752783,
+      "timestamp": 1786452260.9008195,
       "content": "Past video script analysis: 'Build a Custom AI Agent in 10 Mins'. Viewer retention: 78% at 30 seconds. Audience requests github links and setup walkthroughs.",
       "key_takeaways": [
         "Step-by-step technical overviews drive 3x audience retention compared to news recaps.",
@@ -35,9 +35,9 @@
       ]
     },
     {
-      "node_id": "mem_1786450152577",
+      "node_id": "mem_1786452260902",
       "type": "learned_preference",
-      "timestamp": 1786450152.5773005,
+      "timestamp": 1786452260.9029386,
       "content": "User Feedback Rule: Too formal. Make it punchier and emphasize beginner-friendly tips.",
       "key_takeaways": [
         "Explicit creator override on voice & tone",
@@ -45,9 +45,9 @@
       ]
     },
     {
-      "node_id": "mem_1786450152666",
+      "node_id": "mem_1786452260975",
       "type": "learned_preference",
-      "timestamp": 1786450152.6665897,
+      "timestamp": 1786452260.9754014,
       "content": "User Feedback Rule: Creator prefers opportunities matching item 'opp_001'",
       "key_takeaways": [
         "Explicit creator override on voice & tone",
@@ -55,9 +55,9 @@
       ]
     },
     {
-      "node_id": "mem_1786450152673",
+      "node_id": "mem_1786452260981",
       "type": "learned_preference",
-      "timestamp": 1786450152.67375,
+      "timestamp": 1786452260.9811332,
       "content": "User Feedback Rule: Emphasize open-source terminal setup steps",
       "key_takeaways": [
         "Explicit creator override on voice & tone",
@@ -66,9 +66,9 @@
     }
   ],
   "latest_briefing": {
-    "run_id": "run_8e80c844",
-    "timestamp": "2026-08-11T12:09:12.789823+00:00",
-    "last_run_formatted": "2026-08-11 12:09:12 UTC",
+    "run_id": "run_cc695de5",
+    "timestamp": "2026-08-11T12:44:21.118930+00:00",
+    "last_run_formatted": "2026-08-11 12:44:21 UTC",
     "signals_reviewed_count": 3,
     "opportunities_found_count": 3,
     "memory_nodes_used_count": 5,
@@ -80,9 +80,9 @@
     "persistence_mode": "LOCAL FILE",
     "continuity_note": "Adjusted using your previous feedback: 'Emphasize open-source terminal setup steps'.",
     "provenance": {
-      "run_id": "run_8e80c844",
-      "created_at": "2026-08-11T12:09:12.789397+00:00",
-      "completed_at": "2026-08-11T12:09:12.789823+00:00",
+      "run_id": "run_cc695de5",
+      "created_at": "2026-08-11T12:44:21.118534+00:00",
+      "completed_at": "2026-08-11T12:44:21.118930+00:00",
       "status": "COMPLETED",
       "signal_source": "Demo Dataset (Simulated)",
       "signal_mode": "DEMO",
@@ -136,9 +136,9 @@
   },
   "briefing_history": [
     {
-      "run_id": "run_10694d25",
-      "timestamp": "2026-08-11T12:09:12.583266+00:00",
-      "last_run_formatted": "2026-08-11 12:09:12 UTC",
+      "run_id": "run_fa3e1e27",
+      "timestamp": "2026-08-11T12:44:20.907540+00:00",
+      "last_run_formatted": "2026-08-11 12:44:20 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 3,
@@ -150,9 +150,9 @@
       "persistence_mode": "LOCAL FILE",
       "continuity_note": "Adjusted using your previous feedback: 'Too formal. Make it punchier and emphasize beginner-friendly tips.'.",
       "provenance": {
-        "run_id": "run_10694d25",
-        "created_at": "2026-08-11T12:09:12.582858+00:00",
-        "completed_at": "2026-08-11T12:09:12.583266+00:00",
+        "run_id": "run_fa3e1e27",
+        "created_at": "2026-08-11T12:44:20.907213+00:00",
+        "completed_at": "2026-08-11T12:44:20.907540+00:00",
         "status": "COMPLETED",
         "signal_source": "Demo Dataset (Simulated)",
         "signal_mode": "DEMO",
@@ -205,9 +205,9 @@
       ]
     },
     {
-      "run_id": "run_6e2470ef",
-      "timestamp": "2026-08-11T12:09:12.631982+00:00",
-      "last_run_formatted": "2026-08-11 12:09:12 UTC",
+      "run_id": "run_5b4e3f12",
+      "timestamp": "2026-08-11T12:44:20.951046+00:00",
+      "last_run_formatted": "2026-08-11 12:44:20 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 3,
@@ -219,9 +219,9 @@
       "persistence_mode": "LOCAL FILE",
       "continuity_note": "Adjusted using your previous feedback: 'Too formal. Make it punchier and emphasize beginner-friendly tips.'.",
       "provenance": {
-        "run_id": "run_6e2470ef",
-        "created_at": "2026-08-11T12:09:12.631511+00:00",
-        "completed_at": "2026-08-11T12:09:12.631982+00:00",
+        "run_id": "run_5b4e3f12",
+        "created_at": "2026-08-11T12:44:20.950698+00:00",
+        "completed_at": "2026-08-11T12:44:20.951046+00:00",
         "status": "COMPLETED",
         "signal_source": "Demo Dataset (Simulated)",
         "signal_mode": "DEMO",
@@ -274,9 +274,9 @@
       ]
     },
     {
-      "run_id": "run_922514a7",
-      "timestamp": "2026-08-11T12:09:12.636360+00:00",
-      "last_run_formatted": "2026-08-11 12:09:12 UTC",
+      "run_id": "run_3f0a43d8",
+      "timestamp": "2026-08-11T12:44:20.954469+00:00",
+      "last_run_formatted": "2026-08-11 12:44:20 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 3,
@@ -288,9 +288,9 @@
       "persistence_mode": "LOCAL FILE",
       "continuity_note": "Adjusted using your previous feedback: 'Too formal. Make it punchier and emphasize beginner-friendly tips.'.",
       "provenance": {
-        "run_id": "run_922514a7",
-        "created_at": "2026-08-11T12:09:12.635894+00:00",
-        "completed_at": "2026-08-11T12:09:12.636360+00:00",
+        "run_id": "run_3f0a43d8",
+        "created_at": "2026-08-11T12:44:20.953853+00:00",
+        "completed_at": "2026-08-11T12:44:20.954469+00:00",
         "status": "COMPLETED",
         "signal_source": "Demo Dataset (Simulated)",
         "signal_mode": "DEMO",
@@ -343,9 +343,9 @@
       ]
     },
     {
-      "run_id": "run_7b7d0601",
-      "timestamp": "2026-08-11T12:09:12.678531+00:00",
-      "last_run_formatted": "2026-08-11 12:09:12 UTC",
+      "run_id": "run_9626d8e3",
+      "timestamp": "2026-08-11T12:44:20.986868+00:00",
+      "last_run_formatted": "2026-08-11 12:44:20 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 5,
@@ -357,9 +357,9 @@
       "persistence_mode": "LOCAL FILE",
       "continuity_note": "Adjusted using your previous feedback: 'Emphasize open-source terminal setup steps'.",
       "provenance": {
-        "run_id": "run_7b7d0601",
-        "created_at": "2026-08-11T12:09:12.678210+00:00",
-        "completed_at": "2026-08-11T12:09:12.678531+00:00",
+        "run_id": "run_9626d8e3",
+        "created_at": "2026-08-11T12:44:20.986602+00:00",
+        "completed_at": "2026-08-11T12:44:20.986868+00:00",
         "status": "COMPLETED",
         "signal_source": "Demo Dataset (Simulated)",
         "signal_mode": "DEMO",
@@ -412,9 +412,9 @@
       ]
     },
     {
-      "run_id": "run_3e364df2",
-      "timestamp": "2026-08-11T12:09:12.706220+00:00",
-      "last_run_formatted": "2026-08-11 12:09:12 UTC",
+      "run_id": "run_0383dd6a",
+      "timestamp": "2026-08-11T12:44:21.033427+00:00",
+      "last_run_formatted": "2026-08-11 12:44:21 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 5,
@@ -426,9 +426,9 @@
       "persistence_mode": "LOCAL FILE",
       "continuity_note": "Adjusted using your previous feedback: 'Emphasize open-source terminal setup steps'.",
       "provenance": {
-        "run_id": "run_3e364df2",
-        "created_at": "2026-08-11T12:09:12.705636+00:00",
-        "completed_at": "2026-08-11T12:09:12.706220+00:00",
+        "run_id": "run_0383dd6a",
+        "created_at": "2026-08-11T12:44:21.033042+00:00",
+        "completed_at": "2026-08-11T12:44:21.033427+00:00",
         "status": "COMPLETED",
         "signal_source": "Demo Dataset (Simulated)",
         "signal_mode": "DEMO",
@@ -481,9 +481,9 @@
       ]
     },
     {
-      "run_id": "run_8e80c844",
-      "timestamp": "2026-08-11T12:09:12.789823+00:00",
-      "last_run_formatted": "2026-08-11 12:09:12 UTC",
+      "run_id": "run_cc695de5",
+      "timestamp": "2026-08-11T12:44:21.118930+00:00",
+      "last_run_formatted": "2026-08-11 12:44:21 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 5,
@@ -495,9 +495,9 @@
       "persistence_mode": "LOCAL FILE",
       "continuity_note": "Adjusted using your previous feedback: 'Emphasize open-source terminal setup steps'.",
       "provenance": {
-        "run_id": "run_8e80c844",
-        "created_at": "2026-08-11T12:09:12.789397+00:00",
-        "completed_at": "2026-08-11T12:09:12.789823+00:00",
+        "run_id": "run_cc695de5",
+        "created_at": "2026-08-11T12:44:21.118534+00:00",
+        "completed_at": "2026-08-11T12:44:21.118930+00:00",
         "status": "COMPLETED",
         "signal_source": "Demo Dataset (Simulated)",
         "signal_mode": "DEMO",
@@ -554,7 +554,7 @@
     {
       "item_id": "opp_001",
       "feedback_type": "useful",
-      "timestamp": 1786450152.6405237,
+      "timestamp": 1786452260.957346,
       "notes": "Great setup walkthrough idea"
     }
   ]
