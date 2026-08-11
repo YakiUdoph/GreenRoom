@@ -4,26 +4,27 @@
 
 @layer base {
   body {
-    @apply bg-[#111113] text-[#e5e2e1] font-sans min-h-screen antialiased selection:bg-[#72ff70] selection:text-[#002203];
+    @apply bg-[#0e0e11] text-[#ffffff] font-sans min-h-screen antialiased selection:bg-[#72ff70] selection:text-[#002203];
   }
 }
 
 .material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
 .icon-fill {
-  font-variation-settings: 'FILL' 1, 'wght' 300;
+  font-variation-settings: 'FILL' 1, 'wght' 400;
 }
 
-/* Polished Noir Surface Card with Dynamic Cursor Lighting */
+/* Ultra High-Contrast Readability Card Surface */
 .noir-card {
   position: relative;
-  background: rgba(26, 26, 30, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(59, 75, 55, 0.5);
-  border-radius: 0.75rem;
+  background: rgba(22, 22, 26, 0.92);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(114, 255, 112, 0.2);
+  border-radius: 0.875rem;
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
 }
 
 .noir-card::before {
@@ -32,7 +33,7 @@
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: radial-gradient(450px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(114, 255, 112, 0.28), transparent 60%);
+  background: radial-gradient(500px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(114, 255, 112, 0.35), transparent 65%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
@@ -47,19 +48,9 @@
 
 .noir-card:hover {
   transform: translateY(-3px);
-  border-color: rgba(114, 255, 112, 0.7);
-  box-shadow: 0 12px 30px -10px rgba(0, 255, 65, 0.12);
-  background: rgba(30, 30, 35, 0.85);
-}
-
-/* Subtle Breathing Animation */
-@keyframes subtleBreathe {
-  0% { opacity: 0; transform: translateY(12px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
-.animate-breathe {
-  animation: subtleBreathe 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  border-color: rgba(114, 255, 112, 0.8);
+  box-shadow: 0 14px 35px -10px rgba(0, 255, 65, 0.2);
+  background: rgba(28, 28, 34, 0.96);
 }
 
 /* Custom Studio Scrollbar */
@@ -68,10 +59,10 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #111113;
+  background: #0e0e11;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a3827;
+  background: #3b4b37;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
