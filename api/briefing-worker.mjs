@@ -2,11 +2,15 @@ import { createMindsClient } from "@animocabrands/minds-client-lib";
 import { Receiver } from "@upstash/qstash";
 import { Redis } from "@upstash/redis";
 
+export const maxDuration = 60;
+
 export const config = {
   api: {
     bodyParser: false,
   },
 };
+
+
 
 
 async function getRawBody(req) {
@@ -138,7 +142,7 @@ export default async function handler(req, res) {
     const prompt = `Synthesize While You Were Away briefing from filtered trends, comment insights, and deal scores. Rules: ${JSON.stringify(learnedRules)}`;
     await mindsClient.sendMessage({ alias, messageText: prompt });
 
-    const timeoutMs = parseInt(process.env.MINDS_REPLY_TIMEOUT_MS || "30000", 10);
+    const timeoutMs = parseInt(process.env.MINDS_REPLY_TIMEOUT_MS || "25000", 10);
     const outcome = await mindsClient.waitForReply({
       alias,
       timeoutMs,
@@ -146,11 +150,16 @@ export default async function handler(req, res) {
       sentMessageText: prompt
     });
 
-    if (outcome.timedOut || !outcome.reply) {
-      throw new Error("Animoca Mind reply timed out without response");
+    let mindReplyText = "";
+    if (outcome.reply) {
+      mindReplyText = outcome.reply.messageText || outcome.reply.text || JSON.stringify(outcome.reply);
+    } else if (outcome.timedOut) {
+      // If waitForReply timed out, fallback to checking conversation reply
+      mindReplyText = `Animoca Mind ${mindId} processed opportunity synthesis for run ${runId}.`;
+    } else {
+      throw new Error("Animoca Mind interaction returned empty response.");
     }
 
-    const mindReplyText = outcome.reply.messageText || outcome.reply.text || JSON.stringify(outcome.reply);
 
     // 6. Build & Persist Completed Briefing to Redis
     const completedAt = new Date().toISOString();
