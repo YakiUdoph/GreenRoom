@@ -28,6 +28,57 @@ class MindsExecutionError(Exception):
     pass
 
 
+class SignalProvider:
+    """Abstract Signal Provider interface for creator audience & community signals."""
+    def get_signals(self) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+class DemoSignalProvider(SignalProvider):
+    """Provides simulated creator audience & community signals clearly labeled as demo data."""
+    def get_signals(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "signal_id": "sig_001",
+                "title": "Rising Search Demand: Beginner Local AI Agent Setup Guides",
+                "category": "Content Opportunity",
+                "raw_source": "YouTube Comments & GitHub Discussion Trends",
+                "volume": "145k discussions/day",
+                "is_demo": True,
+                "source_label": "Demo Dataset (Simulated)",
+                "raw_text": "Viewers requesting step-by-step terminal guides for local open-source AI agent workflows."
+            },
+            {
+                "signal_id": "sig_002",
+                "title": "Sponsorship Outreach: TechBrand Developer Infrastructure",
+                "category": "Monetization Deal",
+                "raw_source": "Inbound Brand Outreach & CPM Benchmarks",
+                "volume": "High Brand Alignment",
+                "is_demo": True,
+                "source_label": "Demo Dataset (Simulated)",
+                "raw_text": "TechBrand Inc. seeking technical creator integration. CPM target: $45."
+            },
+            {
+                "signal_id": "sig_003",
+                "title": "Audience Retention Drop on Generic Crypto / News Topics",
+                "category": "Audience Retention Signal",
+                "raw_source": "Audience Retention Analytics & Comment Sentiment",
+                "volume": "78% 30s Retention on Code Guides",
+                "is_demo": True,
+                "source_label": "Demo Dataset (Simulated)",
+                "raw_text": "Audience retention drops on generic AI news clickbait; spikes 3x on hands-on repository walkthroughs."
+            }
+        ]
+
+class RealSignalProvider(SignalProvider):
+    """Real creator audience signal provider interface."""
+    def __init__(self, api_credentials: Optional[Dict[str, Any]] = None):
+        self.api_credentials = api_credentials or {}
+
+    def get_signals(self) -> List[Dict[str, Any]]:
+        return []
+
+
+
 class AnimocaMindsBuilderClient:
     """
     Official Animoca Brands Minds Builder API Client (https://api.build.hellominds.ai)
@@ -216,6 +267,8 @@ class AnimocaMindsBuilderClient:
             "afterFingerprint": res.get("afterFingerprint"),
             "status": "COMPLETED_VIA_ANIMOCA_MINDS_BUILDER_API"
         }
+
+
 
 
 
@@ -638,9 +691,16 @@ class GreenroomMindsIntegrationManager:
         for agent in self.agents.values():
             agent.add_learned_rule(rule)
 
+    def clear_learned_preferences(self):
+        for agent in self.agents.values():
+            agent.learned_rules.clear()
+
+
     def get_status(self) -> Dict[str, Any]:
+        from persistence import get_persistence_store
         has_config_error = not self.builder_api_key and not self.demo_mode
         mode_label = "production" if self.is_connected else ("demo" if self.demo_mode else "unconfigured")
+        store = get_persistence_store()
 
         return {
             "mode": mode_label,
@@ -648,6 +708,8 @@ class GreenroomMindsIntegrationManager:
             "is_mock": self.demo_mode,
             "builder_api_configured": bool(self.builder_api_key),
             "builder_api_url": self.base_url,
+            "qstash_configured": bool(os.getenv("QSTASH_TOKEN")),
+            "persistence_mode": store.mode_label,
             "real_platform_mind": {
                 "mindId": REAL_PLATFORM_MIND_ID,
                 "email": self.real_mind_data.get("email"),
@@ -666,7 +728,7 @@ class GreenroomMindsIntegrationManager:
             "greenroom_topology": {
                 "real_platform_mind_id": REAL_PLATFORM_MIND_ID,
                 "local_orchestration": ["ScoutMind", "CommunityMind", "BusinessMind"],
-                "local_persistence": "creator_profile.json"
+                "local_persistence": store.mode_label
             },
             "active_minds_agents": [
                 {
@@ -681,6 +743,7 @@ class GreenroomMindsIntegrationManager:
                 for key, agent in self.agents.items()
             ] if not has_config_error else []
         }
+
 
 
 # Global singleton instance & alias

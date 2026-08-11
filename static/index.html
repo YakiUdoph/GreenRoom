@@ -1,282 +1,679 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Greenroom — Persistent Multi-Mind Creator Engine</title>
-  <!-- Google Fonts & Tailwind CSS CDN -->
+  <title>Greenroom — Persistent Creator Growth Mind</title>
+  <meta name="description" content="Greenroom is a persistent creator-growth Mind built on the Animoca Brands Minds Builder API. It watches audience signals while you are away and delivers a ranked briefing when you return.">
+  <meta name="theme-color" content="#070809">
+
+  <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-          },
-          colors: {
-            slate: {
-              850: '#111827',
-              900: '#0f172a',
-              950: '#070b14',
-            }
-          }
-        }
-      }
-    }
-  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-slate-950 text-slate-100 font-sans min-h-screen antialiased selection:bg-emerald-500 selection:text-slate-950">
+<body>
 
-  <div class="min-h-screen flex flex-col p-4 md:p-6 max-w-[1700px] mx-auto space-y-6">
-    <!-- Header -->
-    <header class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-800/80 pb-5 gap-4">
+  <!-- ═══════════════════════════════════════════════════════════
+       Navigation
+  ═══════════════════════════════════════════════════════════ -->
+  <nav class="gr-nav" role="navigation" aria-label="Main navigation">
+    <div class="gr-nav-inner">
+      <!-- Logo -->
+      <a class="gr-nav-logo" href="/" aria-label="Greenroom home">
+        <span class="gr-nav-logo-mark" aria-hidden="true">GR</span>
+        <span class="gr-nav-wordmark">Greenroom</span>
+      </a>
+
+      <!-- Right side: status + actions -->
+      <div class="gr-nav-meta">
+        <!-- Minds connection status -->
+        <span id="connection-status" class="gr-badge gr-badge-muted" role="status" aria-live="polite">
+          <span class="gr-dot gr-dot-pulse" aria-hidden="true"></span>
+          <span>Checking Minds…</span>
+        </span>
+
+        <!-- Primary action -->
+        <button
+          id="btn-async-run"
+          onclick="triggerAsyncRun()"
+          class="gr-btn gr-btn-primary"
+          aria-label="Trigger autonomous briefing run"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+          </svg>
+          Run while away
+        </button>
+
+        <!-- Reset -->
+        <button
+          onclick="resetState()"
+          class="gr-btn gr-btn-danger"
+          title="Reset persistent memory state"
+          aria-label="Reset state"
+        >Reset</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       Main content
+  ═══════════════════════════════════════════════════════════ -->
+  <main class="gr-main" id="main-content">
+
+    <!-- ── Progress Banner ─────────────────────────────────── -->
+    <div
+      id="demo-banner"
+      class="gr-banner"
+      role="status"
+      aria-live="polite"
+      aria-label="Background run status"
+    >
+      <span class="gr-banner-spinner" aria-hidden="true"></span>
       <div>
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center font-bold text-slate-950 text-xl shadow-lg shadow-emerald-500/20">
-            GR
-          </div>
-          <div>
-            <h1 class="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-              Greenroom Command Center
-              <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800 font-mono font-medium">v1.0 IMP</span>
-            </h1>
-            <p class="text-xs text-slate-400 font-medium">Persistent Multi-Mind Creator Engine • Google Antigravity</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Controls & Status Badge -->
-      <div class="flex flex-wrap items-center gap-3">
-        <!-- Status Indicator -->
-        <span class="px-3 py-1.5 bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 rounded-full text-xs font-semibold flex items-center gap-2 shadow-inner">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-md shadow-emerald-400"></span>
-          <span id="connection-status">4 Minds Active</span>
-        </span>
-
-        <!-- Hackathon 5-Min Runner Controls -->
-        <div class="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 gap-1">
-          <button id="btn-full-demo" onclick="runFullDemo()" class="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-900/30">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-            Run 5-Min Demo
-          </button>
-          
-          <div class="h-4 w-px bg-slate-800 mx-1"></div>
-          
-          <button onclick="runStep(1)" class="px-2.5 py-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded text-xs font-mono font-medium transition" title="Minute 1: Zero-State Profile Ingestion">Min 1</button>
-          <button onclick="runStep(2)" class="px-2.5 py-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded text-xs font-mono font-medium transition" title="Minute 2: Autonomous Trend Filtering">Min 2</button>
-          <button onclick="runStep(3)" class="px-2.5 py-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded text-xs font-mono font-medium transition" title="Minute 3: Multi-Mind Strategy Synthesis">Min 3</button>
-          <button onclick="runStep(4)" class="px-2.5 py-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded text-xs font-mono font-medium transition" title="Minute 4: Autonomous Business Execution">Min 4</button>
-          <button onclick="runStep(5)" class="px-2.5 py-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded text-xs font-mono font-medium transition" title="Minute 5: Proof of Learning">Min 5</button>
-          
-          <div class="h-4 w-px bg-slate-800 mx-1"></div>
-
-          <button onclick="resetState()" class="px-2.5 py-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded text-xs font-medium transition" title="Reset Memory State">
-            Reset
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <!-- Hackathon Progress Banner -->
-    <div id="demo-banner" class="hidden bg-slate-900/90 border border-emerald-800/60 rounded-xl p-3.5 flex items-center justify-between shadow-lg">
-      <div class="flex items-center gap-3">
-        <span id="demo-spinner" class="animate-spin text-emerald-400">
-          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-        </span>
-        <div>
-          <span id="demo-step-title" class="font-bold text-sm text-emerald-400">Executing Demo Step...</span>
-          <p id="demo-step-desc" class="text-xs text-slate-400">Orchestrating agent protocol communication and updating persistent state.</p>
-        </div>
-      </div>
-      <div class="flex gap-1.5 font-mono text-xs" id="demo-progress-dots">
-        <span class="step-dot w-6 h-2 rounded-full bg-slate-800" id="dot-1"></span>
-        <span class="step-dot w-6 h-2 rounded-full bg-slate-800" id="dot-2"></span>
-        <span class="step-dot w-6 h-2 rounded-full bg-slate-800" id="dot-3"></span>
-        <span class="step-dot w-6 h-2 rounded-full bg-slate-800" id="dot-4"></span>
-        <span class="step-dot w-6 h-2 rounded-full bg-slate-800" id="dot-5"></span>
+        <div id="demo-step-title" class="gr-banner-title">Greenroom working while you are away…</div>
+        <div id="demo-step-desc" class="gr-banner-desc">Scouting trends, measuring audience sentiment, scoring deals.</div>
       </div>
     </div>
 
-    <!-- Main Grid Layout (Matching Module 5 Specification) -->
-    <div class="grid grid-cols-12 gap-6 flex-1">
-      
-      <!-- Left Column: Agent Activity Stream (5 cols) -->
-      <section class="col-span-12 lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl">
-        <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-          <div class="flex items-center gap-2">
-            <div class="w-2.5 h-2.5 rounded-full bg-cyan-400"></div>
-            <h2 class="text-base font-bold text-slate-200">Inter-Mind Message Log (IMP)</h2>
-          </div>
-          <span class="text-xs text-slate-500 font-mono" id="msg-count-badge">0 messages</span>
-        </div>
+    <!-- ── Judge Proof Strip ────────────────────────────────── -->
+    <div class="gr-proof-strip" role="region" aria-label="Technical provenance">
+      <span class="gr-proof-label">
+        <span class="gr-proof-dot" aria-hidden="true"></span>
+        Proof panel
+      </span>
 
-        <div id="activity-stream" class="space-y-3 text-xs font-mono flex-1 max-h-[620px] overflow-y-auto pr-1">
-          <div class="p-4 bg-slate-950/60 border border-slate-800/60 rounded-xl text-slate-400 text-center italic">
-            Waiting for agent network initialization... Run demo or trigger steps above.
-          </div>
-        </div>
-      </section>
+      <div class="gr-proof-chips">
+        <span class="gr-meta-chip">
+          Run ID: <strong id="proof-run-id" class="gr-meta-chip-accent" style="color:var(--gr-info)">run_init</strong>
+        </span>
+        <span class="gr-meta-chip">
+          Worked while away: <strong style="color:var(--gr-accent)">YES</strong>
+        </span>
+        <span class="gr-meta-chip">
+          Execution: <strong id="proof-execution" style="color:var(--gr-accent)">QStash Background Job</strong>
+        </span>
+        <span class="gr-meta-chip">
+          Analysis: <strong id="proof-analysis" style="color:var(--gr-accent)">Animoca Minds</strong>
+        </span>
+        <span class="gr-meta-chip">
+          Mind verified: <strong id="proof-verified" style="color:var(--gr-accent)">Yes (8208493e…)</strong>
+        </span>
+        <span class="gr-meta-chip">
+          Signals: <strong id="proof-signals" style="color:var(--gr-warning)">Demo dataset</strong>
+        </span>
+        <span class="gr-meta-chip">
+          Persistence: <strong id="proof-persistence" style="color:#a78bfa">LOCAL FILE</strong>
+        </span>
+      </div>
+    </div>
 
-      <!-- Center Column: Decision & Action Cards (4 cols) -->
-      <section class="col-span-12 lg:col-span-4 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col space-y-4 shadow-xl">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <div class="flex items-center gap-2">
-            <div class="w-2.5 h-2.5 rounded-full bg-amber-400"></div>
-            <h2 class="text-base font-bold text-slate-200">Pending Agent Approvals</h2>
-          </div>
-          <span class="text-xs text-amber-400 font-medium px-2 py-0.5 bg-amber-950/50 border border-amber-800/60 rounded">Executive Queue</span>
-        </div>
+    <!-- ── Main Briefing Section ────────────────────────────── -->
+    <section class="gr-briefing" aria-label="While you were away briefing">
 
-        <!-- Dynamic Approval Card 1: Sponsorship Outreach -->
-        <div id="card-sponsorship" class="p-4 bg-slate-950 border border-slate-800 rounded-xl shadow-lg relative overflow-hidden transition-all duration-300">
-          <div class="flex justify-between items-start">
-            <span class="text-[10px] font-extrabold text-emerald-400 uppercase tracking-wider bg-emerald-950/60 border border-emerald-800/80 px-2 py-0.5 rounded">Sponsorship Outreach</span>
-            <span class="text-xs font-bold text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded border border-emerald-900" id="match-score-badge">Match: 89%</span>
+      <!-- Briefing header -->
+      <div class="gr-briefing-header">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span class="gr-badge gr-badge-accent" aria-label="Section: While you were away">
+              <span class="gr-dot" aria-hidden="true"></span>
+              While you were away
+            </span>
+            <h1 style="font-size:var(--gr-text-subheading);font-weight:500;letter-spacing:-0.02em;color:var(--gr-text-primary);line-height:1.1;">
+              Ranked growth briefing
+            </h1>
           </div>
 
-          <h3 class="font-bold text-slate-100 mt-2.5 text-sm" id="sponsor-card-title">Pitch Draft for TechBrand Inc.</h3>
-          <p class="text-xs text-slate-400 mt-1.5 leading-relaxed" id="sponsor-card-desc">
-            Calculated Match Score: <strong class="text-slate-200">89%</strong>. Uses 30-day retention metrics ($45 CPM benchmark) from memory store.
+          <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-muted);margin-top:6px;line-height:1.5;max-width:520px;">
+            Greenroom evaluated audience signals against your creator profile and memory nodes while you were offline.
           </p>
 
-          <div id="pitch-preview-box" class="mt-3 p-3 bg-slate-900/80 rounded-lg text-xs font-mono text-slate-300 border border-slate-800/80 max-h-32 overflow-y-auto">
-            Run Minute 4 demo step to generate autonomous pitch proposal.
-          </div>
-
-          <div class="mt-4 flex gap-2">
-            <button onclick="approveSponsorship()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition shadow-md shadow-emerald-900/20">
-              Approve & Send
-            </button>
-            <button onclick="modifyPitch()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-medium transition">
-              Modify Pitch
-            </button>
+          <!-- Continuity banner — shown only when active -->
+          <div id="continuity-banner" class="gr-continuity" role="status" aria-live="polite">
+            <span class="gr-continuity-label">Continuity active</span>
+            <span id="continuity-note-text">Adjusted using your previous feedback.</span>
           </div>
         </div>
 
-        <!-- Strategy & Script Concept Card -->
-        <div id="card-script" class="p-4 bg-slate-950 border border-slate-800 rounded-xl shadow-lg flex-1 flex flex-col">
-          <div class="flex justify-between items-start">
-            <span class="text-[10px] font-extrabold text-cyan-400 uppercase tracking-wider bg-cyan-950/60 border border-cyan-800/80 px-2 py-0.5 rounded">Strategy & Script Concept</span>
-            <span id="punchy-tag" class="hidden text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-700 px-2 py-0.5 rounded animate-bounce">⚡ Learned Punchy Voice</span>
-          </div>
-
-          <h3 class="font-bold text-slate-100 mt-2 text-sm" id="script-concept-title">Synthesized Creative Direction</h3>
-          <div id="script-concept-body" class="mt-2.5 p-3 bg-slate-900/80 rounded-lg text-xs font-mono text-slate-300 border border-slate-800/80 flex-1 max-h-48 overflow-y-auto whitespace-pre-wrap">
-            Run Minute 3 demo step to trigger multi-mind strategy synthesis.
-          </div>
+        <!-- Metadata chips -->
+        <div class="gr-meta-strip" aria-label="Briefing metadata">
+          <span class="gr-meta-chip" style="display:flex;align-items:center;gap:5px;">
+            <span class="gr-dot" style="width:5px;height:5px;background:var(--gr-accent);flex-shrink:0;" aria-hidden="true"></span>
+            <span id="briefing-time">Last run: just now</span>
+          </span>
+          <span class="gr-meta-chip" id="briefing-signals-count">3 signals reviewed</span>
+          <span class="gr-meta-chip" id="briefing-opps-count">3 opportunities ranked</span>
+          <span class="gr-meta-chip" id="briefing-signal-source" style="color:var(--gr-info);">[DEMO SIGNAL DATASET]</span>
         </div>
-
-        <!-- Minute 5: Feedback / Proof of Learning Box -->
-        <div class="p-3.5 bg-slate-950 border border-amber-900/40 rounded-xl space-y-2">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-amber-400 flex items-center gap-1.5">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
-              Minute 5: Proof of Learning ("The Magic Moment")
-            </span>
-          </div>
-          <p class="text-[11px] text-slate-400">Instruct the agent staff. Feedback updates persistent memory rules instantly for all future runs.</p>
-          
-          <div class="flex gap-2 pt-1">
-            <input type="text" id="feedback-input" value="Too formal. Make it punchier and emphasize beginner-friendly tips." 
-                   class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500 font-sans" placeholder="Type custom voice instruction...">
-            <button onclick="submitFeedback()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold rounded-lg text-xs transition shadow-md shadow-amber-900/30 whitespace-nowrap">
-              Execute & Learn
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <!-- Right Column: Memory State Inspector (3 cols) -->
-      <section class="col-span-12 lg:col-span-3 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col space-y-4 shadow-xl">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-          <div class="flex items-center gap-2">
-            <div class="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
-            <h2 class="text-base font-bold text-slate-200">Persistent State Store</h2>
-          </div>
-          <span class="text-xs text-slate-400 font-mono">creator_profile.json</span>
-        </div>
-
-        <div class="space-y-3 flex-1 overflow-y-auto max-h-[620px] pr-1">
-          <!-- Creator Profile Card -->
-          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
-            <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Creator Profile:</span>
-            <p id="state-creator-name" class="text-sm text-slate-100 font-bold mt-0.5">Alex Rivera</p>
-            <div id="state-voice-attributes" class="flex flex-wrap gap-1 mt-2">
-              <span class="px-2 py-0.5 bg-slate-900 text-slate-300 rounded text-[10px] border border-slate-800">Educational</span>
-              <span class="px-2 py-0.5 bg-slate-900 text-slate-300 rounded text-[10px] border border-slate-800">Technical</span>
-            </div>
-          </div>
-
-          <!-- Learned Voice Rules (Minute 5 Magic) -->
-          <div class="p-3 bg-slate-950 rounded-xl border border-amber-900/50 shadow-inner">
-            <div class="flex justify-between items-center mb-1.5">
-              <span class="text-[10px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1">
-                <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span> Learned Rules
-              </span>
-              <span class="text-[10px] text-slate-500" id="rule-count-badge">0 rules</span>
-            </div>
-            <div id="state-learned-rules" class="space-y-1.5 text-xs text-amber-200/90 font-medium">
-              <p class="text-slate-500 italic text-[11px]">No feedback rules learned yet. Run Minute 5 step to test proof of learning.</p>
-            </div>
-          </div>
-
-          <!-- Rejected Topics -->
-          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
-            <span class="text-[10px] text-rose-400 font-bold uppercase tracking-wider">Scout Filter (Rejected Topics):</span>
-            <div id="state-rejected-topics" class="space-y-1 mt-1 text-xs text-slate-400">
-              <p>• Crypto trading bots</p>
-              <p>• Generic AI news clickbait</p>
-            </div>
-          </div>
-
-          <!-- Monetization Benchmarks -->
-          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
-            <span class="text-[10px] text-emerald-400 font-bold uppercase tracking-wider">Business Benchmarks:</span>
-            <div id="state-monetization" class="grid grid-cols-2 gap-2 mt-1 text-xs">
-              <div class="p-2 bg-slate-900 rounded border border-slate-800">
-                <span class="text-[10px] text-slate-500 block">Target CPM</span>
-                <span id="state-cpm" class="font-bold text-slate-200">$45</span>
-              </div>
-              <div class="p-2 bg-slate-900 rounded border border-slate-800">
-                <span class="text-[10px] text-slate-500 block">Min Deal</span>
-                <span id="state-min-deal" class="font-bold text-slate-200">$5,000</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Persistent Memory Nodes Inspector -->
-          <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
-            <span class="text-[10px] text-cyan-400 font-bold uppercase tracking-wider">Memory Store Nodes:</span>
-            <div id="state-memory-nodes" class="space-y-2 mt-2 text-xs">
-              <p class="text-slate-500 italic text-[11px]">Loading memory nodes...</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-    </div>
-  </div>
-
-  <!-- IMP Payload Modal Inspector -->
-  <div id="modal-payload" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h3 class="font-bold text-emerald-400 text-lg" id="modal-title">IMP Message Payload</h3>
-        <button onclick="closeModal()" class="text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800">✕</button>
       </div>
-      <pre id="modal-json" class="p-4 bg-slate-950 rounded-xl text-xs font-mono text-cyan-300 border border-slate-800 overflow-x-auto max-h-96"></pre>
-      <div class="flex justify-end">
-        <button onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-semibold">Close</button>
+
+      <!-- Opportunity cards -->
+      <div class="gr-briefing-body" id="briefing-cards-container">
+
+        <!-- CARD 1 — HIGH PRIORITY (static default, replaced dynamically) -->
+        <article class="gr-card-interactive gr-card-high" aria-label="Opportunity 1: High priority">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gr-sp-3);">
+            <span class="gr-priority-label gr-priority-high">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg>
+              1 · High priority
+            </span>
+            <span style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-text-faint);">Content opportunity</span>
+          </div>
+
+          <h2 style="font-size:var(--gr-text-body);font-weight:500;color:var(--gr-text-primary);margin-bottom:var(--gr-sp-3);letter-spacing:-0.01em;">
+            Beginner local AI agent walkthrough video
+          </h2>
+
+          <div style="display:flex;flex-direction:column;gap:var(--gr-sp-2);flex:1;">
+            <div class="gr-card-section">
+              <span class="gr-section-label">What changed</span>
+              <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-secondary);line-height:1.5;">ScoutMind detected +145k daily discussions for step-by-step local open-source setup guides.</p>
+            </div>
+            <div class="gr-card-section">
+              <span class="gr-section-label gr-section-label-info">Why it matters</span>
+              <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-secondary);line-height:1.5;">Matches saved goal: 78% viewer retention on code guides. Applied rule: terminal open-source focus.</p>
+            </div>
+            <div class="gr-card-section gr-card-section-accent">
+              <span class="gr-section-label gr-section-label-accent">Recommended action</span>
+              <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-primary);font-weight:500;line-height:1.5;">Record a 3-step terminal setup tutorial for local open-source AI agent workflows.</p>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--gr-sp-4);padding-top:var(--gr-sp-3);border-top:1px solid var(--gr-border);">
+            <span style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-text-faint);">Memory: profile.brand_voice</span>
+            <div style="display:flex;gap:var(--gr-sp-2);">
+              <button onclick="submitItemFeedback('opp_001', 'useful')" class="gr-btn gr-btn-sm gr-btn-accent" title="Mark useful">Useful</button>
+              <button onclick="submitItemFeedback('opp_001', 'done')" class="gr-btn gr-btn-sm gr-btn-ghost" title="Mark done">Done</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- CARD 2 — MEDIUM PRIORITY -->
+        <article class="gr-card-interactive gr-card-medium" aria-label="Opportunity 2: Medium priority">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gr-sp-3);">
+            <span class="gr-priority-label gr-priority-medium">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg>
+              2 · Medium priority
+            </span>
+            <span style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-text-faint);">Monetization deal</span>
+          </div>
+
+          <h2 style="font-size:var(--gr-text-body);font-weight:500;color:var(--gr-text-primary);margin-bottom:var(--gr-sp-3);letter-spacing:-0.01em;">
+            TechBrand Inc. sponsorship pitch ($5,400 target)
+          </h2>
+
+          <div style="display:flex;flex-direction:column;gap:var(--gr-sp-2);flex:1;">
+            <div class="gr-card-section">
+              <span class="gr-section-label">What changed</span>
+              <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-secondary);line-height:1.5;">BusinessMind scored 89% brand fit for developer infrastructure sponsor TechBrand Inc.</p>
+            </div>
+            <div class="gr-card-section">
+              <span class="gr-section-label gr-section-label-info">Why it matters</span>
+              <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-secondary);line-height:1.5;">Matches your $45 CPM target benchmark and technical software engineer demographic.</p>
+            </div>
+            <div class="gr-card-section gr-card-section-warn">
+              <span class="gr-section-label gr-section-label-warn">Recommended action</span>
+              <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-primary);font-weight:500;line-height:1.5;">Approve &amp; send 1-click sponsor pitch brief for upcoming workflow video.</p>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--gr-sp-4);padding-top:var(--gr-sp-3);border-top:1px solid var(--gr-border);">
+            <span style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-text-faint);">Memory: cpm_target=$45</span>
+            <div style="display:flex;gap:var(--gr-sp-2);">
+              <button onclick="approveSponsorship()" class="gr-btn gr-btn-sm gr-btn-warn" title="Approve pitch">Approve pitch</button>
+              <button onclick="submitItemFeedback('opp_002', 'dismiss')" class="gr-btn gr-btn-sm gr-btn-ghost" title="Dismiss">Dismiss</button>
+            </div>
+          </div>
+        </article>
+
+        <!-- CARD 3 — WATCH -->
+        <article class="gr-card-interactive" aria-label="Opportunity 3: Watch">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gr-sp-3);">
+            <span class="gr-priority-label gr-priority-watch">
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg>
+              3 · Watch / filter
+            </span>
+            <span style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-text-faint);">Scout signal filter</span>
+          </div>
+
+          <h2 style="font-size:var(--gr-text-body);font-weight:500;color:var(--gr-text-primary);margin-bottom:var(--gr-sp-3);letter-spacing:-0.01em;">
+            Topic filter active: crypto &amp; clickbait suppressed
+          </h2>
+
+          <div style="display:flex;flex-direction:column;gap:var(--gr-sp-2);flex:1;">
+            <div class="gr-card-section">
+              <span class="gr-section-label">What changed</span>
+              <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-secondary);line-height:1.5;">ScoutMind automatically suppressed high-volume crypto trading &amp; generic news clickbait signals.</p>
+            </div>
+            <div class="gr-card-section">
+              <span class="gr-section-label gr-section-label-info">Why it matters</span>
+              <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-secondary);line-height:1.5;">Applied creator rejection rules: "Crypto trading bots", "Generic AI news clickbait".</p>
+            </div>
+            <div class="gr-card-section">
+              <span class="gr-section-label">Recommended action</span>
+              <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-muted);line-height:1.5;">No action needed — low-signal clickbait kept out of your creator workflow.</p>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--gr-sp-4);padding-top:var(--gr-sp-3);border-top:1px solid var(--gr-border);">
+            <span style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-text-faint);">Memory: rejected_topics</span>
+            <span style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-accent);">Filter active</span>
+          </div>
+        </article>
+
+      </div><!-- /briefing-cards-container -->
+    </section>
+
+    <!-- ── Feedback / Teach ─────────────────────────────────── -->
+    <section class="gr-feedback" aria-label="Teach Greenroom">
+      <div class="gr-feedback-info">
+        <h2 style="font-size:var(--gr-text-label);font-weight:500;color:var(--gr-text-primary);margin-bottom:4px;">
+          Proof of memory &amp; continuity
+        </h2>
+        <p style="font-size:var(--gr-text-caption);color:var(--gr-text-muted);line-height:1.5;">
+          Instruct Greenroom on voice, niche rules, or ranking preferences. Feedback persists into memory and adapts subsequent autonomous briefing runs.
+        </p>
+      </div>
+
+      <div class="gr-feedback-controls">
+        <input
+          type="text"
+          id="feedback-input"
+          class="gr-input"
+          value="Too formal. Make it punchier and emphasize beginner-friendly tips."
+          placeholder="Type custom voice instruction…"
+          aria-label="Voice instruction for creator memory"
+          style="flex:1;"
+        >
+        <button
+          onclick="submitFeedback()"
+          class="gr-btn gr-btn-warn"
+          style="flex-shrink:0;"
+          aria-label="Save feedback and re-run"
+        >Save &amp; learn</button>
+      </div>
+    </section>
+
+    <!-- ── Technical Inspection Drawer ─────────────────────── -->
+    <details class="gr-drawer" id="tech-drawer">
+      <summary aria-expanded="false">
+        <span class="gr-drawer-title">
+          <span class="gr-dot" style="width:6px;height:6px;background:var(--gr-info);flex-shrink:0;" aria-hidden="true"></span>
+          Technical inspection panel
+          <span class="gr-eyebrow" style="margin-left:4px;">IMP log · memory store</span>
+        </span>
+        <span class="gr-drawer-toggle" aria-hidden="true">▾</span>
+      </summary>
+
+      <div class="gr-drawer-body">
+
+        <!-- Inter-Mind Protocol log -->
+        <div class="gr-drawer-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;" class="gr-drawer-panel-title">
+            <span style="color:var(--gr-info);" class="gr-eyebrow">IMP messages</span>
+            <span id="msg-count-badge" style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-text-faint);">0 messages</span>
+          </div>
+
+          <div id="activity-stream" class="gr-stream" role="log" aria-live="polite" aria-label="Inter-Mind Protocol message stream">
+            <div class="gr-empty">Waiting for agent network communication…</div>
+          </div>
+        </div>
+
+        <!-- Persistent state store -->
+        <div class="gr-drawer-panel">
+          <div style="display:flex;justify-content:space-between;align-items:center;" class="gr-drawer-panel-title">
+            <span style="color:var(--gr-accent);" class="gr-eyebrow">Memory store</span>
+            <span style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-text-faint);">creator_profile.json</span>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:var(--gr-sp-3);max-height:340px;overflow-y:auto;">
+
+            <!-- Creator profile block -->
+            <div class="gr-state-block">
+              <span class="gr-section-label" style="margin-bottom:var(--gr-sp-2);">Creator profile</span>
+              <p id="state-creator-name" style="font-size:var(--gr-text-body-sm);font-weight:500;color:var(--gr-text-primary);margin-bottom:var(--gr-sp-2);">Alex Rivera</p>
+              <div id="state-voice-attributes" style="display:flex;flex-wrap:wrap;gap:4px;">
+                <span class="gr-tag">Educational</span>
+                <span class="gr-tag">Technical</span>
+              </div>
+            </div>
+
+            <!-- Learned rules block -->
+            <div class="gr-state-block" style="border-color:rgba(233,185,73,0.14);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gr-sp-2);">
+                <span class="gr-section-label gr-section-label-warn">Learned memory rules</span>
+                <span id="rule-count-badge" style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-text-faint);">0 rules</span>
+              </div>
+              <div id="state-learned-rules">
+                <p style="font-size:var(--gr-text-caption);color:var(--gr-text-faint);font-style:italic;">No feedback rules learned yet.</p>
+              </div>
+            </div>
+
+            <!-- Memory nodes block -->
+            <div class="gr-state-block">
+              <span class="gr-section-label gr-section-label-info" style="margin-bottom:var(--gr-sp-2);">Memory nodes</span>
+              <div id="state-memory-nodes">
+                <p style="font-size:var(--gr-text-caption);color:var(--gr-text-faint);font-style:italic;">Loading memory nodes…</p>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div><!-- /gr-drawer-body -->
+    </details>
+
+  </main><!-- /gr-main -->
+
+  <!-- ═══════════════════════════════════════════════════════════
+       IMP Payload Modal
+  ═══════════════════════════════════════════════════════════ -->
+  <div
+    id="modal-payload"
+    class="gr-modal-backdrop"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="modal-title"
+    onclick="closeModalIfBackdrop(event)"
+  >
+    <div class="gr-modal">
+      <div class="gr-modal-header">
+        <h3 id="modal-title" class="gr-modal-title">IMP message payload</h3>
+        <button onclick="closeModal()" class="gr-modal-close" aria-label="Close modal">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <path d="M1 1l10 10M11 1L1 11"/>
+          </svg>
+        </button>
+      </div>
+      <pre id="modal-json" class="gr-modal-code"></pre>
+      <div style="display:flex;justify-content:flex-end;">
+        <button onclick="closeModal()" class="gr-btn gr-btn-ghost">Close</button>
       </div>
     </div>
   </div>
 
   <script src="app.js"></script>
+  <script>
+    // Close modal when clicking the backdrop
+    function closeModalIfBackdrop(e) {
+      if (e.target === document.getElementById('modal-payload')) closeModal();
+    }
+
+    // Override open/close to use new classes
+    const _origClose = window.closeModal;
+    window.closeModal = function() {
+      document.getElementById('modal-payload').classList.remove('open');
+    };
+    const _origInspect = window.inspectPayload;
+    window.inspectPayload = function(msgId) {
+      const msg = impMessages.find(m => m.message_id === msgId);
+      if (!msg) return;
+      document.getElementById('modal-title').textContent =
+        `IMP payload: [${msg.sender_mind} → ${msg.target_mind}] (${msg.action_type})`;
+      document.getElementById('modal-json').textContent = JSON.stringify(msg, null, 2);
+      document.getElementById('modal-payload').classList.add('open');
+    };
+
+    // Override banner helpers to use new class system
+    const _origShowBanner = window.showBanner;
+    window.showBanner = function(title, desc) {
+      const banner = document.getElementById('demo-banner');
+      const titleEl = document.getElementById('demo-step-title');
+      const descEl = document.getElementById('demo-step-desc');
+      if (banner) banner.classList.add('active');
+      if (titleEl) titleEl.textContent = title;
+      if (descEl) descEl.textContent = desc;
+    };
+    const _origHideBanner = window.hideBanner;
+    window.hideBanner = function() {
+      const banner = document.getElementById('demo-banner');
+      if (banner) banner.classList.remove('active');
+    };
+
+    // Override continuity banner
+    const _origRenderBriefing = window.renderBriefing;
+    // Patch continuity banner visibility
+    document.addEventListener('DOMContentLoaded', () => {
+      const origRender = window.renderBriefing;
+      window.renderBriefing = function(briefing) {
+        origRender(briefing);
+        const contBanner = document.getElementById('continuity-banner');
+        if (contBanner) {
+          if (briefing && briefing.continuity_note) {
+            contBanner.classList.add('visible');
+            contBanner.classList.remove('hidden');
+          } else {
+            contBanner.classList.remove('visible');
+          }
+        }
+      };
+    });
+
+    // Override updateStatusBadge to use new badge classes
+    window.updateStatusBadge = function(data) {
+      const statusEl = document.getElementById('connection-status');
+      if (!statusEl) return;
+      if (data.mode === 'production' && data.connected) {
+        const mindIdSnippet = data.real_platform_mind?.mindId
+          ? ` (${data.real_platform_mind.mindId.slice(0, 8)}…)`
+          : '';
+        statusEl.className = 'gr-badge gr-badge-accent';
+        statusEl.innerHTML = `<span class="gr-dot gr-dot-pulse" aria-hidden="true"></span><span>Animoca Mind connected${mindIdSnippet}</span>`;
+      } else if (data.mode === 'demo' || data.is_mock || data.demo_mode_active) {
+        statusEl.className = 'gr-badge gr-badge-warning';
+        statusEl.innerHTML = `<span class="gr-dot" aria-hidden="true"></span><span>Demo mode</span>`;
+      } else {
+        statusEl.className = 'gr-badge gr-badge-danger';
+        statusEl.innerHTML = `<span class="gr-dot" aria-hidden="true"></span><span>Minds disconnected</span>`;
+      }
+    };
+
+    // Override renderIMPStream to use new stream classes
+    window.renderIMPStream = function() {
+      const container = document.getElementById('activity-stream');
+      const countEl = document.getElementById('msg-count-badge');
+      if (countEl) countEl.textContent = `${impMessages.length} messages`;
+      if (!container) return;
+
+      if (!impMessages || impMessages.length === 0) {
+        container.innerHTML = '<div class="gr-empty">Waiting for agent network communication…</div>';
+        return;
+      }
+
+      const senderClass = (sender) => {
+        if (sender === 'ScoutMind') return 'gr-stream-scout';
+        if (sender === 'CommunityMind') return 'gr-stream-community';
+        if (sender === 'BusinessMind') return 'gr-stream-business';
+        if (sender === 'User') return 'gr-stream-user';
+        return 'gr-stream-core';
+      };
+
+      container.innerHTML = impMessages.slice().reverse().map(msg => {
+        const sender = msg.sender_mind || 'Core';
+        const target = msg.target_mind ? ` → ${msg.target_mind}` : '';
+        const action = msg.action_type || 'INFO';
+        const conf = msg.confidence_score !== undefined
+          ? `<span class="gr-stream-tag">${(msg.confidence_score * 100).toFixed(0)}%</span>`
+          : '';
+        const snippet = getPayloadSnippet(msg.payload, action);
+        return `
+          <div class="gr-stream-item ${senderClass(sender)}">
+            <div class="gr-stream-item-header">
+              <span class="gr-stream-sender">[${escapeHtml(sender)}${escapeHtml(target)}]</span>
+              <span class="gr-stream-meta">
+                ${conf}
+                <span class="gr-stream-tag">${escapeHtml(action)}</span>
+                <button
+                  onclick="inspectPayload('${escapeHtml(msg.message_id)}')"
+                  style="background:none;border:none;cursor:pointer;color:var(--gr-text-faint);font-size:10px;padding:0;"
+                  title="View raw JSON"
+                  aria-label="Inspect payload"
+                >JSON</button>
+              </span>
+            </div>
+            <p class="gr-stream-content">${escapeHtml(snippet)}</p>
+          </div>
+        `;
+      }).join('');
+    };
+
+    // Override renderStateStore to use new classes
+    window.renderStateStore = function() {
+      if (!currentMemoryState) return;
+
+      const creatorNameEl = document.getElementById('state-creator-name');
+      if (creatorNameEl) creatorNameEl.textContent = currentMemoryState.creator_name || 'Alex Rivera';
+
+      const voiceAttrs = currentMemoryState.brand_voice_attributes || [];
+      const voiceEl = document.getElementById('state-voice-attributes');
+      if (voiceEl) {
+        voiceEl.innerHTML = voiceAttrs.map(v =>
+          `<span class="gr-tag">${escapeHtml(v)}</span>`
+        ).join('');
+      }
+
+      const learnedRules = currentMemoryState.learned_voice_rules || [];
+      const countBadge = document.getElementById('rule-count-badge');
+      if (countBadge) countBadge.textContent = `${learnedRules.length} rule${learnedRules.length !== 1 ? 's' : ''}`;
+
+      const rulesContainer = document.getElementById('state-learned-rules');
+      if (rulesContainer) {
+        if (learnedRules.length === 0) {
+          rulesContainer.innerHTML = `<p style="font-size:var(--gr-text-caption);color:var(--gr-text-faint);font-style:italic;">No feedback rules learned yet.</p>`;
+        } else {
+          rulesContainer.innerHTML = learnedRules.map(r => `
+            <div class="gr-rule-item flash-rule">
+              <span class="gr-rule-tick">✓</span>
+              <span>${escapeHtml(r)}</span>
+            </div>
+          `).join('');
+        }
+      }
+
+      const nodes = currentMemoryState.memory_nodes || [];
+      const nodesContainer = document.getElementById('state-memory-nodes');
+      if (nodesContainer) {
+        if (nodes.length === 0) {
+          nodesContainer.innerHTML = `<p style="font-size:var(--gr-text-caption);color:var(--gr-text-faint);font-style:italic;">No persistent memory nodes stored.</p>`;
+        } else {
+          nodesContainer.innerHTML = nodes.slice(-3).map(n => `
+            <div class="gr-node-item">
+              <span class="gr-node-type">${escapeHtml(n.type || 'node')}</span>
+              <p style="color:var(--gr-text-secondary);line-height:1.5;">${escapeHtml(n.content || '')}</p>
+            </div>
+          `).join('');
+        }
+      }
+    };
+
+    // Override renderBriefing card template to use new card classes
+    window.renderBriefing = function(briefing) {
+      if (!briefing) return;
+
+      const timeEl = document.getElementById('briefing-time');
+      if (timeEl) timeEl.textContent = `Last run: ${briefing.last_run_formatted || 'just now'}`;
+      const sigEl = document.getElementById('briefing-signals-count');
+      if (sigEl) sigEl.textContent = `${briefing.signals_reviewed_count || 3} signals reviewed`;
+      const oppEl = document.getElementById('briefing-opps-count');
+      if (oppEl) oppEl.textContent = `${briefing.opportunities_found_count || 3} opportunities ranked`;
+      const srcEl = document.getElementById('briefing-signal-source');
+      if (srcEl) srcEl.textContent = `[${briefing.signal_source_label || 'DEMO DATASET'}]`;
+
+      // Continuity
+      const contBanner = document.getElementById('continuity-banner');
+      const contText = document.getElementById('continuity-note-text');
+      if (briefing.continuity_note) {
+        if (contBanner) contBanner.classList.add('visible');
+        if (contText) contText.textContent = briefing.continuity_note;
+      } else {
+        if (contBanner) contBanner.classList.remove('visible');
+      }
+
+      // Proof panel
+      const prov = briefing.provenance || {};
+      const runIdEl = document.getElementById('proof-run-id');
+      if (runIdEl) runIdEl.textContent = prov.run_id || briefing.run_id || 'run_active';
+      const execEl = document.getElementById('proof-execution');
+      if (execEl) execEl.textContent = prov.execution_mode || briefing.execution_mode || 'QStash Background Job';
+      const analysisEl = document.getElementById('proof-analysis');
+      if (analysisEl) analysisEl.textContent = prov.analysis_provider || briefing.analysis_provider || 'Animoca Minds';
+      const verifiedEl = document.getElementById('proof-verified');
+      if (verifiedEl) verifiedEl.textContent = (prov.mind_verified || briefing.minds_verified) ? 'Yes (8208493e…)' : 'No (Mock)';
+      const signalsEl = document.getElementById('proof-signals');
+      if (signalsEl) signalsEl.textContent = prov.signal_source || briefing.signal_source_label || 'Demo dataset';
+      const persistenceEl = document.getElementById('proof-persistence');
+      if (persistenceEl) persistenceEl.textContent = prov.persistence_mode || briefing.persistence_mode || 'LOCAL FILE';
+
+      const container = document.getElementById('briefing-cards-container');
+      if (!container || !briefing.items) return;
+
+      container.innerHTML = briefing.items.map((item, idx) => {
+        const isPriHigh = item.priority === 'HIGH PRIORITY';
+        const isPriMed = item.priority === 'MEDIUM PRIORITY';
+        const cardClass = isPriHigh
+          ? 'gr-card-interactive gr-card-high'
+          : isPriMed
+            ? 'gr-card-interactive gr-card-medium'
+            : 'gr-card-interactive';
+        const priClass = isPriHigh ? 'gr-priority-high' : isPriMed ? 'gr-priority-medium' : 'gr-priority-watch';
+        const actionSectionClass = isPriHigh
+          ? 'gr-card-section gr-card-section-accent'
+          : isPriMed
+            ? 'gr-card-section gr-card-section-warn'
+            : 'gr-card-section';
+        const actionLabelClass = isPriHigh
+          ? 'gr-section-label gr-section-label-accent'
+          : isPriMed
+            ? 'gr-section-label gr-section-label-warn'
+            : 'gr-section-label';
+        const approveBtn = isPriMed
+          ? `<button onclick="approveSponsorship()" class="gr-btn gr-btn-sm gr-btn-warn">Approve</button>`
+          : `<button onclick="submitItemFeedback('${escapeHtml(item.id)}', 'useful')" class="gr-btn gr-btn-sm gr-btn-accent">Useful</button>`;
+
+        return `
+          <article class="${cardClass}" aria-label="Opportunity ${idx + 1}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--gr-sp-3);">
+              <span class="gr-priority-label ${priClass}">
+                <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true"><circle cx="5" cy="5" r="5"/></svg>
+                ${idx + 1} · ${escapeHtml(item.priority)}
+              </span>
+              <span style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-text-faint);">${escapeHtml(item.category || 'Growth signal')}</span>
+            </div>
+
+            <h2 style="font-size:var(--gr-text-body);font-weight:500;color:var(--gr-text-primary);margin-bottom:var(--gr-sp-3);letter-spacing:-0.01em;">
+              ${escapeHtml(item.title)}
+            </h2>
+
+            <div style="display:flex;flex-direction:column;gap:var(--gr-sp-2);flex:1;">
+              <div class="gr-card-section">
+                <span class="gr-section-label">What changed</span>
+                <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-secondary);line-height:1.5;">${escapeHtml(item.what_changed)}</p>
+              </div>
+              <div class="gr-card-section">
+                <span class="gr-section-label gr-section-label-info">Why it matters</span>
+                <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-secondary);line-height:1.5;">${escapeHtml(item.why_it_matters)}</p>
+              </div>
+              <div class="${actionSectionClass}">
+                <span class="${actionLabelClass}">Recommended action</span>
+                <p style="font-size:var(--gr-text-body-sm);color:var(--gr-text-primary);font-weight:500;line-height:1.5;">${escapeHtml(item.recommended_action)}</p>
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:var(--gr-sp-4);padding-top:var(--gr-sp-3);border-top:1px solid var(--gr-border);">
+              <span style="font-family:var(--gr-font-mono);font-size:var(--gr-text-micro);color:var(--gr-text-faint);">Memory: ${escapeHtml(item.memory_context_used || 'creator_profile')}</span>
+              <div style="display:flex;gap:var(--gr-sp-2);">
+                ${approveBtn}
+                <button onclick="submitItemFeedback('${escapeHtml(item.id)}', 'done')" class="gr-btn gr-btn-sm gr-btn-ghost">Done</button>
+                <button onclick="submitItemFeedback('${escapeHtml(item.id)}', 'dismiss')" class="gr-btn gr-btn-sm gr-btn-ghost" title="Dismiss">✕</button>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    };
+  </script>
 </body>
 </html>

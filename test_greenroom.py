@@ -495,6 +495,278 @@ async def test_no_production_direct_rest_messaging_fallback():
     print("[OK] [TEST 16 PASSED]\n")
 
 
+
+async def test_autonomous_run_execution_no_second_chat():
+    print("--- [TEST 17] Testing Autonomous Run Execution Without Second Chat Prompt ---")
+    orig_demo = os.environ.get("DEMO_MODE")
+    os.environ["DEMO_MODE"] = "true"
+    try:
+        from memory_engine import memory_tool
+        from agents import GreenroomCoreMind
+        core = GreenroomCoreMind(memory_tool)
+        briefing = await core.run_autonomous_cycle()
+        assert briefing is not None, "Autonomous cycle must return a briefing"
+        assert len(briefing.get("items", [])) == 3, f"Expected 3 items, got {len(briefing.get('items', []))}"
+        print("[OK] Proved autonomous cycle runs without requiring live chat prompt.")
+    finally:
+        if orig_demo is not None:
+            os.environ["DEMO_MODE"] = orig_demo
+        else:
+            os.environ.pop("DEMO_MODE", None)
+    print("[OK] [TEST 17 PASSED]\n")
+
+
+async def test_briefing_persists_across_reloads():
+    print("--- [TEST 18] Testing Briefing Persistence Across Reloads ---")
+    orig_demo = os.environ.get("DEMO_MODE")
+    os.environ["DEMO_MODE"] = "true"
+    try:
+        from memory_engine import GreenroomMemoryEngine
+        mem1 = GreenroomMemoryEngine()
+        mem1.save_briefing({"timestamp": "2026-08-11T12:00:00Z", "items": [{"id": "test_1", "title": "Test Briefing"}]})
+        
+        # Instantiate fresh engine instance to simulate page/server reload
+        mem2 = GreenroomMemoryEngine()
+        loaded = mem2.get_latest_briefing()
+        assert loaded is not None, "Briefing must persist across fresh engine instantiation"
+        assert loaded.get("items")[0]["id"] == "test_1", "Persisted briefing item ID must match"
+        print("[OK] Verified briefing persists to disk and reloads on fresh memory engine instantiation.")
+    finally:
+        if orig_demo is not None:
+            os.environ["DEMO_MODE"] = orig_demo
+        else:
+            os.environ.pop("DEMO_MODE", None)
+    print("[OK] [TEST 18 PASSED]\n")
+
+
+async def test_ranking_structure_validation():
+    print("--- [TEST 19] Testing Ranking Structure & Categories Validation ---")
+    orig_demo = os.environ.get("DEMO_MODE")
+    os.environ["DEMO_MODE"] = "true"
+    try:
+        from memory_engine import memory_tool
+        from agents import GreenroomCoreMind
+        core = GreenroomCoreMind(memory_tool)
+        briefing = await core.run_autonomous_cycle()
+        
+        priorities = [item["priority"] for item in briefing["items"]]
+        assert "HIGH PRIORITY" in priorities, "Briefing must contain HIGH PRIORITY item"
+        assert "MEDIUM PRIORITY" in priorities, "Briefing must contain MEDIUM PRIORITY item"
+        assert "WATCH" in priorities, "Briefing must contain WATCH item"
+        
+        for item in briefing["items"]:
+            assert "what_changed" in item, "Item must contain 'what_changed'"
+            assert "why_it_matters" in item, "Item must contain 'why_it_matters'"
+            assert "recommended_action" in item, "Item must contain 'recommended_action'"
+        print("[OK] Verified briefing ranking structure & fields.")
+    finally:
+        if orig_demo is not None:
+            os.environ["DEMO_MODE"] = orig_demo
+        else:
+            os.environ.pop("DEMO_MODE", None)
+    print("[OK] [TEST 19 PASSED]\n")
+
+
+async def test_memory_grounding_in_briefing():
+    print("--- [TEST 20] Testing Memory Grounding in Briefing Items ---")
+    orig_demo = os.environ.get("DEMO_MODE")
+    os.environ["DEMO_MODE"] = "true"
+    try:
+        from memory_engine import memory_tool
+        from agents import GreenroomCoreMind
+        core = GreenroomCoreMind(memory_tool)
+        briefing = await core.run_autonomous_cycle()
+        
+        has_grounding = any("grounding" in item["why_it_matters"].lower() or "matches" in item["why_it_matters"].lower() for item in briefing["items"])
+        assert has_grounding, "Briefing items must contain memory-grounded reasoning in why_it_matters"
+        print("[OK] Verified explicit memory-grounded reasoning in briefing recommendations.")
+    finally:
+        if orig_demo is not None:
+            os.environ["DEMO_MODE"] = orig_demo
+        else:
+            os.environ.pop("DEMO_MODE", None)
+    print("[OK] [TEST 20 PASSED]\n")
+
+
+def test_signal_provider_tagging():
+    print("--- [TEST 21] Testing SignalProvider Demo Tagging & Abstraction ---")
+    from minds_integration import DemoSignalProvider
+    provider = DemoSignalProvider()
+    signals = provider.get_signals()
+    assert len(signals) >= 3, "DemoSignalProvider must yield at least 3 signals"
+    for s in signals:
+        assert s.get("is_demo") is True, "Demo signals must be tagged with is_demo=True"
+        assert "Demo Dataset" in s.get("source_label", ""), "Demo signals must have explicit source_label"
+    print("[OK] Verified SignalProvider abstraction and demo signal tagging.")
+    print("[OK] [TEST 21 PASSED]\n")
+
+
+def test_item_feedback_persistence():
+    print("--- [TEST 22] Testing Briefing Item Feedback Persistence ---")
+    from memory_engine import memory_tool
+    entry = memory_tool.add_item_feedback("opp_001", "useful", "Great setup walkthrough idea")
+    assert entry["item_id"] == "opp_001"
+    assert entry["feedback_type"] == "useful"
+    
+    state = memory_tool.get_full_state()
+    assert "item_feedbacks" in state, "State must contain item_feedbacks"
+    assert any(f["item_id"] == "opp_001" for f in state["item_feedbacks"]), "Feedback must persist in profile state"
+    print("[OK] Verified item feedback persistence in creator profile.")
+    print("[OK] [TEST 22 PASSED]\n")
+
+
+async def test_feedback_continuity_across_runs():
+    print("--- [TEST 23] Testing Multi-Run Feedback Continuity ---")
+    orig_demo = os.environ.get("DEMO_MODE")
+    os.environ["DEMO_MODE"] = "true"
+    try:
+        from memory_engine import memory_tool
+        from agents import GreenroomCoreMind
+        core = GreenroomCoreMind(memory_tool)
+        
+        # Run 1: Learn new voice preference
+        await core.process_user_feedback("Emphasize open-source terminal setup steps")
+        
+        # Run 2: Execute autonomous cycle, verify learned rule affects output
+        briefing2 = await core.run_autonomous_cycle()
+        high_pri = briefing2["items"][0]
+        assert "terminal" in high_pri["why_it_matters"].lower() or "open-source" in high_pri["why_it_matters"].lower(), "Run 2 briefing must demonstrate feedback continuity"
+        print("[OK] Verified Run 1 feedback directly adapts Run 2 briefing ranking/grounding.")
+    finally:
+        if orig_demo is not None:
+            os.environ["DEMO_MODE"] = orig_demo
+        else:
+            os.environ.pop("DEMO_MODE", None)
+    print("[OK] [TEST 23 PASSED]\n")
+
+
+async def test_async_job_runner_status():
+    print("--- [TEST 24] Testing Async Job Runner Background Execution ---")
+    orig_demo = os.environ.get("DEMO_MODE")
+    os.environ["DEMO_MODE"] = "true"
+    try:
+        from memory_engine import memory_tool
+        from agents import GreenroomCoreMind
+        from async_runner import QStashJobRunner
+        core = GreenroomCoreMind(memory_tool)
+        runner = QStashJobRunner()
+
+        enqueue_res = await runner.enqueue_run("http://localhost:8000/api/briefing/worker")
+        assert enqueue_res["status"] == "QUEUED", "Enqueue must return status QUEUED"
+        run_id = enqueue_res["run_id"]
+
+        worker_res = await runner.execute_worker_job(core, run_id)
+        assert worker_res["status"] == "COMPLETED", "Worker execution must return COMPLETED"
+        assert runner.get_status(run_id)["status"] == "COMPLETED", "Runner status must be COMPLETED"
+        print("[OK] Verified QStashJobRunner background execution & status tracking.")
+    finally:
+        if orig_demo is not None:
+            os.environ["DEMO_MODE"] = orig_demo
+        else:
+            os.environ.pop("DEMO_MODE", None)
+    print("[OK] [TEST 24 PASSED]\n")
+
+
+async def test_strict_production_error_during_autonomous_run():
+    print("--- [TEST 25] Testing Production Mode Strict Failure During Autonomous Run ---")
+    orig_builder_key = os.environ.get("MINDS_BUILDER_API_KEY")
+    orig_demo = os.environ.get("DEMO_MODE")
+    
+    os.environ["MINDS_BUILDER_API_KEY"] = "invalid_key"
+    os.environ["DEMO_MODE"] = "false"
+    
+    try:
+        from memory_engine import memory_tool
+        from agents import GreenroomCoreMind
+        from minds_integration import MindsExecutionError
+        core = GreenroomCoreMind(memory_tool)
+        
+        try:
+            await core.run_autonomous_cycle()
+            assert False, "Expected MindsExecutionError in production mode when builder key is invalid"
+        except MindsExecutionError as e:
+            print(f"[OK] Caught expected MindsExecutionError in production mode without fallback: {e}")
+    finally:
+        if orig_builder_key is not None:
+            os.environ["MINDS_BUILDER_API_KEY"] = orig_builder_key
+        else:
+            os.environ.pop("MINDS_BUILDER_API_KEY", None)
+            
+        if orig_demo is not None:
+            os.environ["DEMO_MODE"] = orig_demo
+        else:
+            os.environ.pop("DEMO_MODE", None)
+    print("[OK] [TEST 25 PASSED]\n")
+
+
+def test_persistence_store_mode_labeling_and_provenance():
+    print("--- [TEST 26] Testing PersistenceStore Mode Labeling & Provenance Integrity ---")
+    from persistence import LocalFileStore, EphemeralTmpStore, UpstashRedisStore
+    
+    file_store = LocalFileStore()
+    assert file_store.mode_label == "LOCAL FILE", "LocalFileStore mode_label must be 'LOCAL FILE'"
+    
+    tmp_store = EphemeralTmpStore()
+    assert tmp_store.mode_label == "EPHEMERAL", "EphemeralTmpStore mode_label must be 'EPHEMERAL'"
+    assert tmp_store.mode_label != "DURABLE", "/tmp storage must NEVER be classified as DURABLE"
+    
+    redis_store = UpstashRedisStore("https://example.upstash.io", "test_token")
+    assert redis_store.mode_label == "DURABLE", "UpstashRedisStore mode_label must be 'DURABLE'"
+    
+    print("[OK] Verified PersistenceStore mode labels: LocalFileStore='LOCAL FILE', EphemeralTmpStore='EPHEMERAL', UpstashRedisStore='DURABLE'.")
+    print("[OK] [TEST 26 PASSED]\n")
+
+
+async def test_qstash_async_job_runner_lifecycle_and_security():
+    print("--- [TEST 27] Testing QStash Async Job Runner Lifecycle & Durable Status Integrity ---")
+    from async_runner import QStashJobRunner
+    from persistence import LocalFileStore
+    from memory_engine import GreenroomMemoryEngine
+    from agents import GreenroomCoreMind
+    
+    store1 = LocalFileStore()
+    runner1 = QStashJobRunner(store1)
+    
+    # 1. Enqueue run -> returns QUEUED immediately
+    enqueue_res = await runner1.enqueue_run("http://localhost:8000/api/briefing/worker")
+    assert enqueue_res["status"] == "QUEUED", "Enqueue must return status QUEUED immediately"
+    run_id = enqueue_res["run_id"]
+    
+    # 2. Status check from store instance 2 (proves status is NOT in process memory)
+    store2 = LocalFileStore()
+    runner2 = QStashJobRunner(store2)
+    status_state = runner2.get_status(run_id)
+    assert status_state["status"] == "QUEUED", "Durable store instance 2 must read status QUEUED"
+    
+    # 3. Worker execution transition: QUEUED -> RUNNING -> COMPLETED
+    mem = GreenroomMemoryEngine(store1)
+    core = GreenroomCoreMind(mem)
+    worker_res = await runner1.execute_worker_job(core, run_id)
+    assert worker_res["status"] == "COMPLETED", "Worker execution must transition status to COMPLETED"
+    
+    # 4. Read completed status from store instance 3
+    store3 = LocalFileStore()
+    runner3 = QStashJobRunner(store3)
+    completed_state = runner3.get_status(run_id)
+    assert completed_state["status"] == "COMPLETED", "Completed status must persist in durable store"
+    assert completed_state.get("briefing_id") == run_id
+    
+    # 5. Verify failed worker execution transitions status to FAILED
+    fail_run_id = "run_fail_test_123"
+    runner1.save_status(fail_run_id, status="QUEUED")
+    
+    class FailingMind:
+        async def run_autonomous_cycle(self):
+            raise RuntimeError("Minds platform invocation timeout")
+            
+    fail_res = await runner1.execute_worker_job(FailingMind(), fail_run_id)
+    assert fail_res["status"] == "FAILED"
+    assert "Minds platform invocation timeout" in fail_res.get("error", "")
+    
+    print("[OK] Verified QStash job runner: QUEUED -> RUNNING -> COMPLETED / FAILED across independent store instances.")
+    print("[OK] [TEST 27 PASSED]\n")
+
+
 async def main():
     test_loud_failure_when_unconfigured()
     await test_production_mode_execution_error_without_fallback()
@@ -512,8 +784,22 @@ async def main():
     await test_after_fingerprint_passed_to_wait_for_reply()
     await test_node_client_lib_failure_raises_minds_execution_error()
     await test_no_production_direct_rest_messaging_fallback()
-    print("SUCCESS: ALL GREENROOM INTEGRATION & HARDENED CLIENT-LIB TESTS PASSED CLEANLY!")
+    await test_autonomous_run_execution_no_second_chat()
+    await test_briefing_persists_across_reloads()
+    await test_ranking_structure_validation()
+    await test_memory_grounding_in_briefing()
+    test_signal_provider_tagging()
+    test_item_feedback_persistence()
+    await test_feedback_continuity_across_runs()
+    await test_async_job_runner_status()
+    await test_strict_production_error_during_autonomous_run()
+    test_persistence_store_mode_labeling_and_provenance()
+    await test_qstash_async_job_runner_lifecycle_and_security()
+    print("SUCCESS: ALL 27 GREENROOM INTEGRATION & SHARPENED MVP TESTS PASSED CLEANLY!")
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+
+
 

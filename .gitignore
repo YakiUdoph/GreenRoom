@@ -9,3 +9,5 @@ test_venv/
 node_modules/
 frontend/node_modules/
 frontend/dist/
+latest_briefing.json
+run_statuses.json

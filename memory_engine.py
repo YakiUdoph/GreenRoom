@@ -3,57 +3,34 @@ import time
 import os
 from typing import Dict, List, Any, Optional
 from minds_integration import minds_manager
+from persistence import get_persistence_store, PersistenceStore
 
 class GreenroomMemoryEngine:
     """
     Persistent Memory Engine for Greenroom.
-    Manages creator profile history, context relevance scoring with 720h recency decay,
-    and synchronizes persistent rules with the remote Minds API agent context.
+    Delegates to PersistenceStore abstraction (LocalFileStore, EphemeralTmpStore, or UpstashRedisStore).
     """
-    def __init__(self, profile_path: str = "creator_profile.json"):
-        self.profile_path = profile_path
-        self.state = self._load_profile()
+    def __init__(self, store: Optional[PersistenceStore] = None):
+        self.store = store or get_persistence_store()
+        self.state = self.store.get_creator_profile()
         self._sync_to_minds_sdk()
 
-    def _load_profile(self) -> Dict[str, Any]:
-        for target in ["/tmp/creator_profile.json", self.profile_path]:
-            if os.path.exists(target):
-                try:
-                    with open(target, "r", encoding="utf-8") as f:
-                        return json.load(f)
-                except Exception as e:
-                    print(f"[MemoryEngine] Error loading profile from {target}: {e}")
-        
-        return {
-            "creator_name": "Alex Rivera",
-            "brand_voice_attributes": ["Educational", "Technical yet accessible", "Direct"],
-            "content_performance_history": [],
-            "audience_demographics": {},
-            "rejected_topics": ["Crypto trading bots", "Generic AI news clickbait"],
-            "monetization_benchmarks": {"cpm_target": 45},
-            "learned_voice_rules": [],
-            "memory_nodes": []
-        }
+    @property
+    def persistence_mode(self) -> str:
+        return self.store.mode_label
 
     def _sync_to_minds_sdk(self):
         """Syncs stored learned voice rules with Minds agent instances when configured"""
         try:
+            minds_manager.clear_learned_preferences()
             for rule in self.state.get("learned_voice_rules", []):
                 minds_manager.update_learned_preference(rule)
         except Exception:
             pass
 
     def save_state(self) -> None:
-        try:
-            with open(self.profile_path, "w", encoding="utf-8") as f:
-                json.dump(self.state, f, indent=2)
-        except (PermissionError, OSError) as e:
-            try:
-                tmp_path = "/tmp/creator_profile.json"
-                with open(tmp_path, "w", encoding="utf-8") as f:
-                    json.dump(self.state, f, indent=2)
-            except Exception as tmp_err:
-                print(f"[MemoryEngine] Warning: persistent save skipped on serverless env: {tmp_err}")
+        self.store.save_creator_profile(self.state)
+
 
     def retrieve_relevant_context(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         scored_nodes = []
@@ -110,6 +87,47 @@ class GreenroomMemoryEngine:
 
         self.save_state()
         return new_node
+
+    def save_briefing(self, briefing: Dict[str, Any]) -> None:
+        self.state["latest_briefing"] = briefing
+        self.state.setdefault("briefing_history", []).append(briefing)
+        if len(self.state["briefing_history"]) > 10:
+            self.state["briefing_history"] = self.state["briefing_history"][-10:]
+        self.store.save_briefing(briefing)
+        self.save_state()
+
+    def get_latest_briefing(self) -> Optional[Dict[str, Any]]:
+        briefing = self.store.get_latest_briefing()
+        if briefing:
+            self.state["latest_briefing"] = briefing
+            return briefing
+        return self.state.get("latest_briefing")
+
+    def add_item_feedback(self, item_id: str, feedback_type: str, notes: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Record feedback on a briefing opportunity item (useful, not_useful, done, dismiss).
+        Persists into creator memory to influence future autonomous ranking cycles.
+        """
+        feedbacks = self.state.setdefault("item_feedbacks", [])
+        entry = {
+            "item_id": item_id,
+            "feedback_type": feedback_type,  # useful, not_useful, done, dismiss
+            "timestamp": time.time(),
+            "notes": notes
+        }
+        feedbacks.append(entry)
+        self.store.save_feedback(entry)
+
+        # If user explicitly marked item as useful or dismiss, persist as voice/preference rule
+        if feedback_type == "useful":
+            rule_str = f"Creator prefers opportunities matching item '{item_id}'"
+            self.add_learned_voice_rule(rule_str)
+        elif feedback_type in ("not_useful", "dismiss"):
+            rule_str = f"Creator rejected opportunity format in item '{item_id}'"
+            self.add_learned_voice_rule(rule_str)
+
+        self.save_state()
+        return entry
 
     def add_learned_voice_rule(self, rule: str) -> None:
         rules = self.state.setdefault("learned_voice_rules", [])
