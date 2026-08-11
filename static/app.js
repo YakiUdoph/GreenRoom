@@ -124,9 +124,9 @@ async function fetchLatestBriefing() {
   }
 }
 
-// Trigger Async Offline Run (Hackathon Demo Trigger)
+// Trigger Async Offline Run (QStash Background Execution Trigger)
 async function triggerAsyncRun(silent = false) {
-  if (!silent) showBanner("Greenroom Mind Working While You Are Away...", "Processing audience signals & ranking growth opportunities...");
+  if (!silent) showBanner("Greenroom Mind Working While You Are Away...", "Enqueuing autonomous background job...");
 
   try {
     const res = await fetch('/api/briefing/trigger', {
@@ -136,17 +136,54 @@ async function triggerAsyncRun(silent = false) {
     });
 
     const data = await res.json();
-    if (data.briefing) {
+    const runId = data.run_id;
+    
+    if (!silent) {
+      showBanner("Job Queued (Async Autonomy)", `Run ID: ${runId || 'active'} — Greenroom analyzing signals while you are offline...`);
+    }
+
+    if (runId) {
+      pollRunStatus(runId, silent);
+    } else if (data.briefing) {
       latestBriefing = data.briefing;
       renderBriefing(latestBriefing);
     }
-    if (data.minds_status) updateStatusBadge(data.minds_status);
   } catch (err) {
     console.error('[Greenroom] Error triggering async run:', err);
-  } finally {
-    if (!silent) setTimeout(hideBanner, 1000);
+    if (!silent) hideBanner();
   }
 }
+
+// Poll status by run_id from durable persistence store
+function pollRunStatus(runId, silent = false, attempts = 0) {
+  if (attempts > 30) {
+    if (!silent) hideBanner();
+    return;
+  }
+
+  fetch(`/api/briefing/status?run_id=${encodeURIComponent(runId)}`)
+    .then(res => res.json())
+    .then(statusData => {
+      const status = statusData.status;
+      if (status === 'COMPLETED') {
+        if (!silent) showBanner("Briefing Completed!", "Your While You Were Away briefing is ready.");
+        fetchLatestBriefing().then(() => {
+          if (!silent) setTimeout(hideBanner, 1500);
+        });
+      } else if (status === 'FAILED') {
+        if (!silent) showBanner("Run Failed", `Error: ${statusData.error || 'Execution failed'}`);
+        if (!silent) setTimeout(hideBanner, 3000);
+      } else {
+        // QUEUED or RUNNING
+        if (!silent) showBanner("Greenroom Working While Away...", `Status: ${status} — Run ID: ${runId}`);
+        setTimeout(() => pollRunStatus(runId, silent, attempts + 1), 1000);
+      }
+    })
+    .catch(() => {
+      setTimeout(() => pollRunStatus(runId, silent, attempts + 1), 1500);
+    });
+}
+
 
 // Submit Item Feedback (Useful, Done, Dismiss)
 async function submitItemFeedback(itemId, feedbackType) {
@@ -201,6 +238,9 @@ function renderBriefing(briefing) {
   const prov = briefing.provenance || {};
   const runIdEl = document.getElementById('proof-run-id');
   if (runIdEl) runIdEl.textContent = prov.run_id || briefing.run_id || 'run_active';
+
+  const execEl = document.getElementById('proof-execution');
+  if (execEl) execEl.textContent = prov.execution_mode || briefing.execution_mode || 'QStash Background Job';
 
   const analysisEl = document.getElementById('proof-analysis');
   if (analysisEl) analysisEl.textContent = prov.analysis_provider || briefing.analysis_provider || 'Animoca Minds';

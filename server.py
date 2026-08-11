@@ -115,6 +115,10 @@ def get_minds_status():
 def get_imp_history(limit: int = 50):
     return imp_bus.get_history(limit=limit)
 
+from async_runner import QStashJobRunner
+
+qstash_runner = QStashJobRunner()
+
 @app.get("/api/briefing/latest")
 def get_latest_briefing():
     """Retrieves the latest persisted 'While You Were Away' briefing."""
@@ -122,27 +126,85 @@ def get_latest_briefing():
     return {
         "status": "success",
         "briefing": briefing,
-        "runner_status": async_runner.get_status(),
         "minds_status": minds_manager.get_status()
     }
 
 @app.post("/api/briefing/trigger")
-async def trigger_briefing(req: Optional[TriggerBriefingRequest] = None):
-    """Triggers an autonomous background growth cycle to process signals and produce a briefing."""
+async def trigger_briefing(request: Request, req: Optional[TriggerBriefingRequest] = None):
+    """
+    Triggers an autonomous background growth cycle.
+    Enqueues job with status QUEUED and returns IMMEDIATELY without waiting for Minds completion.
+    """
     minds_manager.validate_configuration()
-    core = GreenroomCoreMind(memory_tool)
+    
+    # Construct QStash worker webhook target URL
+    host = request.headers.get("host", "localhost:8000")
+    scheme = "https" if "https" in request.url.scheme or "vercel.app" in host else "http"
+    worker_url = f"{scheme}://{host}/api/briefing/worker"
+
     accelerated = req.accelerated if req else True
-    res = await async_runner.trigger_autonomous_run(core, accelerated=accelerated)
+
+    # Enqueue job immediately (status = QUEUED)
+    res = await qstash_runner.enqueue_run(worker_url)
+    run_id = res["run_id"]
+
+    # In local/demo mode or accelerated execution without QStash token, trigger background worker task
+    if accelerated or not os.getenv("QSTASH_TOKEN"):
+        core = GreenroomCoreMind(memory_tool)
+        asyncio.create_task(qstash_runner.execute_worker_job(core, run_id))
+
     return {
         "status": "success",
-        "runner_result": res,
-        "briefing": memory_tool.get_latest_briefing(),
+        "run_id": run_id,
+        "job_status": "QUEUED",
+        "execution_mode": res.get("execution_mode", "QUEUED"),
+        "qstash_published": res.get("qstash_published", False),
         "minds_status": minds_manager.get_status()
     }
 
+@app.post("/api/briefing/worker")
+async def briefing_worker(request: Request):
+    """
+    QStash Webhook Worker Endpoint.
+    Executed independently by QStash or background queue.
+    Verifies QStash signature security when configured.
+    """
+    minds_manager.validate_configuration()
+    
+    # Security: Verify QStash signing key if set
+    current_key = os.getenv("QSTASH_CURRENT_SIGNING_KEY")
+    next_key = os.getenv("QSTASH_NEXT_SIGNING_KEY")
+    signature = request.headers.get("upstash-signature")
+
+    if (current_key or next_key) and not signature:
+        raise HTTPException(status_code=401, detail="Unauthorized: Missing QStash signature header")
+
+    body_bytes = await request.body()
+    payload = {}
+    if body_bytes:
+        try:
+            payload = json.loads(body_bytes.decode("utf-8"))
+        except Exception:
+            pass
+
+    run_id = payload.get("run_id") or f"run_{uuid.uuid4().hex[:8]}"
+
+    core = GreenroomCoreMind(memory_tool)
+    result = await qstash_runner.execute_worker_job(core, run_id)
+    return {"status": "success", "worker_result": result}
+
 @app.get("/api/briefing/status")
-def get_briefing_status():
-    return async_runner.get_status()
+def get_briefing_status(run_id: Optional[str] = None):
+    """Reads run status directly from durable PersistenceStore by run_id."""
+    if not run_id:
+        briefing = memory_tool.get_latest_briefing()
+        if briefing and briefing.get("run_id"):
+            run_id = briefing["run_id"]
+        else:
+            run_id = "latest"
+
+    return qstash_runner.get_status(run_id)
+
 
 @app.post("/api/briefing/feedback")
 def submit_briefing_feedback(req: BriefingItemFeedbackRequest):

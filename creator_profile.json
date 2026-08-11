@@ -25,9 +25,9 @@
   ],
   "memory_nodes": [
     {
-      "node_id": "mem_1786449645327",
+      "node_id": "mem_1786450152575",
       "type": "video_script_analytics",
-      "timestamp": 1786449645.3274198,
+      "timestamp": 1786450152.5752783,
       "content": "Past video script analysis: 'Build a Custom AI Agent in 10 Mins'. Viewer retention: 78% at 30 seconds. Audience requests github links and setup walkthroughs.",
       "key_takeaways": [
         "Step-by-step technical overviews drive 3x audience retention compared to news recaps.",
@@ -35,9 +35,9 @@
       ]
     },
     {
-      "node_id": "mem_1786449645330",
+      "node_id": "mem_1786450152577",
       "type": "learned_preference",
-      "timestamp": 1786449645.3302214,
+      "timestamp": 1786450152.5773005,
       "content": "User Feedback Rule: Too formal. Make it punchier and emphasize beginner-friendly tips.",
       "key_takeaways": [
         "Explicit creator override on voice & tone",
@@ -45,9 +45,9 @@
       ]
     },
     {
-      "node_id": "mem_1786449645441",
+      "node_id": "mem_1786450152666",
       "type": "learned_preference",
-      "timestamp": 1786449645.441393,
+      "timestamp": 1786450152.6665897,
       "content": "User Feedback Rule: Creator prefers opportunities matching item 'opp_001'",
       "key_takeaways": [
         "Explicit creator override on voice & tone",
@@ -55,9 +55,9 @@
       ]
     },
     {
-      "node_id": "mem_1786449645450",
+      "node_id": "mem_1786450152673",
       "type": "learned_preference",
-      "timestamp": 1786449645.450067,
+      "timestamp": 1786450152.67375,
       "content": "User Feedback Rule: Emphasize open-source terminal setup steps",
       "key_takeaways": [
         "Explicit creator override on voice & tone",
@@ -66,9 +66,9 @@
     }
   ],
   "latest_briefing": {
-    "run_id": "run_c4b5cd35",
-    "timestamp": "2026-08-11T12:00:45.486104+00:00",
-    "last_run_formatted": "2026-08-11 12:00:45 UTC",
+    "run_id": "run_8e80c844",
+    "timestamp": "2026-08-11T12:09:12.789823+00:00",
+    "last_run_formatted": "2026-08-11 12:09:12 UTC",
     "signals_reviewed_count": 3,
     "opportunities_found_count": 3,
     "memory_nodes_used_count": 5,
@@ -80,9 +80,9 @@
     "persistence_mode": "LOCAL FILE",
     "continuity_note": "Adjusted using your previous feedback: 'Emphasize open-source terminal setup steps'.",
     "provenance": {
-      "run_id": "run_c4b5cd35",
-      "created_at": "2026-08-11T12:00:45.485558+00:00",
-      "completed_at": "2026-08-11T12:00:45.486104+00:00",
+      "run_id": "run_8e80c844",
+      "created_at": "2026-08-11T12:09:12.789397+00:00",
+      "completed_at": "2026-08-11T12:09:12.789823+00:00",
       "status": "COMPLETED",
       "signal_source": "Demo Dataset (Simulated)",
       "signal_mode": "DEMO",
@@ -136,9 +136,9 @@
   },
   "briefing_history": [
     {
-      "run_id": "run_d26b2184",
-      "timestamp": "2026-08-11T12:00:45.335364+00:00",
-      "last_run_formatted": "2026-08-11 12:00:45 UTC",
+      "run_id": "run_10694d25",
+      "timestamp": "2026-08-11T12:09:12.583266+00:00",
+      "last_run_formatted": "2026-08-11 12:09:12 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 3,
@@ -150,9 +150,9 @@
       "persistence_mode": "LOCAL FILE",
       "continuity_note": "Adjusted using your previous feedback: 'Too formal. Make it punchier and emphasize beginner-friendly tips.'.",
       "provenance": {
-        "run_id": "run_d26b2184",
-        "created_at": "2026-08-11T12:00:45.335002+00:00",
-        "completed_at": "2026-08-11T12:00:45.335364+00:00",
+        "run_id": "run_10694d25",
+        "created_at": "2026-08-11T12:09:12.582858+00:00",
+        "completed_at": "2026-08-11T12:09:12.583266+00:00",
         "status": "COMPLETED",
         "signal_source": "Demo Dataset (Simulated)",
         "signal_mode": "DEMO",
@@ -205,9 +205,9 @@
       ]
     },
     {
-      "run_id": "run_d250dff8",
-      "timestamp": "2026-08-11T12:00:45.409928+00:00",
-      "last_run_formatted": "2026-08-11 12:00:45 UTC",
+      "run_id": "run_6e2470ef",
+      "timestamp": "2026-08-11T12:09:12.631982+00:00",
+      "last_run_formatted": "2026-08-11 12:09:12 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 3,
@@ -219,9 +219,9 @@
       "persistence_mode": "LOCAL FILE",
       "continuity_note": "Adjusted using your previous feedback: 'Too formal. Make it punchier and emphasize beginner-friendly tips.'.",
       "provenance": {
-        "run_id": "run_d250dff8",
-        "created_at": "2026-08-11T12:00:45.409423+00:00",
-        "completed_at": "2026-08-11T12:00:45.409928+00:00",
+        "run_id": "run_6e2470ef",
+        "created_at": "2026-08-11T12:09:12.631511+00:00",
+        "completed_at": "2026-08-11T12:09:12.631982+00:00",
         "status": "COMPLETED",
         "signal_source": "Demo Dataset (Simulated)",
         "signal_mode": "DEMO",
@@ -274,9 +274,9 @@
       ]
     },
     {
-      "run_id": "run_d26a3209",
-      "timestamp": "2026-08-11T12:00:45.413847+00:00",
-      "last_run_formatted": "2026-08-11 12:00:45 UTC",
+      "run_id": "run_922514a7",
+      "timestamp": "2026-08-11T12:09:12.636360+00:00",
+      "last_run_formatted": "2026-08-11 12:09:12 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 3,
@@ -288,9 +288,9 @@
       "persistence_mode": "LOCAL FILE",
       "continuity_note": "Adjusted using your previous feedback: 'Too formal. Make it punchier and emphasize beginner-friendly tips.'.",
       "provenance": {
-        "run_id": "run_d26a3209",
-        "created_at": "2026-08-11T12:00:45.413446+00:00",
-        "completed_at": "2026-08-11T12:00:45.413847+00:00",
+        "run_id": "run_922514a7",
+        "created_at": "2026-08-11T12:09:12.635894+00:00",
+        "completed_at": "2026-08-11T12:09:12.636360+00:00",
         "status": "COMPLETED",
         "signal_source": "Demo Dataset (Simulated)",
         "signal_mode": "DEMO",
@@ -343,9 +343,9 @@
       ]
     },
     {
-      "run_id": "run_f4820c9a",
-      "timestamp": "2026-08-11T12:00:45.457087+00:00",
-      "last_run_formatted": "2026-08-11 12:00:45 UTC",
+      "run_id": "run_7b7d0601",
+      "timestamp": "2026-08-11T12:09:12.678531+00:00",
+      "last_run_formatted": "2026-08-11 12:09:12 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 5,
@@ -357,9 +357,9 @@
       "persistence_mode": "LOCAL FILE",
       "continuity_note": "Adjusted using your previous feedback: 'Emphasize open-source terminal setup steps'.",
       "provenance": {
-        "run_id": "run_f4820c9a",
-        "created_at": "2026-08-11T12:00:45.456778+00:00",
-        "completed_at": "2026-08-11T12:00:45.457087+00:00",
+        "run_id": "run_7b7d0601",
+        "created_at": "2026-08-11T12:09:12.678210+00:00",
+        "completed_at": "2026-08-11T12:09:12.678531+00:00",
         "status": "COMPLETED",
         "signal_source": "Demo Dataset (Simulated)",
         "signal_mode": "DEMO",
@@ -412,9 +412,9 @@
       ]
     },
     {
-      "run_id": "run_c4b5cd35",
-      "timestamp": "2026-08-11T12:00:45.486104+00:00",
-      "last_run_formatted": "2026-08-11 12:00:45 UTC",
+      "run_id": "run_3e364df2",
+      "timestamp": "2026-08-11T12:09:12.706220+00:00",
+      "last_run_formatted": "2026-08-11 12:09:12 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 5,
@@ -426,9 +426,78 @@
       "persistence_mode": "LOCAL FILE",
       "continuity_note": "Adjusted using your previous feedback: 'Emphasize open-source terminal setup steps'.",
       "provenance": {
-        "run_id": "run_c4b5cd35",
-        "created_at": "2026-08-11T12:00:45.485558+00:00",
-        "completed_at": "2026-08-11T12:00:45.486104+00:00",
+        "run_id": "run_3e364df2",
+        "created_at": "2026-08-11T12:09:12.705636+00:00",
+        "completed_at": "2026-08-11T12:09:12.706220+00:00",
+        "status": "COMPLETED",
+        "signal_source": "Demo Dataset (Simulated)",
+        "signal_mode": "DEMO",
+        "analysis_provider": "Mock",
+        "mind_id": "8208493e-f36b-1410-8466-00039ce7df11",
+        "mind_verified": false,
+        "demo_mode": true,
+        "persistence_mode": "LOCAL FILE",
+        "opportunity_count": 3
+      },
+      "items": [
+        {
+          "id": "opp_001",
+          "priority": "HIGH PRIORITY",
+          "title": "Beginner Local AI Agent Walkthrough Video",
+          "category": "Content Strategy",
+          "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
+          "why_it_matters": "Matches saved goal: 78% viewer retention on setup walkthroughs. Grounding: Persisted rule applied \u2014 terminal open-source focus.",
+          "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
+          "memory_context_used": "profile.brand_voice + retention_node_78%",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_002",
+          "priority": "MEDIUM PRIORITY",
+          "title": "TechBrand Inc. Sponsorship Pitch ($5,400 Target)",
+          "category": "Monetization",
+          "what_changed": "BusinessMind scored 89% brand fit for developer infrastructure sponsor TechBrand Inc.",
+          "why_it_matters": "Grounding: Alignment with your $45 CPM benchmark and technical audience profile.",
+          "recommended_action": "Approve and send 1-click sponsor integration pitch brief for upcoming workflow video.",
+          "memory_context_used": "profile.monetization_benchmarks.cpm_target=45",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_003",
+          "priority": "WATCH",
+          "title": "Topic Filter Active: Crypto & Clickbait Suppressed",
+          "category": "Signal Filtering",
+          "what_changed": "ScoutMind automatically suppressed high-volume crypto trading & generic news clickbait signals.",
+          "why_it_matters": "Grounding: Filtered based on creator rejection rules: 'Crypto trading bots', 'Generic AI news clickbait'.",
+          "recommended_action": "No action needed \u2014 low-signal clickbait kept out of your workflow.",
+          "memory_context_used": "profile.rejected_topics",
+          "status": "NEW"
+        }
+      ],
+      "learned_rules_active": [
+        "Too formal. Make it punchier and emphasize beginner-friendly tips.",
+        "Creator prefers opportunities matching item 'opp_001'",
+        "Emphasize open-source terminal setup steps"
+      ]
+    },
+    {
+      "run_id": "run_8e80c844",
+      "timestamp": "2026-08-11T12:09:12.789823+00:00",
+      "last_run_formatted": "2026-08-11 12:09:12 UTC",
+      "signals_reviewed_count": 3,
+      "opportunities_found_count": 3,
+      "memory_nodes_used_count": 5,
+      "signal_source_label": "Demo Dataset (Simulated)",
+      "analysis_provider": "Mock",
+      "minds_source": "[MOCK DEMO MODE]",
+      "minds_status": "PROCESSED_LOCALLY_MOCK",
+      "minds_verified": false,
+      "persistence_mode": "LOCAL FILE",
+      "continuity_note": "Adjusted using your previous feedback: 'Emphasize open-source terminal setup steps'.",
+      "provenance": {
+        "run_id": "run_8e80c844",
+        "created_at": "2026-08-11T12:09:12.789397+00:00",
+        "completed_at": "2026-08-11T12:09:12.789823+00:00",
         "status": "COMPLETED",
         "signal_source": "Demo Dataset (Simulated)",
         "signal_mode": "DEMO",
@@ -485,7 +554,7 @@
     {
       "item_id": "opp_001",
       "feedback_type": "useful",
-      "timestamp": 1786449645.4170535,
+      "timestamp": 1786450152.6405237,
       "notes": "Great setup walkthrough idea"
     }
   ]

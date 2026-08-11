@@ -647,13 +647,18 @@ async def test_async_job_runner_status():
     try:
         from memory_engine import memory_tool
         from agents import GreenroomCoreMind
-        from async_runner import async_runner
+        from async_runner import QStashJobRunner
         core = GreenroomCoreMind(memory_tool)
-        
-        res = await async_runner.trigger_autonomous_run(core, accelerated=True)
-        assert res["status"] == "COMPLETED", "Accelerated run must return COMPLETED"
-        assert async_runner.get_status()["status"] == "COMPLETED", "Runner status must be COMPLETED"
-        print("[OK] Verified AsyncJobRunner background execution & status tracking.")
+        runner = QStashJobRunner()
+
+        enqueue_res = await runner.enqueue_run("http://localhost:8000/api/briefing/worker")
+        assert enqueue_res["status"] == "QUEUED", "Enqueue must return status QUEUED"
+        run_id = enqueue_res["run_id"]
+
+        worker_res = await runner.execute_worker_job(core, run_id)
+        assert worker_res["status"] == "COMPLETED", "Worker execution must return COMPLETED"
+        assert runner.get_status(run_id)["status"] == "COMPLETED", "Runner status must be COMPLETED"
+        print("[OK] Verified QStashJobRunner background execution & status tracking.")
     finally:
         if orig_demo is not None:
             os.environ["DEMO_MODE"] = orig_demo
@@ -712,6 +717,56 @@ def test_persistence_store_mode_labeling_and_provenance():
     print("[OK] [TEST 26 PASSED]\n")
 
 
+async def test_qstash_async_job_runner_lifecycle_and_security():
+    print("--- [TEST 27] Testing QStash Async Job Runner Lifecycle & Durable Status Integrity ---")
+    from async_runner import QStashJobRunner
+    from persistence import LocalFileStore
+    from memory_engine import GreenroomMemoryEngine
+    from agents import GreenroomCoreMind
+    
+    store1 = LocalFileStore()
+    runner1 = QStashJobRunner(store1)
+    
+    # 1. Enqueue run -> returns QUEUED immediately
+    enqueue_res = await runner1.enqueue_run("http://localhost:8000/api/briefing/worker")
+    assert enqueue_res["status"] == "QUEUED", "Enqueue must return status QUEUED immediately"
+    run_id = enqueue_res["run_id"]
+    
+    # 2. Status check from store instance 2 (proves status is NOT in process memory)
+    store2 = LocalFileStore()
+    runner2 = QStashJobRunner(store2)
+    status_state = runner2.get_status(run_id)
+    assert status_state["status"] == "QUEUED", "Durable store instance 2 must read status QUEUED"
+    
+    # 3. Worker execution transition: QUEUED -> RUNNING -> COMPLETED
+    mem = GreenroomMemoryEngine(store1)
+    core = GreenroomCoreMind(mem)
+    worker_res = await runner1.execute_worker_job(core, run_id)
+    assert worker_res["status"] == "COMPLETED", "Worker execution must transition status to COMPLETED"
+    
+    # 4. Read completed status from store instance 3
+    store3 = LocalFileStore()
+    runner3 = QStashJobRunner(store3)
+    completed_state = runner3.get_status(run_id)
+    assert completed_state["status"] == "COMPLETED", "Completed status must persist in durable store"
+    assert completed_state.get("briefing_id") == run_id
+    
+    # 5. Verify failed worker execution transitions status to FAILED
+    fail_run_id = "run_fail_test_123"
+    runner1.save_status(fail_run_id, status="QUEUED")
+    
+    class FailingMind:
+        async def run_autonomous_cycle(self):
+            raise RuntimeError("Minds platform invocation timeout")
+            
+    fail_res = await runner1.execute_worker_job(FailingMind(), fail_run_id)
+    assert fail_res["status"] == "FAILED"
+    assert "Minds platform invocation timeout" in fail_res.get("error", "")
+    
+    print("[OK] Verified QStash job runner: QUEUED -> RUNNING -> COMPLETED / FAILED across independent store instances.")
+    print("[OK] [TEST 27 PASSED]\n")
+
+
 async def main():
     test_loud_failure_when_unconfigured()
     await test_production_mode_execution_error_without_fallback()
@@ -739,10 +794,12 @@ async def main():
     await test_async_job_runner_status()
     await test_strict_production_error_during_autonomous_run()
     test_persistence_store_mode_labeling_and_provenance()
-    print("SUCCESS: ALL 26 GREENROOM INTEGRATION & SHARPENED MVP TESTS PASSED CLEANLY!")
+    await test_qstash_async_job_runner_lifecycle_and_security()
+    print("SUCCESS: ALL 27 GREENROOM INTEGRATION & SHARPENED MVP TESTS PASSED CLEANLY!")
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 
 

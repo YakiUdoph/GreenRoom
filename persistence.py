@@ -28,12 +28,19 @@ class PersistenceStore:
     def get_feedback_history(self) -> List[Dict[str, Any]]:
         raise NotImplementedError
 
+    def save_run_status(self, run_id: str, status_data: Dict[str, Any]) -> None:
+        raise NotImplementedError
+
+    def get_run_status(self, run_id: str) -> Optional[Dict[str, Any]]:
+        raise NotImplementedError
+
 
 class LocalFileStore(PersistenceStore):
     """Local File Persistence Store for local development & testing."""
     def __init__(self, profile_path: str = "creator_profile.json", briefing_path: str = "latest_briefing.json"):
         self.profile_path = profile_path
         self.briefing_path = briefing_path
+        self.run_status_path = "run_statuses.json"
 
     @property
     def mode_label(self) -> str:
@@ -79,6 +86,31 @@ class LocalFileStore(PersistenceStore):
     def get_feedback_history(self) -> List[Dict[str, Any]]:
         return self.get_creator_profile().get("item_feedbacks", [])
 
+    def save_run_status(self, run_id: str, status_data: Dict[str, Any]) -> None:
+        statuses = {}
+        if os.path.exists(self.run_status_path):
+            try:
+                with open(self.run_status_path, "r", encoding="utf-8") as f:
+                    statuses = json.load(f)
+            except Exception:
+                pass
+        statuses[run_id] = status_data
+        try:
+            with open(self.run_status_path, "w", encoding="utf-8") as f:
+                json.dump(statuses, f, indent=2)
+        except Exception as e:
+            print(f"[LocalFileStore] Error saving run status: {e}")
+
+    def get_run_status(self, run_id: str) -> Optional[Dict[str, Any]]:
+        if os.path.exists(self.run_status_path):
+            try:
+                with open(self.run_status_path, "r", encoding="utf-8") as f:
+                    statuses = json.load(f)
+                    return statuses.get(run_id)
+            except Exception:
+                pass
+        return None
+
     def _default_profile(self) -> Dict[str, Any]:
         return {
             "creator_name": "Alex Rivera",
@@ -100,6 +132,7 @@ class EphemeralTmpStore(PersistenceStore):
     def __init__(self):
         self.profile_path = "/tmp/creator_profile.json"
         self.briefing_path = "/tmp/latest_briefing.json"
+        self.run_status_path = "/tmp/run_statuses.json"
 
     @property
     def mode_label(self) -> str:
@@ -153,6 +186,31 @@ class EphemeralTmpStore(PersistenceStore):
 
     def get_feedback_history(self) -> List[Dict[str, Any]]:
         return self.get_creator_profile().get("item_feedbacks", [])
+
+    def save_run_status(self, run_id: str, status_data: Dict[str, Any]) -> None:
+        statuses = {}
+        if os.path.exists(self.run_status_path):
+            try:
+                with open(self.run_status_path, "r", encoding="utf-8") as f:
+                    statuses = json.load(f)
+            except Exception:
+                pass
+        statuses[run_id] = status_data
+        try:
+            with open(self.run_status_path, "w", encoding="utf-8") as f:
+                json.dump(statuses, f, indent=2)
+        except Exception:
+            pass
+
+    def get_run_status(self, run_id: str) -> Optional[Dict[str, Any]]:
+        if os.path.exists(self.run_status_path):
+            try:
+                with open(self.run_status_path, "r", encoding="utf-8") as f:
+                    statuses = json.load(f)
+                    return statuses.get(run_id)
+            except Exception:
+                pass
+        return None
 
 
 class UpstashRedisStore(PersistenceStore):
@@ -230,6 +288,18 @@ class UpstashRedisStore(PersistenceStore):
     def get_feedback_history(self) -> List[Dict[str, Any]]:
         return self.get_creator_profile().get("item_feedbacks", [])
 
+    def save_run_status(self, run_id: str, status_data: Dict[str, Any]) -> None:
+        self._redis_cmd(["SET", f"greenroom:run_status:{run_id}", json.dumps(status_data)])
+
+    def get_run_status(self, run_id: str) -> Optional[Dict[str, Any]]:
+        val = self._redis_cmd(["GET", f"greenroom:run_status:{run_id}"])
+        if val:
+            try:
+                return json.loads(val)
+            except Exception:
+                pass
+        return None
+
 
 def get_persistence_store() -> PersistenceStore:
     """
@@ -248,3 +318,4 @@ def get_persistence_store() -> PersistenceStore:
         return EphemeralTmpStore()
 
     return LocalFileStore()
+
