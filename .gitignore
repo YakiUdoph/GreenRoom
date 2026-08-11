@@ -1,13 +1,35 @@
+# Byte-compiled / Python cache
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*$py.class
 .pytest_cache/
+
+# Environment Files & Secrets
 .env
-.DS_Store
-venv/
-test_venv/
+.env.*
+!.env.example
+
+# Local State & Persistence Data
+creator_profile.json
+latest_briefing.json
+run_statuses.json
+*.log
+logs/
+
+# Dependencies & Build Outputs
 node_modules/
 frontend/node_modules/
 frontend/dist/
-latest_briefing.json
-run_statuses.json
+dist/
+build/
+.vercel/
+
+# OS Metadata
+.DS_Store
+Thumbs.db
+
+# IDE & Tooling Settings
+.idea/
+.vscode/
+*.swp
+*.swo
