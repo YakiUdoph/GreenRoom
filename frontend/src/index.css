@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply bg-[#131313] text-[#e5e2e1] font-sans min-h-screen antialiased selection:bg-[#72ff70] selection:text-[#002203];
+    @apply bg-[#111113] text-[#e5e2e1] font-sans min-h-screen antialiased selection:bg-[#72ff70] selection:text-[#002203];
   }
 }
 
@@ -16,60 +16,62 @@
   font-variation-settings: 'FILL' 1, 'wght' 300;
 }
 
-/* Minimalist Noir Cell Grid Borders */
-.cell-border {
-  border: 1px solid #3b4b37;
-}
-
-.cell-border-b {
-  border-bottom: 1px solid #3b4b37;
-}
-
-.cell-border-r {
-  border-right: 1px solid #3b4b37;
-}
-
-/* Interactive Card Motion Physics */
-.motion-card {
+/* Polished Noir Surface Card with Dynamic Cursor Lighting */
+.noir-card {
   position: relative;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease, background-color 0.25s ease;
-  background: #1c1b1b;
+  background: rgba(26, 26, 30, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 75, 55, 0.5);
+  border-radius: 0.75rem;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
 }
 
-.motion-card::before {
+.noir-card::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: radial-gradient(500px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(114, 255, 112, 0.25), transparent 65%);
+  background: radial-gradient(450px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(114, 255, 112, 0.28), transparent 60%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.35s ease;
 }
 
-.motion-card:hover::before {
+.noir-card:hover::before {
   opacity: 1;
 }
 
-.motion-card:hover {
-  transform: translateY(-2px);
-  border-color: #72ff70;
+.noir-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(114, 255, 112, 0.7);
+  box-shadow: 0 12px 30px -10px rgba(0, 255, 65, 0.12);
+  background: rgba(30, 30, 35, 0.85);
 }
 
-/* Custom Scrollbar */
+/* Subtle Breathing Animation */
+@keyframes subtleBreathe {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.animate-breathe {
+  animation: subtleBreathe 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Custom Studio Scrollbar */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #131313;
+  background: #111113;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3b4b37;
+  background: #2a3827;
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
