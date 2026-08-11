@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Zap } from 'lucide-react';
 
 export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) {
   const pitchData = activeCards?.pitch;
@@ -12,64 +11,77 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
   };
 
   return (
-    <div className="flex-1 p-8 md:p-10 space-y-10 max-w-[1400px]">
-      <div className="flex items-start justify-between border-b border-[#18181b] pb-8">
-        <div className="space-y-2">
-          <h1 className="text-5xl md:text-6xl font-serif font-bold tracking-tight text-white uppercase">
-            ACTIONS
+    <div className="flex-1 p-8 md:p-12 space-y-12 max-w-container-max mx-auto text-on-background">
+      <div className="border-b border-outline-variant pb-8 flex justify-between items-start">
+        <div>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="material-symbols-outlined text-primary-fixed">bolt</span>
+            <span className="font-mono text-xs text-primary-fixed uppercase tracking-widest font-bold">
+              EXECUTIVE ACTION WORKSPACE
+            </span>
+          </div>
+          <h1 className="text-3xl md:text-5xl font-display font-bold text-on-surface uppercase">
+            Pending Recommendations & Proposals
           </h1>
-          <p className="text-sm font-sans text-zinc-400">
-            Executive Action Workspace for Recommendations & Deals.
+          <p className="text-sm font-sans text-on-surface-variant mt-2">
+            Greenroom operates autonomously, surfacing high-confidence actions for executive signoff.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="motion-card p-6 rounded-xl border border-[#1f1f23] space-y-4">
-          <div className="flex justify-between items-center border-b border-[#18181b] pb-3">
-            <span className="text-xs font-mono font-bold text-emerald-400">SPONSORSHIP OUTREACH</span>
-            <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950 px-2.5 py-0.5 rounded border border-emerald-900">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Action Card 1 */}
+        <div className="bg-surface-container-low border border-outline-variant p-8 rounded space-y-6">
+          <div className="flex justify-between items-center border-b border-outline-variant pb-4">
+            <span className="font-mono text-xs font-bold text-primary-fixed uppercase tracking-wider">
+              SPONSORSHIP OUTREACH PITCH
+            </span>
+            <span className="font-mono text-xs font-bold text-primary-fixed bg-background px-3 py-1 rounded border border-outline-variant">
               MATCH: 89%
             </span>
           </div>
 
-          <h3 className="text-base font-bold text-white">
-            Pitch Draft for {pitchData?.sponsor_name || 'TechBrand Inc.'}
+          <h3 className="text-xl font-sans font-bold text-on-surface">
+            Pitch Brief for {pitchData?.sponsor_name || 'TechBrand Inc.'}
           </h3>
 
-          <div className="p-4 bg-[#09090b] rounded border border-[#1f1f23] text-xs font-mono text-zinc-300 max-h-36 overflow-y-auto">
-            {pitchData?.pitch_draft || 'Draft created via Business Mind skill score_deal.'}
+          <div className="p-4 bg-background border border-outline-variant rounded font-mono text-xs text-on-surface-variant max-h-36 overflow-y-auto leading-relaxed">
+            {pitchData?.pitch_draft || 'Drafted via Business Mind skill score_deal for TechBrand Inc.'}
           </div>
 
           {approved ? (
-            <div className="p-3 bg-emerald-950 border border-emerald-800 text-emerald-400 text-xs font-mono font-bold rounded text-center flex items-center justify-center gap-2">
-              <CheckCircle2 className="w-4 h-4" /> APPROVED & EXECUTED
+            <div className="p-4 bg-background border border-primary-fixed text-primary-fixed text-xs font-mono font-bold rounded text-center flex items-center justify-center gap-2">
+              <span className="material-symbols-outlined">check_circle</span> APPROVED & EXECUTED
             </div>
           ) : (
             <button
               onClick={handleApprove}
               disabled={isExecuting}
-              className="w-full py-3 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-mono text-xs font-bold uppercase rounded transition disabled:opacity-50"
+              className="w-full py-4 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition-colors disabled:opacity-50 flex justify-center items-center gap-2"
             >
-              Approve & Execute Pitch
+              <span>Approve & Execute Pitch</span>
+              <span className="material-symbols-outlined text-base">arrow_forward</span>
             </button>
           )}
         </div>
 
-        <div className="motion-card p-6 rounded-xl border border-[#1f1f23] space-y-4">
-          <div className="flex justify-between items-center border-b border-[#18181b] pb-3">
-            <span className="text-xs font-mono font-bold text-cyan-400">CREATIVE DIRECTIVE</span>
-            <span className="text-xs font-mono font-bold text-cyan-400 bg-cyan-950 px-2.5 py-0.5 rounded border border-cyan-900">
+        {/* Action Card 2 */}
+        <div className="bg-surface-container-low border border-outline-variant p-8 rounded space-y-6">
+          <div className="flex justify-between items-center border-b border-outline-variant pb-4">
+            <span className="font-mono text-xs font-bold text-primary-fixed uppercase tracking-wider">
+              CREATIVE STRATEGY CONCEPT
+            </span>
+            <span className="font-mono text-xs font-bold text-primary-fixed bg-background px-3 py-1 rounded border border-outline-variant">
               CONF: 95%
             </span>
           </div>
 
-          <h3 className="text-base font-bold text-white">
+          <h3 className="text-xl font-sans font-bold text-on-surface">
             {scriptData?.trend_name || 'Beginner AI Workflows & Automation'}
           </h3>
 
-          <div className="p-4 bg-[#09090b] rounded border border-[#1f1f23] text-xs font-mono text-zinc-300 max-h-36 overflow-y-auto whitespace-pre-wrap">
-            {scriptData?.script_concept || 'Synthesized Script Concept active.'}
+          <div className="p-4 bg-background border border-outline-variant rounded font-mono text-xs text-on-surface-variant max-h-36 overflow-y-auto leading-relaxed whitespace-pre-wrap">
+            {scriptData?.script_concept || 'Synthesized Script Concept active in system memory.'}
           </div>
         </div>
       </div>

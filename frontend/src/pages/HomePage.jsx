@@ -1,234 +1,183 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, ArrowRight, Shield, Terminal, Activity, Zap, Layers, Cpu } from 'lucide-react';
 import { KineticNoirCore } from '../components/mind/KineticNoirCore';
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08, delayChildren: 0.1 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 15 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
-  },
-};
 
 export function HomePage({ memoryState, activeCards, onNavigate, onRunFullDemo, isExecuting }) {
   const creatorName = memoryState?.creator_name || 'CREATOR';
 
-  const intelligenceCells = [
-    {
-      id: 1,
-      tag: 'AUDIENCE SIGNAL',
-      title: 'High Demand for Local Agent Pipelines',
-      body: '88% of community comments requesting step-by-step local model workflow guide.',
-      icon: Activity,
-    },
-    {
-      id: 2,
-      tag: 'TREND DETECTED',
-      title: 'Beginner AI Workflows & Automation',
-      body: 'Flagged by Scout Mind with fit score 0.92 across 145k daily discussions.',
-      icon: Zap,
-    },
-    {
-      id: 3,
-      tag: 'MONETIZATION DEAL',
-      title: 'TechBrand Inc. Sponsorship Proposal',
-      body: 'Calculated target deal size $5,400 based on $45 CPM benchmark.',
-      icon: Shield,
-    },
-    {
-      id: 4,
-      tag: 'VOICE ADAPTATION',
-      title: 'Learned Punchy Terminal Preference',
-      body: 'Persisted preference: Creator prefers concise, action-oriented terminal hooks.',
-      icon: Terminal,
-    },
-  ];
-
   return (
-    <motion.div
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-      exit="hidden"
-      className="flex-1 p-8 md:p-10 space-y-10 max-w-[1500px] mx-auto text-zinc-100"
-    >
-      {/* Hero Section */}
-      <motion.div variants={itemVariants} className="space-y-3 border-b border-[#1a1a22] pb-8">
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#00ff87] shadow-[0_0_10px_#00ff87] animate-pulse" />
-          <span className="text-xs font-mono font-bold text-[#00ff87] uppercase tracking-widest">
-            GREENROOM AI CHIEF OF STAFF • KINETIC NOIR OS
-          </span>
-        </div>
-
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-          className="text-4xl md:text-6xl font-sans font-black tracking-tight text-[#00ff87] uppercase drop-shadow-[0_0_20px_rgba(0,255,135,0.35)] leading-tight"
-        >
-          GOOD MORNING, {creatorName}.<br />
-          <span className="text-zinc-100 font-light">Greenroom is online.</span>
-        </motion.h1>
-
-        <p className="text-sm font-sans text-zinc-400 max-w-2xl">
-          Autonomous intelligence matrix active. Your chief of staff has synthesized audience demand, monetizable signals, and content recommendations while you were away.
-        </p>
-      </motion.div>
-
-      {/* WHILE YOU WERE AWAY Section */}
-      <motion.div variants={itemVariants} className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-            <Layers className="w-4 h-4 text-[#00ff87]" />
-            WHILE YOU WERE AWAY
-          </h2>
-          <span className="text-[11px] font-mono text-zinc-500">4 INTELLIGENCE CELLS ACTIVE</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {intelligenceCells.map((cell) => {
-            const CellIcon = cell.icon;
-            return (
-              <motion.div
-                key={cell.id}
-                variants={itemVariants}
-                whileHover={{ y: -4, borderColor: 'rgba(0,255,135,0.4)', boxShadow: '0 10px 30px -10px rgba(0,255,135,0.15)' }}
-                className="motion-card p-6 rounded-xl border border-[#1a1a22] bg-[#111115] space-y-3 flex flex-col justify-between"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono font-bold text-[#00ff87] uppercase tracking-wider bg-[#062416] border border-[#0b4d2e] px-2.5 py-0.5 rounded">
-                      {cell.tag}
-                    </span>
-                    <CellIcon className="w-4 h-4 text-zinc-500" />
-                  </div>
-                  <h3 className="text-xs font-sans font-bold text-zinc-100 leading-snug">
-                    {cell.title}
-                  </h3>
-                  <p className="text-xs font-sans text-zinc-400 leading-relaxed">
-                    {cell.body}
-                  </p>
-                </div>
-
-                <div className="pt-3 border-t border-[#1a1a22] text-[10px] font-mono text-zinc-500 flex items-center justify-between">
-                  <span>CONFIDENCE: 94%</span>
-                  <span className="text-[#00ff87]">● LIVE</span>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      </motion.div>
-
-      {/* GREENROOM'S TAKE & THE KINETIC NOIR MANIFESTO Panel */}
-      <motion.div variants={itemVariants} className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Recommendation Panel (8 cols) */}
-        <motion.div
-          whileHover={{ borderColor: 'rgba(0,255,135,0.3)' }}
-          className="lg:col-span-8 motion-card p-8 rounded-2xl border border-[#1a1a22] bg-[#111115] space-y-6 flex flex-col justify-between shadow-2xl"
-        >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-[#1a1a22] pb-4">
-              <span className="text-xs font-mono font-bold text-[#00ff87] uppercase tracking-widest bg-[#062416] border border-[#0b4d2e] px-3 py-1 rounded-full">
-                GREENROOM'S TAKE
-              </span>
-              <span className="text-xs font-mono text-zinc-500">EXECUTIVE RECOMMENDATION</span>
-            </div>
-
-            <h2 className="text-2xl md:text-3xl font-sans font-black text-white tracking-tight leading-tight uppercase">
-              THE KINETIC NOIR MANIFESTO
-            </h2>
-
-            <p className="text-sm font-sans text-zinc-300 leading-relaxed">
-              "Greenroom does not merely respond to prompts. It operates as a persistent AI Chief of Staff—continually reading audience signals, remembering creator preferences, drafting monetization deals, and proposing executive actions."
-            </p>
-
-            <div className="p-4 bg-[#08080b] rounded-xl border border-[#1a1a22] space-y-2">
-              <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase tracking-widest block">
-                WHY THIS STRATEGY IS RECOMMENDED
-              </span>
-              <ul className="text-xs font-sans text-zinc-300 space-y-1.5 list-disc list-inside">
-                <li><strong className="text-[#00ff87]">Audience Signal:</strong> 88% demand for practical agent pipeline breakdowns.</li>
-                <li><strong className="text-[#00ff87]">Monetization Match:</strong> $5,400 sponsorship pitch drafted for TechBrand Inc.</li>
-                <li><strong className="text-[#00ff87]">Learned Voice:</strong> Punchier, direct, technical tone automatically applied.</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="pt-6 border-t border-[#1a1a22] flex items-center justify-between">
-            <button
-              onClick={onRunFullDemo}
-              disabled={isExecuting}
-              className="px-5 py-2.5 bg-[#00ff87] hover:bg-[#34d399] text-zinc-950 font-mono text-xs font-black uppercase rounded-xl transition shadow-lg shadow-[#00ff87]/20 flex items-center gap-2 disabled:opacity-50"
-            >
-              <Sparkles className="w-4 h-4 fill-current" />
-              RUN BRIEFING SIMULATION
-            </button>
-
-            <button
-              onClick={() => onNavigate('memory')}
-              className="text-xs font-mono font-bold text-[#00ff87] hover:text-[#34d399] flex items-center gap-1.5 group"
-            >
-              VIEW MEMORY MATRIX <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Side Panel (4 cols) */}
-        <motion.div
-          whileHover={{ borderColor: 'rgba(0,255,135,0.3)' }}
-          className="lg:col-span-4 motion-card p-8 rounded-2xl border border-[#1a1a22] bg-[#111115] space-y-6 flex flex-col justify-between"
-        >
-          <div className="space-y-4">
-            <span className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-widest block border-b border-[#1a1a22] pb-3">
-              CREATOR VOICE DNA
+    <div className="flex-1 flex flex-col min-w-0 pb-24 text-on-background font-sans">
+      {/* Hero Area */}
+      <section className="relative w-full min-h-[50vh] flex flex-col justify-end px-margin-mobile md:px-margin-desktop py-16 md:py-20 border-b border-outline-variant overflow-hidden">
+        <div className="relative z-10 max-w-container-max mx-auto w-full">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-2.5 h-2.5 rounded-full bg-primary-fixed animate-pulse shadow-[0_0_10px_#72ff70]"></div>
+            <span className="font-mono text-primary-fixed uppercase tracking-widest text-xs font-bold">
+              System Active
             </span>
+          </div>
 
-            <div className="space-y-3 font-mono text-xs">
-              <div className="p-3 bg-[#08080b] rounded border border-[#1a1a22]">
-                <span className="text-zinc-500 block text-[10px]">VOICE ATTRIBUTES</span>
-                <span className="text-zinc-200 font-bold">Direct, Intellectual, Authoritative</span>
+          <h2 className="text-3xl md:text-6xl font-display text-on-surface mb-4 max-w-4xl leading-tight font-bold">
+            GOOD MORNING, {creatorName}.<br />
+            <span className="text-primary-fixed">Greenroom is online.</span>
+          </h2>
+
+          <p className="text-base font-sans text-on-surface-variant max-w-2xl border-l border-outline-variant pl-4 py-1 leading-relaxed">
+            I've been working while you were away. Analyzing 14,203 data points across your networked ecosystems.
+          </p>
+        </div>
+      </section>
+
+      {/* Fluid Grid Content Area */}
+      <div className="px-margin-mobile md:px-margin-desktop pt-16 max-w-container-max mx-auto w-full space-y-16">
+        {/* Section: WHILE YOU WERE AWAY */}
+        <div>
+          <h3 className="text-xs font-mono text-on-surface-variant mb-6 flex items-center gap-2 tracking-wider">
+            <span className="w-4 h-[1px] bg-outline-variant block"></span>
+            WHILE YOU WERE AWAY
+          </h3>
+
+          {/* Cell-based Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-4 cell-border rounded overflow-hidden">
+            {/* Card 1 */}
+            <motion.div
+              whileHover={{ backgroundColor: '#1c1b1b' }}
+              className="p-6 md:cell-border-r cell-border-b md:cell-border-b-0 transition-colors duration-300 group cursor-pointer"
+            >
+              <div className="flex justify-between items-start mb-12">
+                <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary-fixed transition-colors">
+                  radar
+                </span>
+                <span className="font-mono text-xs text-on-surface-variant">08:14 UTC</span>
+              </div>
+              <h4 className="text-base font-sans font-semibold text-on-surface mb-2">New Audience Signal</h4>
+              <p className="text-xs font-sans text-on-surface-variant leading-relaxed">
+                Spike in engagement from deep-tech demographic regarding your recent architectural post.
+              </p>
+            </motion.div>
+
+            {/* Card 2 */}
+            <motion.div
+              whileHover={{ backgroundColor: '#1c1b1b' }}
+              className="p-6 md:cell-border-r cell-border-b md:cell-border-b-0 transition-colors duration-300 group cursor-pointer"
+            >
+              <div className="flex justify-between items-start mb-12">
+                <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary-fixed transition-colors">
+                  pattern
+                </span>
+                <span className="font-mono text-xs text-on-surface-variant">04:22 UTC</span>
+              </div>
+              <h4 className="text-base font-sans font-semibold text-on-surface mb-2">Content Pattern</h4>
+              <p className="text-xs font-sans text-on-surface-variant leading-relaxed">
+                Long-form editorial pieces are outperforming short snippets by 314% this quarter.
+              </p>
+            </motion.div>
+
+            {/* Card 3 */}
+            <motion.div
+              whileHover={{ backgroundColor: '#1c1b1b' }}
+              className="p-6 md:cell-border-r cell-border-b md:cell-border-b-0 transition-colors duration-300 group cursor-pointer"
+            >
+              <div className="flex justify-between items-start mb-12">
+                <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary-fixed transition-colors">
+                  troubleshoot
+                </span>
+                <span className="font-mono text-xs text-primary-fixed font-bold">SCOUT MIND</span>
+              </div>
+              <h4 className="text-base font-sans font-semibold text-on-surface mb-2">Trend Detected</h4>
+              <p className="text-xs font-sans text-on-surface-variant leading-relaxed">
+                Emerging narrative around "Kinetic Noir" design principles aligning with your core aesthetic.
+              </p>
+            </motion.div>
+
+            {/* Card 4 */}
+            <motion.div
+              whileHover={{ backgroundColor: '#1c1b1b' }}
+              className="p-6 transition-colors duration-300 group cursor-pointer"
+            >
+              <div className="flex justify-between items-start mb-12">
+                <span className="material-symbols-outlined text-on-surface-variant group-hover:text-primary-fixed transition-colors">
+                  key_visualizer
+                </span>
+                <span className="font-mono text-xs text-on-surface-variant">01:05 UTC</span>
+              </div>
+              <h4 className="text-base font-sans font-semibold text-primary-fixed mb-2">Opportunity Found</h4>
+              <p className="text-xs font-sans text-on-surface-variant leading-relaxed">
+                High probability of success for a deep-dive tutorial on procedural shader integration.
+              </p>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Asymmetric Layout: Editorial & Recommendation */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
+          {/* Greenroom's Take Editorial */}
+          <div className="md:col-span-7 flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-xs font-mono text-on-surface-variant flex items-center gap-2 tracking-wider">
+                <span className="w-4 h-[1px] bg-outline-variant block"></span>
+                GREENROOM'S TAKE
+              </h3>
+
+              <div className="text-2xl md:text-3xl font-sans font-semibold text-on-surface leading-snug">
+                Your audience is demanding depth. The superficial metrics are plateauing, but{' '}
+                <span className="text-primary-fixed">high-intent engagement</span> on technical, architectural breakdowns is surging.
               </div>
 
-              <div className="p-3 bg-[#08080b] rounded border border-[#1a1a22]">
-                <span className="text-zinc-500 block text-[10px]">CPM BENCHMARK</span>
-                <span className="text-[#00ff87] font-bold">$45.00 Tech Creator Rate</span>
-              </div>
-
-              <div className="p-3 bg-[#08080b] rounded border border-[#1a1a22]">
-                <span className="text-zinc-500 block text-[10px]">AUDIENCE PROFILE</span>
-                <span className="text-zinc-200 font-bold">Software Engineers & AI Architects</span>
-              </div>
+              <p className="text-sm font-sans text-on-surface-variant leading-relaxed">
+                Based on the Scout Mind's analysis over the last 72 hours, the intersection of 'kinetic motion' and 'noir aesthetics' is an under-served niche in your vertical. The system recommends pivoting your upcoming content cycle to focus exclusively on this synthesis.
+              </p>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-[#1a1a22] text-[11px] font-mono text-zinc-500 flex items-center justify-between">
-            <span>MEMORIES STORED: 14</span>
-            <span className="text-[#00ff87]">100% DECAY ACCURACY</span>
+          {/* Primary Recommendation Card */}
+          <div className="md:col-span-5">
+            <div className="bg-surface-container-low border border-outline-variant p-8 relative overflow-hidden group rounded space-y-6">
+              <div className="absolute top-0 left-0 w-full h-[2px] bg-primary-fixed opacity-70"></div>
+
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary-fixed text-sm">priority_high</span>
+                <span className="font-mono text-primary-fixed text-xs uppercase tracking-wider font-bold">
+                  Primary Recommendation
+                </span>
+              </div>
+
+              <h4 className="text-2xl font-sans font-bold text-on-surface">The Kinetic Noir Manifesto</h4>
+
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-primary-fixed text-lg mt-0.5">check_circle</span>
+                  <div>
+                    <span className="text-xs font-mono text-on-surface block mb-1 font-bold">THE WHY</span>
+                    <span className="text-xs font-sans text-on-surface-variant leading-relaxed">
+                      314% higher retention on deep-dive content. Matches current macro-trend detected by Scout Mind.
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={onRunFullDemo}
+                disabled={isExecuting}
+                className="w-full bg-primary-container text-on-primary-container text-sm font-sans font-bold py-4 px-6 hover:bg-primary-fixed-dim transition-colors flex justify-center items-center gap-2 rounded disabled:opacity-50"
+              >
+                <span>Build This</span>
+                <span className="material-symbols-outlined text-base font-bold">arrow_forward</span>
+              </button>
+            </div>
           </div>
-        </motion.div>
-      </motion.div>
+        </div>
 
-      {/* INTELLIGENCE FIELD (Bottom Section with Kinetic AI Core) */}
-      <motion.div variants={itemVariants} className="space-y-4 pt-4">
-        <h2 className="text-xs font-mono font-bold text-zinc-400 uppercase tracking-widest flex items-center gap-2">
-          <Cpu className="w-4 h-4 text-[#00ff87]" />
-          INTELLIGENCE FIELD & REASONING CORE
-        </h2>
+        {/* Greenroom Core Visualization */}
+        <div className="space-y-6">
+          <h3 className="text-xs font-mono text-on-surface-variant flex items-center gap-2 tracking-wider">
+            <span className="w-4 h-[1px] bg-outline-variant block"></span>
+            INTELLIGENCE FIELD
+          </h3>
 
-        <KineticNoirCore onCoreClick={onRunFullDemo} />
-      </motion.div>
-    </motion.div>
+          <KineticNoirCore onCoreClick={onRunFullDemo} />
+        </div>
+      </div>
+    </div>
   );
 }

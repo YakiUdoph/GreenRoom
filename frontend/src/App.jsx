@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useGreenroomState } from './hooks/useGreenroomState';
 import { useGreenroomSocket } from './hooks/useGreenroomSocket';
 import { useMousePosition } from './hooks/useMousePosition';
@@ -22,10 +22,10 @@ export function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [isExecuting, setIsExecuting] = useState(false);
 
-  // Enable Cursor-Aware Spotlight Physics
+  // Enable Mouse Position Physics Hook
   useMousePosition();
 
-  // Initialize WebSocket Lifecycle
+  // Initialize Real WebSocket Gateway
   useGreenroomSocket();
 
   // Subscribe to Centralized Store State
@@ -38,24 +38,24 @@ export function App() {
     activeCards,
   } = useGreenroomState();
 
-  // Initial Data Fetch via REST API
-  useEffect(() => {
-    async function loadInitialData() {
-      try {
-        const [mState, mStatus, impHist] = await Promise.all([
-          api.getMemoryState().catch(() => null),
-          api.getMindsStatus().catch(() => null),
-          api.getImpHistory().catch(() => null),
-        ]);
+  // Load Real Data from REST API
+  const loadInitialData = async () => {
+    try {
+      const [mState, mStatus, impHist] = await Promise.all([
+        api.getMemoryState().catch(() => null),
+        api.getMindsStatus().catch(() => null),
+        api.getImpHistory().catch(() => null),
+      ]);
 
-        if (mState) greenroomStore.setMemoryState(mState);
-        if (mStatus) greenroomStore.setMindsStatus(mStatus);
-        if (impHist) greenroomStore.setImpHistory(impHist);
-      } catch (err) {
-        console.warn('[GreenroomApp] Initial REST fetch error:', err);
-      }
+      if (mState) greenroomStore.setMemoryState(mState);
+      if (mStatus) greenroomStore.setMindsStatus(mStatus);
+      if (impHist) greenroomStore.setImpHistory(impHist);
+    } catch (err) {
+      console.warn('[GreenroomApp] REST fetch error:', err);
     }
+  };
 
+  useEffect(() => {
     loadInitialData();
   }, []);
 
@@ -119,7 +119,7 @@ export function App() {
     }
   };
 
-  // Render Page Selection with AnimatePresence
+  // Render Active Page
   const renderPage = () => {
     switch (activeTab) {
       case 'home':
@@ -142,6 +142,8 @@ export function App() {
             isExecuting={isExecuting}
           />
         );
+      case 'memory':
+        return <MemoryPage key="memory" memoryState={memoryState} />;
       case 'intelligence':
         return (
           <IntelligencePage
@@ -175,25 +177,37 @@ export function App() {
             isExecuting={isExecuting}
           />
         );
-      case 'memory':
       default:
-        return <MemoryPage key="memory" memoryState={memoryState} />;
+        return (
+          <HomePage
+            key="home"
+            memoryState={memoryState}
+            activeCards={activeCards}
+            onNavigate={(tab) => setActiveTab(tab)}
+            onRunFullDemo={handleRunFullDemo}
+            isExecuting={isExecuting}
+          />
+        );
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-[#050507] text-zinc-100 font-sans selection:bg-[#00ff87] selection:text-zinc-950 relative overflow-hidden">
-      {/* WebGL Procedural Simplex Noise Shader Motion Field */}
+    <div className="min-h-screen flex bg-[#131313] text-[#e5e2e1] font-sans selection:bg-[#72ff70] selection:text-[#002203] relative overflow-hidden">
+      {/* WebGL Procedural Simplex Noise Motion Background */}
       <IntelligenceShader />
 
-      {/* Dynamic Cursor Spotlight Aura */}
+      {/* Cursor Spotlight Physics */}
       <CursorSpotlight />
 
-      {/* Left Sidebar Navigation */}
-      <Sidebar activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab)} />
+      {/* Desktop Side Navigation */}
+      <Sidebar
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab)}
+        onInitialize={loadInitialData}
+      />
 
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto z-10">
+      {/* Main Content View Container */}
+      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto z-10 min-w-0">
         <AnimatePresence mode="wait">
           {renderPage()}
         </AnimatePresence>
