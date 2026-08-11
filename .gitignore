@@ -8,4 +8,6 @@ venv/
 test_venv/
 node_modules/
 latest_briefing.json
+run_statuses.json
+
 
