@@ -2,12 +2,30 @@ import { createMindsClient } from "@animocabrands/minds-client-lib";
 import { Receiver } from "@upstash/qstash";
 import { Redis } from "@upstash/redis";
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
+
+async function getRawBody(req) {
+  const chunks = [];
+  for await (const chunk of req) {
+    chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
+  }
+  return Buffer.concat(chunks).toString("utf-8");
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(45) ? res.status(405).json({ error: "Method not allowed" }) : res.status(405).json({ error: "Method not allowed" });
+    return res.status(405).json({ error: "Method not allowed" });
   }
 
-  // 1. QStash Signature Verification Security
+  // 1. Read Raw Body Stream for Exact Signature Verification
+  const rawBody = await getRawBody(req);
+
+  // QStash Signature Verification Security
   const currentSigningKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
   const nextSigningKey = process.env.QSTASH_NEXT_SIGNING_KEY;
 
@@ -22,13 +40,6 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: "Unauthorized: Missing QStash signature" });
     }
 
-    let bodyText = "";
-    if (typeof req.body === "string") {
-      bodyText = req.body;
-    } else if (req.body && typeof req.body === "object") {
-      bodyText = JSON.stringify(req.body);
-    }
-
     const host = req.headers["x-forwarded-host"] || req.headers.host || "greenroom-ruby.vercel.app";
     const proto = req.headers["x-forwarded-proto"] || "https";
     const reqUrl = `${proto}://${host}/api/briefing-worker`;
@@ -36,15 +47,14 @@ export default async function handler(req, res) {
     try {
       let isValid = await receiver.verify({
         signature,
-        body: bodyText,
+        body: rawBody,
         url: reqUrl,
       }).catch(() => false);
 
       if (!isValid) {
-        // Retry without explicit URL parameter in case QStash payload signature omits target URL matching
         isValid = await receiver.verify({
           signature,
-          body: bodyText,
+          body: rawBody,
         }).catch(() => false);
       }
 
@@ -56,13 +66,13 @@ export default async function handler(req, res) {
     }
   }
 
-
-  // 2. Parse payload & run_id
-  let payload = req.body || {};
-  if (typeof payload === "string") {
-    try { payload = JSON.parse(payload); } catch (e) {}
+  // 2. Parse payload & run_id from rawBody
+  let payload = {};
+  if (rawBody) {
+    try { payload = JSON.parse(rawBody); } catch (e) {}
   }
   const runId = payload.run_id || `run_${Math.random().toString(36).substring(2, 10)}`;
+
 
   // 3. Upstash Redis Connection (DURABLE Persistence)
   const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
