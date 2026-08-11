@@ -2,13 +2,15 @@ import asyncio
 import json
 import os
 import time
+import uuid
 from typing import Dict, Any, Optional
 from dotenv import load_dotenv
 
 # Load environment variables (.env)
 load_dotenv()
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
+
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,7 +21,8 @@ from imp_protocol import imp_bus, IMPMessage
 from minds_integration import minds_manager, MindsConfigurationError
 from agents import GreenroomCoreMind, ScoutMind, CommunityMind, BusinessMind
 from demo_runner import demo_runner_tool
-from async_runner import async_runner
+from async_runner import QStashJobRunner
+
 
 app = FastAPI(
     title="Greenroom: Persistent Creator Engine (Animoca Brands Minds Builder API Integration)",
