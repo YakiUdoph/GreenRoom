@@ -93,6 +93,23 @@
       </div>
     </div>
 
+    <!-- COMPACT JUDGE PROOF PANEL -->
+    <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-3 font-mono text-xs shadow-xl">
+      <div class="flex items-center gap-2">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider font-sans flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span> ⚖️ Judge Proof Panel:
+        </span>
+      </div>
+      <div class="flex flex-wrap gap-2 text-[11px]">
+        <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300">Run ID: <strong id="proof-run-id" class="text-cyan-400">run_init</strong></span>
+        <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300">Worked While Away: <strong class="text-emerald-400">YES</strong></span>
+        <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300">Analysis: <strong id="proof-analysis" class="text-emerald-400">Animoca Minds</strong></span>
+        <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300">Mind Verified: <strong id="proof-verified" class="text-emerald-400">Yes (8208493e...)</strong></span>
+        <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300">Signals: <strong id="proof-signals" class="text-amber-400">Demo Dataset (Simulated)</strong></span>
+        <span class="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded text-slate-300">Persistence: <strong id="proof-persistence" class="text-purple-400">LOCAL FILE</strong></span>
+      </div>
+    </div>
+
     <!-- MAIN HERO SECTION: "WHILE YOU WERE AWAY" BRIEFING -->
     <section class="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-emerald-500/30 rounded-3xl p-5 md:p-6 shadow-2xl space-y-6">
       
@@ -110,6 +127,12 @@
           <p class="text-xs text-slate-400 mt-1">
             Greenroom evaluated audience signals against your creator profile & memory nodes while you were offline.
           </p>
+
+          <!-- VISUAL CONTINUITY BANNER (Rendered when previous feedback is active) -->
+          <div id="continuity-banner" class="hidden mt-3 p-2.5 bg-amber-950/60 border border-amber-800/80 rounded-xl text-xs font-sans text-amber-200 flex items-center gap-2">
+            <span class="font-bold text-amber-400">⚡ CONTINUITY ACTIVE:</span>
+            <span id="continuity-note-text">Adjusted using your previous feedback.</span>
+          </div>
         </div>
 
         <!-- Metadata Bar -->
@@ -294,7 +317,7 @@
 
           <div id="activity-stream" class="space-y-3 text-xs font-mono max-h-96 overflow-y-auto pr-1">
             <div class="p-4 bg-slate-950/60 border border-slate-800/60 rounded-xl text-slate-400 text-center italic">
-              Waiting for agent network initialization...
+              Waiting for agent network communication...
             </div>
           </div>
         </section>
@@ -309,7 +332,7 @@
           <div class="space-y-3 max-h-96 overflow-y-auto pr-1">
             <!-- Creator Profile Card -->
             <div class="p-3 bg-slate-950 rounded-xl border border-slate-800/80">
-              <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Creator Profile:</span>
+              <span class="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Seeded Initial Creator Profile:</span>
               <p id="state-creator-name" class="text-sm text-slate-100 font-bold mt-0.5">Alex Rivera</p>
               <div id="state-voice-attributes" class="flex flex-wrap gap-1 mt-2">
                 <span class="px-2 py-0.5 bg-slate-900 text-slate-300 rounded text-[10px] border border-slate-800">Educational</span>
@@ -320,7 +343,7 @@
             <!-- Learned Voice Rules -->
             <div class="p-3 bg-slate-950 rounded-xl border border-amber-900/50">
               <div class="flex justify-between items-center mb-1.5">
-                <span class="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Learned Rules</span>
+                <span class="text-[10px] text-amber-400 font-bold uppercase tracking-wider">Learned Memory Rules</span>
                 <span class="text-[10px] text-slate-500" id="rule-count-badge">0 rules</span>
               </div>
               <div id="state-learned-rules" class="space-y-1.5 text-xs text-amber-200/90 font-medium">

@@ -694,6 +694,24 @@ async def test_strict_production_error_during_autonomous_run():
     print("[OK] [TEST 25 PASSED]\n")
 
 
+def test_persistence_store_mode_labeling_and_provenance():
+    print("--- [TEST 26] Testing PersistenceStore Mode Labeling & Provenance Integrity ---")
+    from persistence import LocalFileStore, EphemeralTmpStore, UpstashRedisStore
+    
+    file_store = LocalFileStore()
+    assert file_store.mode_label == "LOCAL FILE", "LocalFileStore mode_label must be 'LOCAL FILE'"
+    
+    tmp_store = EphemeralTmpStore()
+    assert tmp_store.mode_label == "EPHEMERAL", "EphemeralTmpStore mode_label must be 'EPHEMERAL'"
+    assert tmp_store.mode_label != "DURABLE", "/tmp storage must NEVER be classified as DURABLE"
+    
+    redis_store = UpstashRedisStore("https://example.upstash.io", "test_token")
+    assert redis_store.mode_label == "DURABLE", "UpstashRedisStore mode_label must be 'DURABLE'"
+    
+    print("[OK] Verified PersistenceStore mode labels: LocalFileStore='LOCAL FILE', EphemeralTmpStore='EPHEMERAL', UpstashRedisStore='DURABLE'.")
+    print("[OK] [TEST 26 PASSED]\n")
+
+
 async def main():
     test_loud_failure_when_unconfigured()
     await test_production_mode_execution_error_without_fallback()
@@ -720,9 +738,11 @@ async def main():
     await test_feedback_continuity_across_runs()
     await test_async_job_runner_status()
     await test_strict_production_error_during_autonomous_run()
-    print("SUCCESS: ALL 25 GREENROOM INTEGRATION & SHARPENED MVP TESTS PASSED CLEANLY!")
+    test_persistence_store_mode_labeling_and_provenance()
+    print("SUCCESS: ALL 26 GREENROOM INTEGRATION & SHARPENED MVP TESTS PASSED CLEANLY!")
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
 

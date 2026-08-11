@@ -25,9 +25,9 @@
   ],
   "memory_nodes": [
     {
-      "node_id": "mem_1786449241337",
+      "node_id": "mem_1786449645327",
       "type": "video_script_analytics",
-      "timestamp": 1786449241.337313,
+      "timestamp": 1786449645.3274198,
       "content": "Past video script analysis: 'Build a Custom AI Agent in 10 Mins'. Viewer retention: 78% at 30 seconds. Audience requests github links and setup walkthroughs.",
       "key_takeaways": [
         "Step-by-step technical overviews drive 3x audience retention compared to news recaps.",
@@ -35,9 +35,9 @@
       ]
     },
     {
-      "node_id": "mem_1786449241340",
+      "node_id": "mem_1786449645330",
       "type": "learned_preference",
-      "timestamp": 1786449241.340728,
+      "timestamp": 1786449645.3302214,
       "content": "User Feedback Rule: Too formal. Make it punchier and emphasize beginner-friendly tips.",
       "key_takeaways": [
         "Explicit creator override on voice & tone",
@@ -45,9 +45,9 @@
       ]
     },
     {
-      "node_id": "mem_1786449241402",
+      "node_id": "mem_1786449645441",
       "type": "learned_preference",
-      "timestamp": 1786449241.4023337,
+      "timestamp": 1786449645.441393,
       "content": "User Feedback Rule: Creator prefers opportunities matching item 'opp_001'",
       "key_takeaways": [
         "Explicit creator override on voice & tone",
@@ -55,9 +55,9 @@
       ]
     },
     {
-      "node_id": "mem_1786449241410",
+      "node_id": "mem_1786449645450",
       "type": "learned_preference",
-      "timestamp": 1786449241.4101822,
+      "timestamp": 1786449645.450067,
       "content": "User Feedback Rule: Emphasize open-source terminal setup steps",
       "key_takeaways": [
         "Explicit creator override on voice & tone",
@@ -66,15 +66,33 @@
     }
   ],
   "latest_briefing": {
-    "timestamp": "2026-08-11T11:54:01.442608+00:00",
-    "last_run_formatted": "2026-08-11 11:54:01 UTC",
+    "run_id": "run_c4b5cd35",
+    "timestamp": "2026-08-11T12:00:45.486104+00:00",
+    "last_run_formatted": "2026-08-11 12:00:45 UTC",
     "signals_reviewed_count": 3,
     "opportunities_found_count": 3,
     "memory_nodes_used_count": 5,
     "signal_source_label": "Demo Dataset (Simulated)",
+    "analysis_provider": "Mock",
     "minds_source": "[MOCK DEMO MODE]",
     "minds_status": "PROCESSED_LOCALLY_MOCK",
     "minds_verified": false,
+    "persistence_mode": "LOCAL FILE",
+    "continuity_note": "Adjusted using your previous feedback: 'Emphasize open-source terminal setup steps'.",
+    "provenance": {
+      "run_id": "run_c4b5cd35",
+      "created_at": "2026-08-11T12:00:45.485558+00:00",
+      "completed_at": "2026-08-11T12:00:45.486104+00:00",
+      "status": "COMPLETED",
+      "signal_source": "Demo Dataset (Simulated)",
+      "signal_mode": "DEMO",
+      "analysis_provider": "Mock",
+      "mind_id": "8208493e-f36b-1410-8466-00039ce7df11",
+      "mind_verified": false,
+      "demo_mode": true,
+      "persistence_mode": "LOCAL FILE",
+      "opportunity_count": 3
+    },
     "items": [
       {
         "id": "opp_001",
@@ -82,7 +100,7 @@
         "title": "Beginner Local AI Agent Walkthrough Video",
         "category": "Content Strategy",
         "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
-        "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Persisted rule applied \u2014 terminal open-source focus.",
+        "why_it_matters": "Matches saved goal: 78% viewer retention on setup walkthroughs. Grounding: Persisted rule applied \u2014 terminal open-source focus.",
         "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
         "memory_context_used": "profile.brand_voice + retention_node_78%",
         "status": "NEW"
@@ -118,15 +136,33 @@
   },
   "briefing_history": [
     {
-      "timestamp": "2026-08-11T11:54:01.346178+00:00",
-      "last_run_formatted": "2026-08-11 11:54:01 UTC",
+      "run_id": "run_d26b2184",
+      "timestamp": "2026-08-11T12:00:45.335364+00:00",
+      "last_run_formatted": "2026-08-11 12:00:45 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 3,
       "signal_source_label": "Demo Dataset (Simulated)",
+      "analysis_provider": "Mock",
       "minds_source": "[MOCK DEMO MODE]",
       "minds_status": "PROCESSED_LOCALLY_MOCK",
       "minds_verified": false,
+      "persistence_mode": "LOCAL FILE",
+      "continuity_note": "Adjusted using your previous feedback: 'Too formal. Make it punchier and emphasize beginner-friendly tips.'.",
+      "provenance": {
+        "run_id": "run_d26b2184",
+        "created_at": "2026-08-11T12:00:45.335002+00:00",
+        "completed_at": "2026-08-11T12:00:45.335364+00:00",
+        "status": "COMPLETED",
+        "signal_source": "Demo Dataset (Simulated)",
+        "signal_mode": "DEMO",
+        "analysis_provider": "Mock",
+        "mind_id": "8208493e-f36b-1410-8466-00039ce7df11",
+        "mind_verified": false,
+        "demo_mode": true,
+        "persistence_mode": "LOCAL FILE",
+        "opportunity_count": 3
+      },
       "items": [
         {
           "id": "opp_001",
@@ -134,7 +170,7 @@
           "title": "Beginner Local AI Agent Walkthrough Video",
           "category": "Content Strategy",
           "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
-          "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Direct developer retention driver.",
+          "why_it_matters": "Matches saved goal: 78% viewer retention on setup walkthroughs. Grounding: Direct developer retention driver.",
           "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
           "memory_context_used": "profile.brand_voice + retention_node_78%",
           "status": "NEW"
@@ -169,15 +205,33 @@
       ]
     },
     {
-      "timestamp": "2026-08-11T11:54:01.394744+00:00",
-      "last_run_formatted": "2026-08-11 11:54:01 UTC",
+      "run_id": "run_d250dff8",
+      "timestamp": "2026-08-11T12:00:45.409928+00:00",
+      "last_run_formatted": "2026-08-11 12:00:45 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 3,
       "signal_source_label": "Demo Dataset (Simulated)",
+      "analysis_provider": "Mock",
       "minds_source": "[MOCK DEMO MODE]",
       "minds_status": "PROCESSED_LOCALLY_MOCK",
       "minds_verified": false,
+      "persistence_mode": "LOCAL FILE",
+      "continuity_note": "Adjusted using your previous feedback: 'Too formal. Make it punchier and emphasize beginner-friendly tips.'.",
+      "provenance": {
+        "run_id": "run_d250dff8",
+        "created_at": "2026-08-11T12:00:45.409423+00:00",
+        "completed_at": "2026-08-11T12:00:45.409928+00:00",
+        "status": "COMPLETED",
+        "signal_source": "Demo Dataset (Simulated)",
+        "signal_mode": "DEMO",
+        "analysis_provider": "Mock",
+        "mind_id": "8208493e-f36b-1410-8466-00039ce7df11",
+        "mind_verified": false,
+        "demo_mode": true,
+        "persistence_mode": "LOCAL FILE",
+        "opportunity_count": 3
+      },
       "items": [
         {
           "id": "opp_001",
@@ -185,7 +239,7 @@
           "title": "Beginner Local AI Agent Walkthrough Video",
           "category": "Content Strategy",
           "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
-          "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Direct developer retention driver.",
+          "why_it_matters": "Matches saved goal: 78% viewer retention on setup walkthroughs. Grounding: Direct developer retention driver.",
           "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
           "memory_context_used": "profile.brand_voice + retention_node_78%",
           "status": "NEW"
@@ -220,15 +274,33 @@
       ]
     },
     {
-      "timestamp": "2026-08-11T11:54:01.398525+00:00",
-      "last_run_formatted": "2026-08-11 11:54:01 UTC",
+      "run_id": "run_d26a3209",
+      "timestamp": "2026-08-11T12:00:45.413847+00:00",
+      "last_run_formatted": "2026-08-11 12:00:45 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 3,
       "signal_source_label": "Demo Dataset (Simulated)",
+      "analysis_provider": "Mock",
       "minds_source": "[MOCK DEMO MODE]",
       "minds_status": "PROCESSED_LOCALLY_MOCK",
       "minds_verified": false,
+      "persistence_mode": "LOCAL FILE",
+      "continuity_note": "Adjusted using your previous feedback: 'Too formal. Make it punchier and emphasize beginner-friendly tips.'.",
+      "provenance": {
+        "run_id": "run_d26a3209",
+        "created_at": "2026-08-11T12:00:45.413446+00:00",
+        "completed_at": "2026-08-11T12:00:45.413847+00:00",
+        "status": "COMPLETED",
+        "signal_source": "Demo Dataset (Simulated)",
+        "signal_mode": "DEMO",
+        "analysis_provider": "Mock",
+        "mind_id": "8208493e-f36b-1410-8466-00039ce7df11",
+        "mind_verified": false,
+        "demo_mode": true,
+        "persistence_mode": "LOCAL FILE",
+        "opportunity_count": 3
+      },
       "items": [
         {
           "id": "opp_001",
@@ -236,7 +308,7 @@
           "title": "Beginner Local AI Agent Walkthrough Video",
           "category": "Content Strategy",
           "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
-          "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Direct developer retention driver.",
+          "why_it_matters": "Matches saved goal: 78% viewer retention on setup walkthroughs. Grounding: Direct developer retention driver.",
           "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
           "memory_context_used": "profile.brand_voice + retention_node_78%",
           "status": "NEW"
@@ -271,15 +343,33 @@
       ]
     },
     {
-      "timestamp": "2026-08-11T11:54:01.414881+00:00",
-      "last_run_formatted": "2026-08-11 11:54:01 UTC",
+      "run_id": "run_f4820c9a",
+      "timestamp": "2026-08-11T12:00:45.457087+00:00",
+      "last_run_formatted": "2026-08-11 12:00:45 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 5,
       "signal_source_label": "Demo Dataset (Simulated)",
+      "analysis_provider": "Mock",
       "minds_source": "[MOCK DEMO MODE]",
       "minds_status": "PROCESSED_LOCALLY_MOCK",
       "minds_verified": false,
+      "persistence_mode": "LOCAL FILE",
+      "continuity_note": "Adjusted using your previous feedback: 'Emphasize open-source terminal setup steps'.",
+      "provenance": {
+        "run_id": "run_f4820c9a",
+        "created_at": "2026-08-11T12:00:45.456778+00:00",
+        "completed_at": "2026-08-11T12:00:45.457087+00:00",
+        "status": "COMPLETED",
+        "signal_source": "Demo Dataset (Simulated)",
+        "signal_mode": "DEMO",
+        "analysis_provider": "Mock",
+        "mind_id": "8208493e-f36b-1410-8466-00039ce7df11",
+        "mind_verified": false,
+        "demo_mode": true,
+        "persistence_mode": "LOCAL FILE",
+        "opportunity_count": 3
+      },
       "items": [
         {
           "id": "opp_001",
@@ -287,7 +377,7 @@
           "title": "Beginner Local AI Agent Walkthrough Video",
           "category": "Content Strategy",
           "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
-          "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Persisted rule applied \u2014 terminal open-source focus.",
+          "why_it_matters": "Matches saved goal: 78% viewer retention on setup walkthroughs. Grounding: Persisted rule applied \u2014 terminal open-source focus.",
           "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
           "memory_context_used": "profile.brand_voice + retention_node_78%",
           "status": "NEW"
@@ -322,15 +412,33 @@
       ]
     },
     {
-      "timestamp": "2026-08-11T11:54:01.442608+00:00",
-      "last_run_formatted": "2026-08-11 11:54:01 UTC",
+      "run_id": "run_c4b5cd35",
+      "timestamp": "2026-08-11T12:00:45.486104+00:00",
+      "last_run_formatted": "2026-08-11 12:00:45 UTC",
       "signals_reviewed_count": 3,
       "opportunities_found_count": 3,
       "memory_nodes_used_count": 5,
       "signal_source_label": "Demo Dataset (Simulated)",
+      "analysis_provider": "Mock",
       "minds_source": "[MOCK DEMO MODE]",
       "minds_status": "PROCESSED_LOCALLY_MOCK",
       "minds_verified": false,
+      "persistence_mode": "LOCAL FILE",
+      "continuity_note": "Adjusted using your previous feedback: 'Emphasize open-source terminal setup steps'.",
+      "provenance": {
+        "run_id": "run_c4b5cd35",
+        "created_at": "2026-08-11T12:00:45.485558+00:00",
+        "completed_at": "2026-08-11T12:00:45.486104+00:00",
+        "status": "COMPLETED",
+        "signal_source": "Demo Dataset (Simulated)",
+        "signal_mode": "DEMO",
+        "analysis_provider": "Mock",
+        "mind_id": "8208493e-f36b-1410-8466-00039ce7df11",
+        "mind_verified": false,
+        "demo_mode": true,
+        "persistence_mode": "LOCAL FILE",
+        "opportunity_count": 3
+      },
       "items": [
         {
           "id": "opp_001",
@@ -338,7 +446,7 @@
           "title": "Beginner Local AI Agent Walkthrough Video",
           "category": "Content Strategy",
           "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
-          "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Persisted rule applied \u2014 terminal open-source focus.",
+          "why_it_matters": "Matches saved goal: 78% viewer retention on setup walkthroughs. Grounding: Persisted rule applied \u2014 terminal open-source focus.",
           "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
           "memory_context_used": "profile.brand_voice + retention_node_78%",
           "status": "NEW"
@@ -377,7 +485,7 @@
     {
       "item_id": "opp_001",
       "feedback_type": "useful",
-      "timestamp": 1786449241.4023192,
+      "timestamp": 1786449645.4170535,
       "notes": "Great setup walkthrough idea"
     }
   ]

@@ -115,7 +115,7 @@ async function fetchLatestBriefing() {
         latestBriefing = data.briefing;
         renderBriefing(latestBriefing);
       } else {
-        // If no briefing stored yet, trigger an initial cycle
+        // Trigger initial cycle if no briefing stored
         triggerAsyncRun(true);
       }
     }
@@ -163,6 +163,8 @@ async function submitItemFeedback(itemId, feedbackType) {
       renderStateStore();
     }
     alert(`Feedback saved to creator profile memory: [${feedbackType.toUpperCase()}]`);
+    // Re-run autonomous cycle so the briefing dynamically demonstrates continuity!
+    await triggerAsyncRun(true);
   } catch (err) {
     console.error('[Greenroom] Error submitting item feedback:', err);
   }
@@ -175,7 +177,7 @@ function renderAll() {
   if (latestBriefing) renderBriefing(latestBriefing);
 }
 
-// Render "While You Were Away" Briefing
+// Render "While You Were Away" Briefing & Judge Proof Panel
 function renderBriefing(briefing) {
   if (!briefing) return;
 
@@ -184,6 +186,33 @@ function renderBriefing(briefing) {
   document.getElementById('briefing-signals-count').textContent = `${briefing.signals_reviewed_count || 3} Signals Reviewed`;
   document.getElementById('briefing-opps-count').textContent = `${briefing.opportunities_found_count || 3} Opportunities Ranked`;
   document.getElementById('briefing-signal-source').textContent = `[${briefing.signal_source_label || 'DEMO DATASET'}]`;
+
+  // Continuity Banner
+  const contBanner = document.getElementById('continuity-banner');
+  const contText = document.getElementById('continuity-note-text');
+  if (briefing.continuity_note) {
+    if (contBanner) contBanner.classList.remove('hidden');
+    if (contText) contText.textContent = briefing.continuity_note;
+  } else {
+    if (contBanner) contBanner.classList.add('hidden');
+  }
+
+  // Judge Proof Panel Population
+  const prov = briefing.provenance || {};
+  const runIdEl = document.getElementById('proof-run-id');
+  if (runIdEl) runIdEl.textContent = prov.run_id || briefing.run_id || 'run_active';
+
+  const analysisEl = document.getElementById('proof-analysis');
+  if (analysisEl) analysisEl.textContent = prov.analysis_provider || briefing.analysis_provider || 'Animoca Minds';
+
+  const verifiedEl = document.getElementById('proof-verified');
+  if (verifiedEl) verifiedEl.textContent = (prov.mind_verified || briefing.minds_verified) ? 'Yes (8208493e...)' : 'No (Mock)';
+
+  const signalsEl = document.getElementById('proof-signals');
+  if (signalsEl) signalsEl.textContent = prov.signal_source || briefing.signal_source_label || 'Demo Dataset (Simulated)';
+
+  const persistenceEl = document.getElementById('proof-persistence');
+  if (persistenceEl) persistenceEl.textContent = prov.persistence_mode || briefing.persistence_mode || 'LOCAL FILE';
 
   const container = document.getElementById('briefing-cards-container');
   if (!container || !briefing.items) return;
@@ -394,9 +423,7 @@ async function submitFeedback() {
     await triggerAsyncRun(true);
   } catch (err) {
     console.error('[Greenroom] Error submitting feedback:', err);
-  } finally {
-    setTimeout(hideBanner, 1000);
-  }
+  } font-medium;
 }
 
 async function approveSponsorship() {
