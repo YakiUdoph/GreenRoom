@@ -1,24 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useGreenroomState } from './hooks/useGreenroomState';
 import { useGreenroomSocket } from './hooks/useGreenroomSocket';
+import { useMousePosition } from './hooks/useMousePosition';
 import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
 
-import { Navigation } from './components/layout/Navigation';
-import { DemoBanner } from './components/layout/DemoBanner';
+import { Sidebar } from './components/layout/Sidebar';
 import { PayloadModal } from './components/ui/PayloadModal';
 
-import { Home } from './pages/Home';
-import { Mind } from './pages/Mind';
-import { Memory } from './pages/Memory';
-import { Intelligence } from './pages/Intelligence';
-import { Actions } from './pages/Actions';
-import { System } from './pages/System';
+import { HomePage } from './pages/HomePage';
+import { MindPage } from './pages/MindPage';
+import { MemoryPage } from './pages/MemoryPage';
+import { IntelligencePage } from './pages/IntelligencePage';
+import { ActionsPage } from './pages/ActionsPage';
+import { SystemPage } from './pages/SystemPage';
 
 export function App() {
-  // Active Navigation Tab ('home' | 'mind' | 'memory' | 'intelligence' | 'actions' | 'system')
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('memory');
   const [isExecuting, setIsExecuting] = useState(false);
+
+  // Enable Cursor-Aware Motion Physics Hook
+  useMousePosition();
 
   // Initialize WebSocket Lifecycle
   useGreenroomSocket();
@@ -30,11 +32,10 @@ export function App() {
     impMessages,
     selectedPayload,
     isModalOpen,
-    demoProgress,
     activeCards,
   } = useGreenroomState();
 
-  // Initial Data Load via REST API
+  // Initial Data Fetch via REST API
   useEffect(() => {
     async function loadInitialData() {
       try {
@@ -55,7 +56,7 @@ export function App() {
     loadInitialData();
   }, []);
 
-  // Demo Step Runner Handler
+  // Step Runner
   const handleRunStep = async (stepId, feedback = null) => {
     setIsExecuting(true);
     greenroomStore.setDemoProgress(stepId, true);
@@ -68,7 +69,7 @@ export function App() {
       setTimeout(() => {
         greenroomStore.clearDemoProgress();
         setIsExecuting(false);
-      }, 800);
+      }, 600);
     } catch (err) {
       console.error(`[GreenroomApp] Step ${stepId} error:`, err);
       greenroomStore.clearDemoProgress();
@@ -76,7 +77,7 @@ export function App() {
     }
   };
 
-  // Full 5-Minute Demo Runner Handler
+  // Full Demo Runner
   const handleRunFullDemo = async () => {
     setIsExecuting(true);
     try {
@@ -91,7 +92,7 @@ export function App() {
     }
   };
 
-  // Reset State Handler
+  // Reset State
   const handleResetState = async () => {
     setIsExecuting(true);
     try {
@@ -105,7 +106,7 @@ export function App() {
     }
   };
 
-  // Action Approval Handler
+  // Action Approval
   const handleApproveSponsorship = async (sponsorName = 'TechBrand Inc.') => {
     try {
       const actionName = `Sponsorship Outreach Pitch for ${sponsorName}`;
@@ -115,55 +116,52 @@ export function App() {
     }
   };
 
-  // Creator Voice Feedback Handler
+  // Feedback Submission
   const handleSubmitFeedback = async (feedbackText) => {
     await handleRunStep(5, feedbackText);
   };
 
-  // Render Active Page Component
-  const renderActivePage = () => {
+  // Render Page Selection
+  const renderPage = () => {
     switch (activeTab) {
+      case 'home':
+        return (
+          <HomePage
+            memoryState={memoryState}
+            activeCards={activeCards}
+            onNavigate={(tab) => setActiveTab(tab)}
+            onRunFullDemo={handleRunFullDemo}
+            isExecuting={isExecuting}
+          />
+        );
       case 'mind':
         return (
-          <Mind
+          <MindPage
             mindsStatus={mindsStatus}
-            impMessages={impMessages}
             onRunStep={handleRunStep}
             isExecuting={isExecuting}
           />
         );
-
-      case 'memory':
-        return (
-          <Memory
-            memoryState={memoryState}
-            onSubmitFeedback={handleSubmitFeedback}
-            isExecuting={isExecuting}
-          />
-        );
-
       case 'intelligence':
         return (
-          <Intelligence
+          <IntelligencePage
             impMessages={impMessages}
             onInspectPayload={(msg) => greenroomStore.openPayloadModal(msg)}
             onRunStep={handleRunStep}
             isExecuting={isExecuting}
           />
         );
-
       case 'actions':
         return (
-          <Actions
+          <ActionsPage
             activeCards={activeCards}
             onApproveSponsorship={handleApproveSponsorship}
             isExecuting={isExecuting}
           />
         );
-
       case 'system':
         return (
-          <System
+          <SystemPage
             mindsStatus={mindsStatus}
             memoryState={memoryState}
             impMessages={impMessages}
@@ -174,43 +172,23 @@ export function App() {
             isExecuting={isExecuting}
           />
         );
-
-      case 'home':
+      case 'memory':
       default:
-        return (
-          <Home
-            memoryState={memoryState}
-            activeCards={activeCards}
-            mindsStatus={mindsStatus}
-            onNavigate={(tab) => setActiveTab(tab)}
-            onRunFullDemo={handleRunFullDemo}
-            isExecuting={isExecuting}
-          />
-        );
+        return <MemoryPage memoryState={memoryState} />;
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#070b14] text-slate-100 font-sans selection:bg-emerald-500 selection:text-slate-950">
-      {/* Persistent Navigation */}
-      <Navigation
-        activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab)}
-        mindsStatus={mindsStatus}
-      />
+    <div className="min-h-screen flex bg-[#09090b] text-zinc-100 font-sans selection:bg-emerald-500 selection:text-zinc-950">
+      {/* Left Sidebar Navigation */}
+      <Sidebar activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab)} />
 
-      {/* Main Container */}
-      <main className="flex-1 p-4 md:p-8">
-        {/* Progress Banner */}
-        <div className="max-w-[1400px] mx-auto mb-6">
-          <DemoBanner progress={demoProgress} />
-        </div>
-
-        {/* Dynamic Page Render */}
-        {renderActivePage()}
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto">
+        {renderPage()}
       </main>
 
-      {/* Raw Payload Modal Inspector */}
+      {/* Payload Modal Inspector */}
       <PayloadModal
         isOpen={isModalOpen}
         message={selectedPayload}

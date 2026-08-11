@@ -8,14 +8,18 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        serif: ['Playfair Display', 'Georgia', 'serif'],
         sans: ['Inter', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
       colors: {
-        slate: {
-          850: '#111827',
-          900: '#0f172a',
-          950: '#070b14',
+        zinc: {
+          925: '#0c0c0e',
+          950: '#09090b',
+        },
+        emerald: {
+          500: '#10b981',
+          400: '#34d399',
         }
       }
     },
