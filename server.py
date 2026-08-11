@@ -19,6 +19,7 @@ from imp_protocol import imp_bus, IMPMessage
 from minds_integration import minds_manager, MindsConfigurationError
 from agents import GreenroomCoreMind, ScoutMind, CommunityMind, BusinessMind
 from demo_runner import demo_runner_tool
+from async_runner import async_runner
 
 app = FastAPI(
     title="Greenroom: Persistent Creator Engine (Animoca Brands Minds Builder API Integration)",
@@ -91,6 +92,14 @@ class ArtifactRequest(BaseModel):
 class RuleRequest(BaseModel):
     rule: str
 
+class BriefingItemFeedbackRequest(BaseModel):
+    item_id: str
+    feedback_type: str  # useful, not_useful, done, dismiss
+    notes: Optional[str] = None
+
+class TriggerBriefingRequest(BaseModel):
+    accelerated: bool = True
+
 
 # REST Endpoints
 @app.get("/api/state")
@@ -105,6 +114,54 @@ def get_minds_status():
 @app.get("/api/imp/history")
 def get_imp_history(limit: int = 50):
     return imp_bus.get_history(limit=limit)
+
+@app.get("/api/briefing/latest")
+def get_latest_briefing():
+    """Retrieves the latest persisted 'While You Were Away' briefing."""
+    briefing = memory_tool.get_latest_briefing()
+    return {
+        "status": "success",
+        "briefing": briefing,
+        "runner_status": async_runner.get_status(),
+        "minds_status": minds_manager.get_status()
+    }
+
+@app.post("/api/briefing/trigger")
+async def trigger_briefing(req: Optional[TriggerBriefingRequest] = None):
+    """Triggers an autonomous background growth cycle to process signals and produce a briefing."""
+    minds_manager.validate_configuration()
+    core = GreenroomCoreMind(memory_tool)
+    accelerated = req.accelerated if req else True
+    res = await async_runner.trigger_autonomous_run(core, accelerated=accelerated)
+    return {
+        "status": "success",
+        "runner_result": res,
+        "briefing": memory_tool.get_latest_briefing(),
+        "minds_status": minds_manager.get_status()
+    }
+
+@app.get("/api/briefing/status")
+def get_briefing_status():
+    return async_runner.get_status()
+
+@app.post("/api/briefing/feedback")
+def submit_briefing_feedback(req: BriefingItemFeedbackRequest):
+    entry = memory_tool.add_item_feedback(req.item_id, req.feedback_type, req.notes)
+    return {
+        "status": "success",
+        "feedback_entry": entry,
+        "state": memory_tool.get_full_state()
+    }
+
+@app.get("/api/signals")
+def get_signals():
+    from minds_integration import DemoSignalProvider
+    provider = DemoSignalProvider()
+    return {
+        "status": "success",
+        "signals": provider.get_signals()
+    }
+
 
 @app.post("/api/demo/reset")
 def reset_state():

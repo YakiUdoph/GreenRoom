@@ -1,14 +1,16 @@
-// Greenroom Command Center Frontend JavaScript
+// Greenroom Command Center Frontend JavaScript — Sharpened MVP
 
 let ws = null;
 let currentMemoryState = {};
 let impMessages = [];
+let latestBriefing = null;
 
 // Initialize application on DOM load
 document.addEventListener('DOMContentLoaded', () => {
   initWebSocket();
   fetchInitialState();
   fetchMindsStatus();
+  fetchLatestBriefing();
 });
 
 // Fetch health/status endpoint on load
@@ -25,7 +27,6 @@ function fetchMindsStatus() {
         statusEl.innerHTML = '⚠️ Minds Status Unavailable';
       }
     });
-
 }
 
 function updateStatusBadge(data) {
@@ -33,14 +34,14 @@ function updateStatusBadge(data) {
   if (!statusEl) return;
   if (data.mode === 'production' && data.connected) {
     const mindIdSnippet = data.real_platform_mind?.mindId ? ` (${data.real_platform_mind.mindId.slice(0, 8)}...)` : '';
-    statusEl.className = 'px-3 py-1 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-full text-xs flex items-center gap-2 font-medium';
-    statusEl.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> 🟢 Remote Minds Connected — Real Platform Mind${mindIdSnippet}`;
+    statusEl.className = 'px-3.5 py-1.5 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-full text-xs flex items-center gap-2 font-semibold shadow-inner';
+    statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span> 🟢 Remote Animoca Mind Connected${mindIdSnippet}`;
   } else if (data.mode === 'demo' || data.is_mock || data.demo_mode_active) {
-    statusEl.className = 'px-3 py-1 bg-amber-950 text-amber-400 border border-amber-800 rounded-full text-xs flex items-center gap-2 font-medium';
-    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-400"></span> 🟡 MOCK DEMO MODE — Offline Development Mode';
+    statusEl.className = 'px-3.5 py-1.5 bg-amber-950 text-amber-400 border border-amber-800 rounded-full text-xs flex items-center gap-2 font-semibold shadow-inner';
+    statusEl.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> 🟡 MOCK DEMO MODE — Offline Development';
   } else {
-    statusEl.className = 'px-3 py-1 bg-rose-950 text-rose-400 border border-rose-800 rounded-full text-xs flex items-center gap-2 font-medium';
-    statusEl.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500"></span> 🔴 Animoca Minds Builder Disconnected';
+    statusEl.className = 'px-3.5 py-1.5 bg-rose-950 text-rose-400 border border-rose-800 rounded-full text-xs flex items-center gap-2 font-semibold shadow-inner';
+    statusEl.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 🔴 Animoca Minds Builder Disconnected';
   }
 }
 
@@ -54,7 +55,6 @@ function initWebSocket() {
   ws.onopen = () => {
     console.log('[Greenroom] WebSocket connected');
   };
-
 
   ws.onmessage = (event) => {
     try {
@@ -71,23 +71,26 @@ function initWebSocket() {
         if (data.memory_state) {
           currentMemoryState = data.memory_state;
         }
+        if (data.data && data.data.payload && data.data.payload.briefing) {
+          latestBriefing = data.data.payload.briefing;
+          renderBriefing(latestBriefing);
+        }
         renderIMPStream();
         renderStateStore();
-        checkAndRenderCards(data.data);
       }
     } catch (err) {
       console.error('[Greenroom] WS Parse Error:', err);
     }
   };
 
-
   ws.onclose = () => {
-    document.getElementById('connection-status').textContent = 'Connecting...';
+    const statusEl = document.getElementById('connection-status');
+    if (statusEl) statusEl.textContent = 'Connecting...';
     setTimeout(initWebSocket, 2000);
   };
 }
 
-// Fetch State via REST API fallback
+// Fetch Initial State via REST
 async function fetchInitialState() {
   try {
     const [stateRes, historyRes] = await Promise.all([
@@ -102,22 +105,160 @@ async function fetchInitialState() {
   }
 }
 
+// Fetch Latest Briefing on page load / refresh
+async function fetchLatestBriefing() {
+  try {
+    const res = await fetch('/api/briefing/latest');
+    if (res.ok) {
+      const data = await res.json();
+      if (data.briefing) {
+        latestBriefing = data.briefing;
+        renderBriefing(latestBriefing);
+      } else {
+        // If no briefing stored yet, trigger an initial cycle
+        triggerAsyncRun(true);
+      }
+    }
+  } catch (err) {
+    console.warn('[Greenroom] Error fetching briefing:', err);
+  }
+}
+
+// Trigger Async Offline Run (Hackathon Demo Trigger)
+async function triggerAsyncRun(silent = false) {
+  if (!silent) showBanner("Greenroom Mind Working While You Are Away...", "Processing audience signals & ranking growth opportunities...");
+
+  try {
+    const res = await fetch('/api/briefing/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accelerated: true })
+    });
+
+    const data = await res.json();
+    if (data.briefing) {
+      latestBriefing = data.briefing;
+      renderBriefing(latestBriefing);
+    }
+    if (data.minds_status) updateStatusBadge(data.minds_status);
+  } catch (err) {
+    console.error('[Greenroom] Error triggering async run:', err);
+  } finally {
+    if (!silent) setTimeout(hideBanner, 1000);
+  }
+}
+
+// Submit Item Feedback (Useful, Done, Dismiss)
+async function submitItemFeedback(itemId, feedbackType) {
+  try {
+    const res = await fetch('/api/briefing/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ item_id: itemId, feedback_type: feedbackType })
+    });
+
+    const data = await res.json();
+    if (data.state) {
+      currentMemoryState = data.state;
+      renderStateStore();
+    }
+    alert(`Feedback saved to creator profile memory: [${feedbackType.toUpperCase()}]`);
+  } catch (err) {
+    console.error('[Greenroom] Error submitting item feedback:', err);
+  }
+}
+
 // Global Render Dispatcher
 function renderAll() {
   renderIMPStream();
   renderStateStore();
-  renderActiveCards();
+  if (latestBriefing) renderBriefing(latestBriefing);
+}
+
+// Render "While You Were Away" Briefing
+function renderBriefing(briefing) {
+  if (!briefing) return;
+
+  // Metadata Bar Updates
+  document.getElementById('briefing-time').textContent = `Last Autonomous Run: ${briefing.last_run_formatted || 'Just Now'}`;
+  document.getElementById('briefing-signals-count').textContent = `${briefing.signals_reviewed_count || 3} Signals Reviewed`;
+  document.getElementById('briefing-opps-count').textContent = `${briefing.opportunities_found_count || 3} Opportunities Ranked`;
+  document.getElementById('briefing-signal-source').textContent = `[${briefing.signal_source_label || 'DEMO DATASET'}]`;
+
+  const container = document.getElementById('briefing-cards-container');
+  if (!container || !briefing.items) return;
+
+  container.innerHTML = briefing.items.map((item, idx) => {
+    let borderClass = 'border-slate-800 hover:border-slate-700';
+    let badgeClass = 'text-cyan-400 bg-cyan-950 border-cyan-800';
+    let nextActionClass = 'bg-slate-900 border-slate-800 text-slate-200';
+
+    if (item.priority === 'HIGH PRIORITY') {
+      borderClass = 'border-emerald-500/40 hover:border-emerald-400/70';
+      badgeClass = 'text-emerald-400 bg-emerald-950 border-emerald-800';
+      nextActionClass = 'bg-emerald-950/40 border-emerald-900/60 text-emerald-200';
+    } else if (item.priority === 'MEDIUM PRIORITY') {
+      borderClass = 'border-amber-500/30 hover:border-amber-400/60';
+      badgeClass = 'text-amber-400 bg-amber-950 border-amber-800';
+      nextActionClass = 'bg-amber-950/40 border-amber-900/60 text-amber-200';
+    }
+
+    return `
+      <div class="bg-slate-950/90 border ${borderClass} rounded-2xl p-5 flex flex-col justify-between space-y-4 shadow-xl transition group">
+        <div class="space-y-3">
+          <div class="flex justify-between items-center">
+            <span class="text-[10px] font-extrabold ${badgeClass} border px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+              ${idx + 1}. ${escapeHtml(item.priority)}
+            </span>
+            <span class="text-[10px] font-mono text-slate-500">${escapeHtml(item.category || 'Growth Signal')}</span>
+          </div>
+
+          <h3 class="font-bold text-slate-100 text-base group-hover:text-emerald-300 transition">
+            ${escapeHtml(item.title)}
+          </h3>
+
+          <div class="space-y-2 text-xs text-slate-300">
+            <div class="p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80">
+              <span class="text-[10px] text-slate-400 font-semibold uppercase block">What Changed:</span>
+              <p class="text-slate-200 mt-0.5">${escapeHtml(item.what_changed)}</p>
+            </div>
+
+            <div class="p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80">
+              <span class="text-[10px] text-cyan-400 font-semibold uppercase block">Why It Matters (Memory Grounded):</span>
+              <p class="text-slate-200 mt-0.5">${escapeHtml(item.why_it_matters)}</p>
+            </div>
+
+            <div class="p-2.5 ${nextActionClass} rounded-xl border">
+              <span class="text-[10px] font-semibold uppercase block">Recommended Next Action:</span>
+              <p class="font-medium mt-0.5">${escapeHtml(item.recommended_action)}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-2 border-t border-slate-900 flex justify-between items-center gap-2">
+          <span class="text-[10px] text-slate-500 font-mono">Memory: ${escapeHtml(item.memory_context_used || 'creator_profile')}</span>
+          <div class="flex gap-1.5">
+            <button onclick="submitItemFeedback('${item.id}', 'useful')" class="px-2.5 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 rounded-lg text-xs font-semibold transition" title="Mark Useful">✓ Useful</button>
+            <button onclick="submitItemFeedback('${item.id}', 'done')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-lg text-xs transition" title="Mark Done">⚡ Done</button>
+            <button onclick="submitItemFeedback('${item.id}', 'dismiss')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-xs transition" title="Dismiss">✕</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 }
 
 // Render Inter-Mind Message Log (IMP)
 function renderIMPStream() {
   const container = document.getElementById('activity-stream');
-  document.getElementById('msg-count-badge').textContent = `${impMessages.length} messages`;
+  const countEl = document.getElementById('msg-count-badge');
+  if (countEl) countEl.textContent = `${impMessages.length} messages`;
+  if (!container) return;
 
   if (!impMessages || impMessages.length === 0) {
     container.innerHTML = `
       <div class="p-4 bg-slate-950/60 border border-slate-800/60 rounded-xl text-slate-400 text-center italic">
-        Waiting for agent network initialization... Run demo or trigger steps above.
+        Waiting for agent network communication...
       </div>`;
     return;
   }
@@ -166,6 +307,9 @@ function renderIMPStream() {
 // Generate human-readable summary from payload
 function getPayloadSnippet(payload, action) {
   if (!payload) return 'No payload data';
+  if (payload.event === 'WHILE_YOU_WERE_AWAY_BRIEFING_READY') {
+    return `AUTONOMOUS BRIEFING COMPLETED: ${payload.opportunities_count} ranked growth opportunities created for creator return.`;
+  }
   if (payload.trend_name) {
     if (payload.status === 'REJECTED') {
       return `REJECTED trend: "${payload.trend_name}". ${payload.rejection_reason || ''}`;
@@ -173,10 +317,8 @@ function getPayloadSnippet(payload, action) {
     return `Flagged trend: "${payload.trend_name}". Fit Score: ${payload.fit_score || 0.92}. ${payload.relevance_reason || ''}`;
   }
   if (payload.extracted_hook) return `Extracted hook: ${payload.extracted_hook}`;
-  if (payload.sponsor_name) return `Generated pitch for ${payload.sponsor_name}. Calculated match score: ${payload.match_score * 100}%.`;
-  if (payload.script_concept) return `Synthesized Creative Script Concept. (Punchy: ${payload.is_punchy_voice ? 'YES' : 'NO'})`;
+  if (payload.sponsor_name) return `Generated pitch for ${payload.sponsor_name}. Calculated match score: ${(payload.match_score * 100).toFixed(0)}%.`;
   if (payload.extracted_learned_rule) return `PROOF OF LEARNING: Updated persistent voice rule -> "${payload.extracted_learned_rule}"`;
-  if (payload.action_name) return `Action approved: "${payload.action_name}"`;
 
   return JSON.stringify(payload).slice(0, 120) + '...';
 }
@@ -185,113 +327,88 @@ function getPayloadSnippet(payload, action) {
 function renderStateStore() {
   if (!currentMemoryState) return;
 
-  // Name & Voice Attributes
-  document.getElementById('state-creator-name').textContent = currentMemoryState.creator_name || 'Alex Rivera';
-  const voiceAttrs = currentMemoryState.brand_voice_attributes || [];
-  document.getElementById('state-voice-attributes').innerHTML = voiceAttrs.map(v => 
-    `<span class="px-2 py-0.5 bg-slate-900 text-slate-300 rounded text-[10px] border border-slate-800 font-sans">${escapeHtml(v)}</span>`
-  ).join('');
-
-  // Learned Voice Rules (Minute 5 Magic)
-  const learnedRules = currentMemoryState.learned_voice_rules || [];
-  document.getElementById('rule-count-badge').textContent = `${learnedRules.length} rules`;
+  const creatorNameEl = document.getElementById('state-creator-name');
+  if (creatorNameEl) creatorNameEl.textContent = currentMemoryState.creator_name || 'Alex Rivera';
   
-  const rulesContainer = document.getElementById('state-learned-rules');
-  if (learnedRules.length === 0) {
-    rulesContainer.innerHTML = `<p class="text-slate-500 italic text-[11px]">No feedback rules learned yet. Run Minute 5 step to test proof of learning.</p>`;
-  } else {
-    rulesContainer.innerHTML = learnedRules.map(r => `
-      <div class="p-2 bg-amber-950/40 border border-amber-800/60 rounded-lg text-amber-200 text-[11px] font-sans flex items-start gap-1.5 shadow-sm">
-        <span class="text-amber-400 font-bold">✓</span>
-        <span>${escapeHtml(r)}</span>
-      </div>
-    `).join('');
+  const voiceAttrs = currentMemoryState.brand_voice_attributes || [];
+  const voiceEl = document.getElementById('state-voice-attributes');
+  if (voiceEl) {
+    voiceEl.innerHTML = voiceAttrs.map(v => 
+      `<span class="px-2 py-0.5 bg-slate-900 text-slate-300 rounded text-[10px] border border-slate-800 font-sans">${escapeHtml(v)}</span>`
+    ).join('');
   }
 
-  // Rejected Topics
-  const rejected = currentMemoryState.rejected_topics || [];
-  document.getElementById('state-rejected-topics').innerHTML = rejected.map(r => 
-    `<p class="text-rose-300/80">• ${escapeHtml(r)}</p>`
-  ).join('');
-
-  // Monetization
-  const mb = currentMemoryState.monetization_benchmarks || {};
-  document.getElementById('state-cpm').textContent = mb.cpm_target ? `$${mb.cpm_target}` : '$45';
-  document.getElementById('state-min-deal').textContent = mb.minimum_deal_size ? `$${mb.minimum_deal_size}` : '$5,000';
+  // Learned Voice Rules
+  const learnedRules = currentMemoryState.learned_voice_rules || [];
+  const countBadge = document.getElementById('rule-count-badge');
+  if (countBadge) countBadge.textContent = `${learnedRules.length} rules`;
+  
+  const rulesContainer = document.getElementById('state-learned-rules');
+  if (rulesContainer) {
+    if (learnedRules.length === 0) {
+      rulesContainer.innerHTML = `<p class="text-slate-500 italic text-[11px]">No feedback rules learned yet.</p>`;
+    } else {
+      rulesContainer.innerHTML = learnedRules.map(r => `
+        <div class="p-2 bg-amber-950/40 border border-amber-800/60 rounded-lg text-amber-200 text-[11px] font-sans flex items-start gap-1.5 shadow-sm">
+          <span class="text-amber-400 font-bold">✓</span>
+          <span>${escapeHtml(r)}</span>
+        </div>
+      `).join('');
+    }
+  }
 
   // Memory Nodes
   const nodes = currentMemoryState.memory_nodes || [];
   const nodesContainer = document.getElementById('state-memory-nodes');
-  if (nodes.length === 0) {
-    nodesContainer.innerHTML = `<p class="text-slate-500 italic text-[11px]">No persistent memory nodes stored.</p>`;
-  } else {
-    nodesContainer.innerHTML = nodes.slice(-3).map(n => `
-      <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg text-[11px]">
-        <span class="text-[9px] font-bold uppercase text-cyan-400 bg-cyan-950 px-1.5 py-0.5 rounded border border-cyan-900">${n.type || 'node'}</span>
-        <p class="mt-1 text-slate-300 leading-snug">${escapeHtml(n.content || '')}</p>
-      </div>
-    `).join('');
-  }
-}
-
-// Render Action Cards
-function renderActiveCards() {
-  // Check latest strategy message
-  const stratMsg = impMessages.slice().reverse().find(m => m.action_type === 'DELEGATE_DRAFT');
-  if (stratMsg && stratMsg.payload) {
-    document.getElementById('script-concept-body').textContent = stratMsg.payload.script_concept || 'Script conceptualized.';
-    if (stratMsg.payload.is_punchy_voice) {
-      document.getElementById('punchy-tag').classList.remove('hidden');
+  if (nodesContainer) {
+    if (nodes.length === 0) {
+      nodesContainer.innerHTML = `<p class="text-slate-500 italic text-[11px]">No persistent memory nodes stored.</p>`;
+    } else {
+      nodesContainer.innerHTML = nodes.slice(-3).map(n => `
+        <div class="p-2 bg-slate-900 border border-slate-800 rounded-lg text-[11px]">
+          <span class="text-[9px] font-bold uppercase text-cyan-400 bg-cyan-950 px-1.5 py-0.5 rounded border border-cyan-900">${n.type || 'node'}</span>
+          <p class="mt-1 text-slate-300 leading-snug">${escapeHtml(n.content || '')}</p>
+        </div>
+      `).join('');
     }
   }
-
-  // Check latest pitch message
-  const pitchMsg = impMessages.slice().reverse().find(m => m.action_type === 'PITCH_PROPOSAL');
-  if (pitchMsg && pitchMsg.payload) {
-    const p = pitchMsg.payload;
-    document.getElementById('sponsor-card-title').textContent = `Pitch Draft for ${p.sponsor_name || 'TechBrand Inc.'}`;
-    document.getElementById('match-score-badge').textContent = `Match: ${(p.match_score * 100).toFixed(0)}%`;
-    document.getElementById('pitch-preview-box').textContent = p.pitch_draft || 'Draft created.';
-  }
 }
 
-function checkAndRenderCards(msg) {
-  renderActiveCards();
-}
+async function submitFeedback() {
+  const fbInput = document.getElementById('feedback-input');
+  if (!fbInput || !fbInput.value) return;
 
-// Hackathon Step Runners
-async function runStep(stepId) {
-  showDemoBanner(stepId);
+  showBanner("Proof of Learning Executing...", "Persisting custom instruction into creator memory profile.");
   try {
-    let body = null;
-    if (stepId === 5) {
-      const fb = document.getElementById('feedback-input').value;
-      body = JSON.stringify({ feedback: fb });
-    }
-
-    const res = await fetch(`/api/demo/step/${stepId}`, {
+    const res = await fetch('/api/action/feedback', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: body
+      body: JSON.stringify({ feedback: fbInput.value })
     });
-
     const data = await res.json();
     if (data.state) {
       currentMemoryState = data.state;
       renderStateStore();
     }
-    updateProgressDots(stepId);
-    setTimeout(hideDemoBanner, 1000);
+    // Re-run autonomous cycle so the briefing dynamically reflects the updated rule!
+    await triggerAsyncRun(true);
   } catch (err) {
-    console.error(`[Greenroom] Error running step ${stepId}:`, err);
-    hideDemoBanner();
+    console.error('[Greenroom] Error submitting feedback:', err);
+  } finally {
+    setTimeout(hideBanner, 1000);
   }
 }
 
-async function runFullDemo() {
-  for (let i = 1; i <= 5; i++) {
-    await runStep(i);
-    await new Promise(r => setTimeout(r, 600));
+async function approveSponsorship() {
+  try {
+    const res = await fetch('/api/action/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action_name: "Sponsorship Pitch for TechBrand Inc." })
+    });
+    alert("Sponsorship Pitch Approved & Sent to TechBrand Inc.!");
+  } catch (err) {
+    console.error('[Greenroom] Error approving pitch:', err);
   }
 }
 
@@ -301,69 +418,27 @@ async function resetState() {
     const data = await res.json();
     impMessages = [];
     currentMemoryState = data.state;
+    latestBriefing = null;
     renderAll();
-    document.getElementById('punchy-tag').classList.add('hidden');
-    document.getElementById('script-concept-body').textContent = 'Run Minute 3 demo step to trigger multi-mind strategy synthesis.';
-    document.getElementById('pitch-preview-box').textContent = 'Run Minute 4 demo step to generate autonomous pitch proposal.';
+    triggerAsyncRun(true);
   } catch (err) {
     console.error('[Greenroom] Error resetting state:', err);
   }
 }
 
-async function submitFeedback() {
-  await runStep(5);
+// Banner Helpers
+function showBanner(title, desc) {
+  const banner = document.getElementById('demo-banner');
+  const titleEl = document.getElementById('demo-step-title');
+  const descEl = document.getElementById('demo-step-desc');
+  if (banner) banner.classList.remove('hidden');
+  if (titleEl) titleEl.textContent = title;
+  if (descEl) descEl.textContent = desc;
 }
 
-async function approveSponsorship() {
-  try {
-    const res = await fetch('/api/action/approve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action_name: "Sponsorship Outreach Pitch for TechBrand Inc." })
-    });
-    alert("Sponsorship Pitch Approved & Executed!");
-  } catch (err) {
-    console.error('[Greenroom] Error approving pitch:', err);
-  }
-}
-
-function modifyPitch() {
-  const newPitch = prompt("Enter modifications for Business Mind pitch:");
-  if (newPitch) {
-    document.getElementById('pitch-preview-box').textContent = newPitch;
-  }
-}
-
-// UI Helpers & Modal
-function showDemoBanner(stepId) {
-  const titles = [
-    "",
-    "Minute 1: Zero-State Profile Ingestion",
-    "Minute 2: Autonomous Trend Filtering (Scout Mind)",
-    "Minute 3: Multi-Mind Strategy Synthesis (Core + Community)",
-    "Minute 4: Autonomous Business Execution (Business Mind)",
-    "Minute 5: Proof of Learning ('The Magic Moment')"
-  ];
-  document.getElementById('demo-banner').classList.remove('hidden');
-  document.getElementById('demo-step-title').textContent = titles[stepId] || `Executing Step ${stepId}...`;
-  updateProgressDots(stepId);
-}
-
-function hideDemoBanner() {
-  document.getElementById('demo-banner').classList.add('hidden');
-}
-
-function updateProgressDots(activeStep) {
-  for (let i = 1; i <= 5; i++) {
-    const dot = document.getElementById(`dot-${i}`);
-    if (dot) {
-      if (i <= activeStep) {
-        dot.className = "step-dot w-6 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400";
-      } else {
-        dot.className = "step-dot w-6 h-2 rounded-full bg-slate-800";
-      }
-    }
-  }
+function hideBanner() {
+  const banner = document.getElementById('demo-banner');
+  if (banner) banner.classList.add('hidden');
 }
 
 function inspectPayload(msgId) {

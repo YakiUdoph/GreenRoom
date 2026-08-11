@@ -18,6 +18,367 @@
     "cpm_target": 45,
     "minimum_deal_size": 5000
   },
-  "learned_voice_rules": [],
-  "memory_nodes": []
+  "learned_voice_rules": [
+    "Too formal. Make it punchier and emphasize beginner-friendly tips.",
+    "Creator prefers opportunities matching item 'opp_001'",
+    "Emphasize open-source terminal setup steps"
+  ],
+  "memory_nodes": [
+    {
+      "node_id": "mem_1786449241337",
+      "type": "video_script_analytics",
+      "timestamp": 1786449241.337313,
+      "content": "Past video script analysis: 'Build a Custom AI Agent in 10 Mins'. Viewer retention: 78% at 30 seconds. Audience requests github links and setup walkthroughs.",
+      "key_takeaways": [
+        "Step-by-step technical overviews drive 3x audience retention compared to news recaps.",
+        "High engagement on code repository links."
+      ]
+    },
+    {
+      "node_id": "mem_1786449241340",
+      "type": "learned_preference",
+      "timestamp": 1786449241.340728,
+      "content": "User Feedback Rule: Too formal. Make it punchier and emphasize beginner-friendly tips.",
+      "key_takeaways": [
+        "Explicit creator override on voice & tone",
+        "Too formal. Make it punchier and emphasize beginner-friendly tips."
+      ]
+    },
+    {
+      "node_id": "mem_1786449241402",
+      "type": "learned_preference",
+      "timestamp": 1786449241.4023337,
+      "content": "User Feedback Rule: Creator prefers opportunities matching item 'opp_001'",
+      "key_takeaways": [
+        "Explicit creator override on voice & tone",
+        "Creator prefers opportunities matching item 'opp_001'"
+      ]
+    },
+    {
+      "node_id": "mem_1786449241410",
+      "type": "learned_preference",
+      "timestamp": 1786449241.4101822,
+      "content": "User Feedback Rule: Emphasize open-source terminal setup steps",
+      "key_takeaways": [
+        "Explicit creator override on voice & tone",
+        "Emphasize open-source terminal setup steps"
+      ]
+    }
+  ],
+  "latest_briefing": {
+    "timestamp": "2026-08-11T11:54:01.442608+00:00",
+    "last_run_formatted": "2026-08-11 11:54:01 UTC",
+    "signals_reviewed_count": 3,
+    "opportunities_found_count": 3,
+    "memory_nodes_used_count": 5,
+    "signal_source_label": "Demo Dataset (Simulated)",
+    "minds_source": "[MOCK DEMO MODE]",
+    "minds_status": "PROCESSED_LOCALLY_MOCK",
+    "minds_verified": false,
+    "items": [
+      {
+        "id": "opp_001",
+        "priority": "HIGH PRIORITY",
+        "title": "Beginner Local AI Agent Walkthrough Video",
+        "category": "Content Strategy",
+        "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
+        "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Persisted rule applied \u2014 terminal open-source focus.",
+        "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
+        "memory_context_used": "profile.brand_voice + retention_node_78%",
+        "status": "NEW"
+      },
+      {
+        "id": "opp_002",
+        "priority": "MEDIUM PRIORITY",
+        "title": "TechBrand Inc. Sponsorship Pitch ($5,400 Target)",
+        "category": "Monetization",
+        "what_changed": "BusinessMind scored 89% brand fit for developer infrastructure sponsor TechBrand Inc.",
+        "why_it_matters": "Grounding: Alignment with your $45 CPM benchmark and technical audience profile.",
+        "recommended_action": "Approve and send 1-click sponsor integration pitch brief for upcoming workflow video.",
+        "memory_context_used": "profile.monetization_benchmarks.cpm_target=45",
+        "status": "NEW"
+      },
+      {
+        "id": "opp_003",
+        "priority": "WATCH",
+        "title": "Topic Filter Active: Crypto & Clickbait Suppressed",
+        "category": "Signal Filtering",
+        "what_changed": "ScoutMind automatically suppressed high-volume crypto trading & generic news clickbait signals.",
+        "why_it_matters": "Grounding: Filtered based on creator rejection rules: 'Crypto trading bots', 'Generic AI news clickbait'.",
+        "recommended_action": "No action needed \u2014 low-signal clickbait kept out of your workflow.",
+        "memory_context_used": "profile.rejected_topics",
+        "status": "NEW"
+      }
+    ],
+    "learned_rules_active": [
+      "Too formal. Make it punchier and emphasize beginner-friendly tips.",
+      "Creator prefers opportunities matching item 'opp_001'",
+      "Emphasize open-source terminal setup steps"
+    ]
+  },
+  "briefing_history": [
+    {
+      "timestamp": "2026-08-11T11:54:01.346178+00:00",
+      "last_run_formatted": "2026-08-11 11:54:01 UTC",
+      "signals_reviewed_count": 3,
+      "opportunities_found_count": 3,
+      "memory_nodes_used_count": 3,
+      "signal_source_label": "Demo Dataset (Simulated)",
+      "minds_source": "[MOCK DEMO MODE]",
+      "minds_status": "PROCESSED_LOCALLY_MOCK",
+      "minds_verified": false,
+      "items": [
+        {
+          "id": "opp_001",
+          "priority": "HIGH PRIORITY",
+          "title": "Beginner Local AI Agent Walkthrough Video",
+          "category": "Content Strategy",
+          "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
+          "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Direct developer retention driver.",
+          "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
+          "memory_context_used": "profile.brand_voice + retention_node_78%",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_002",
+          "priority": "MEDIUM PRIORITY",
+          "title": "TechBrand Inc. Sponsorship Pitch ($5,400 Target)",
+          "category": "Monetization",
+          "what_changed": "BusinessMind scored 89% brand fit for developer infrastructure sponsor TechBrand Inc.",
+          "why_it_matters": "Grounding: Alignment with your $45 CPM benchmark and technical audience profile.",
+          "recommended_action": "Approve and send 1-click sponsor integration pitch brief for upcoming workflow video.",
+          "memory_context_used": "profile.monetization_benchmarks.cpm_target=45",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_003",
+          "priority": "WATCH",
+          "title": "Topic Filter Active: Crypto & Clickbait Suppressed",
+          "category": "Signal Filtering",
+          "what_changed": "ScoutMind automatically suppressed high-volume crypto trading & generic news clickbait signals.",
+          "why_it_matters": "Grounding: Filtered based on creator rejection rules: 'Crypto trading bots', 'Generic AI news clickbait'.",
+          "recommended_action": "No action needed \u2014 low-signal clickbait kept out of your workflow.",
+          "memory_context_used": "profile.rejected_topics",
+          "status": "NEW"
+        }
+      ],
+      "learned_rules_active": [
+        "Too formal. Make it punchier and emphasize beginner-friendly tips.",
+        "Creator prefers opportunities matching item 'opp_001'",
+        "Emphasize open-source terminal setup steps"
+      ]
+    },
+    {
+      "timestamp": "2026-08-11T11:54:01.394744+00:00",
+      "last_run_formatted": "2026-08-11 11:54:01 UTC",
+      "signals_reviewed_count": 3,
+      "opportunities_found_count": 3,
+      "memory_nodes_used_count": 3,
+      "signal_source_label": "Demo Dataset (Simulated)",
+      "minds_source": "[MOCK DEMO MODE]",
+      "minds_status": "PROCESSED_LOCALLY_MOCK",
+      "minds_verified": false,
+      "items": [
+        {
+          "id": "opp_001",
+          "priority": "HIGH PRIORITY",
+          "title": "Beginner Local AI Agent Walkthrough Video",
+          "category": "Content Strategy",
+          "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
+          "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Direct developer retention driver.",
+          "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
+          "memory_context_used": "profile.brand_voice + retention_node_78%",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_002",
+          "priority": "MEDIUM PRIORITY",
+          "title": "TechBrand Inc. Sponsorship Pitch ($5,400 Target)",
+          "category": "Monetization",
+          "what_changed": "BusinessMind scored 89% brand fit for developer infrastructure sponsor TechBrand Inc.",
+          "why_it_matters": "Grounding: Alignment with your $45 CPM benchmark and technical audience profile.",
+          "recommended_action": "Approve and send 1-click sponsor integration pitch brief for upcoming workflow video.",
+          "memory_context_used": "profile.monetization_benchmarks.cpm_target=45",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_003",
+          "priority": "WATCH",
+          "title": "Topic Filter Active: Crypto & Clickbait Suppressed",
+          "category": "Signal Filtering",
+          "what_changed": "ScoutMind automatically suppressed high-volume crypto trading & generic news clickbait signals.",
+          "why_it_matters": "Grounding: Filtered based on creator rejection rules: 'Crypto trading bots', 'Generic AI news clickbait'.",
+          "recommended_action": "No action needed \u2014 low-signal clickbait kept out of your workflow.",
+          "memory_context_used": "profile.rejected_topics",
+          "status": "NEW"
+        }
+      ],
+      "learned_rules_active": [
+        "Too formal. Make it punchier and emphasize beginner-friendly tips.",
+        "Creator prefers opportunities matching item 'opp_001'",
+        "Emphasize open-source terminal setup steps"
+      ]
+    },
+    {
+      "timestamp": "2026-08-11T11:54:01.398525+00:00",
+      "last_run_formatted": "2026-08-11 11:54:01 UTC",
+      "signals_reviewed_count": 3,
+      "opportunities_found_count": 3,
+      "memory_nodes_used_count": 3,
+      "signal_source_label": "Demo Dataset (Simulated)",
+      "minds_source": "[MOCK DEMO MODE]",
+      "minds_status": "PROCESSED_LOCALLY_MOCK",
+      "minds_verified": false,
+      "items": [
+        {
+          "id": "opp_001",
+          "priority": "HIGH PRIORITY",
+          "title": "Beginner Local AI Agent Walkthrough Video",
+          "category": "Content Strategy",
+          "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
+          "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Direct developer retention driver.",
+          "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
+          "memory_context_used": "profile.brand_voice + retention_node_78%",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_002",
+          "priority": "MEDIUM PRIORITY",
+          "title": "TechBrand Inc. Sponsorship Pitch ($5,400 Target)",
+          "category": "Monetization",
+          "what_changed": "BusinessMind scored 89% brand fit for developer infrastructure sponsor TechBrand Inc.",
+          "why_it_matters": "Grounding: Alignment with your $45 CPM benchmark and technical audience profile.",
+          "recommended_action": "Approve and send 1-click sponsor integration pitch brief for upcoming workflow video.",
+          "memory_context_used": "profile.monetization_benchmarks.cpm_target=45",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_003",
+          "priority": "WATCH",
+          "title": "Topic Filter Active: Crypto & Clickbait Suppressed",
+          "category": "Signal Filtering",
+          "what_changed": "ScoutMind automatically suppressed high-volume crypto trading & generic news clickbait signals.",
+          "why_it_matters": "Grounding: Filtered based on creator rejection rules: 'Crypto trading bots', 'Generic AI news clickbait'.",
+          "recommended_action": "No action needed \u2014 low-signal clickbait kept out of your workflow.",
+          "memory_context_used": "profile.rejected_topics",
+          "status": "NEW"
+        }
+      ],
+      "learned_rules_active": [
+        "Too formal. Make it punchier and emphasize beginner-friendly tips.",
+        "Creator prefers opportunities matching item 'opp_001'",
+        "Emphasize open-source terminal setup steps"
+      ]
+    },
+    {
+      "timestamp": "2026-08-11T11:54:01.414881+00:00",
+      "last_run_formatted": "2026-08-11 11:54:01 UTC",
+      "signals_reviewed_count": 3,
+      "opportunities_found_count": 3,
+      "memory_nodes_used_count": 5,
+      "signal_source_label": "Demo Dataset (Simulated)",
+      "minds_source": "[MOCK DEMO MODE]",
+      "minds_status": "PROCESSED_LOCALLY_MOCK",
+      "minds_verified": false,
+      "items": [
+        {
+          "id": "opp_001",
+          "priority": "HIGH PRIORITY",
+          "title": "Beginner Local AI Agent Walkthrough Video",
+          "category": "Content Strategy",
+          "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
+          "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Persisted rule applied \u2014 terminal open-source focus.",
+          "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
+          "memory_context_used": "profile.brand_voice + retention_node_78%",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_002",
+          "priority": "MEDIUM PRIORITY",
+          "title": "TechBrand Inc. Sponsorship Pitch ($5,400 Target)",
+          "category": "Monetization",
+          "what_changed": "BusinessMind scored 89% brand fit for developer infrastructure sponsor TechBrand Inc.",
+          "why_it_matters": "Grounding: Alignment with your $45 CPM benchmark and technical audience profile.",
+          "recommended_action": "Approve and send 1-click sponsor integration pitch brief for upcoming workflow video.",
+          "memory_context_used": "profile.monetization_benchmarks.cpm_target=45",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_003",
+          "priority": "WATCH",
+          "title": "Topic Filter Active: Crypto & Clickbait Suppressed",
+          "category": "Signal Filtering",
+          "what_changed": "ScoutMind automatically suppressed high-volume crypto trading & generic news clickbait signals.",
+          "why_it_matters": "Grounding: Filtered based on creator rejection rules: 'Crypto trading bots', 'Generic AI news clickbait'.",
+          "recommended_action": "No action needed \u2014 low-signal clickbait kept out of your workflow.",
+          "memory_context_used": "profile.rejected_topics",
+          "status": "NEW"
+        }
+      ],
+      "learned_rules_active": [
+        "Too formal. Make it punchier and emphasize beginner-friendly tips.",
+        "Creator prefers opportunities matching item 'opp_001'",
+        "Emphasize open-source terminal setup steps"
+      ]
+    },
+    {
+      "timestamp": "2026-08-11T11:54:01.442608+00:00",
+      "last_run_formatted": "2026-08-11 11:54:01 UTC",
+      "signals_reviewed_count": 3,
+      "opportunities_found_count": 3,
+      "memory_nodes_used_count": 5,
+      "signal_source_label": "Demo Dataset (Simulated)",
+      "minds_source": "[MOCK DEMO MODE]",
+      "minds_status": "PROCESSED_LOCALLY_MOCK",
+      "minds_verified": false,
+      "items": [
+        {
+          "id": "opp_001",
+          "priority": "HIGH PRIORITY",
+          "title": "Beginner Local AI Agent Walkthrough Video",
+          "category": "Content Strategy",
+          "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
+          "why_it_matters": "Matches your saved goal: 78% viewer retention on setup walkthroughs. Grounding: Persisted rule applied \u2014 terminal open-source focus.",
+          "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
+          "memory_context_used": "profile.brand_voice + retention_node_78%",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_002",
+          "priority": "MEDIUM PRIORITY",
+          "title": "TechBrand Inc. Sponsorship Pitch ($5,400 Target)",
+          "category": "Monetization",
+          "what_changed": "BusinessMind scored 89% brand fit for developer infrastructure sponsor TechBrand Inc.",
+          "why_it_matters": "Grounding: Alignment with your $45 CPM benchmark and technical audience profile.",
+          "recommended_action": "Approve and send 1-click sponsor integration pitch brief for upcoming workflow video.",
+          "memory_context_used": "profile.monetization_benchmarks.cpm_target=45",
+          "status": "NEW"
+        },
+        {
+          "id": "opp_003",
+          "priority": "WATCH",
+          "title": "Topic Filter Active: Crypto & Clickbait Suppressed",
+          "category": "Signal Filtering",
+          "what_changed": "ScoutMind automatically suppressed high-volume crypto trading & generic news clickbait signals.",
+          "why_it_matters": "Grounding: Filtered based on creator rejection rules: 'Crypto trading bots', 'Generic AI news clickbait'.",
+          "recommended_action": "No action needed \u2014 low-signal clickbait kept out of your workflow.",
+          "memory_context_used": "profile.rejected_topics",
+          "status": "NEW"
+        }
+      ],
+      "learned_rules_active": [
+        "Too formal. Make it punchier and emphasize beginner-friendly tips.",
+        "Creator prefers opportunities matching item 'opp_001'",
+        "Emphasize open-source terminal setup steps"
+      ]
+    }
+  ],
+  "item_feedbacks": [
+    {
+      "item_id": "opp_001",
+      "feedback_type": "useful",
+      "timestamp": 1786449241.4023192,
+      "notes": "Great setup walkthrough idea"
+    }
+  ]
 }

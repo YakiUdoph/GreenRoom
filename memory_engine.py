@@ -38,6 +38,7 @@ class GreenroomMemoryEngine:
     def _sync_to_minds_sdk(self):
         """Syncs stored learned voice rules with Minds agent instances when configured"""
         try:
+            minds_manager.clear_learned_preferences()
             for rule in self.state.get("learned_voice_rules", []):
                 minds_manager.update_learned_preference(rule)
         except Exception:
@@ -110,6 +111,63 @@ class GreenroomMemoryEngine:
 
         self.save_state()
         return new_node
+
+    def save_briefing(self, briefing: Dict[str, Any]) -> None:
+        self.state["latest_briefing"] = briefing
+        self.state.setdefault("briefing_history", []).append(briefing)
+        # Keep last 10 briefings
+        if len(self.state["briefing_history"]) > 10:
+            self.state["briefing_history"] = self.state["briefing_history"][-10:]
+        
+        self.save_state()
+        # Also write standalone briefing file for easy inspection/recovery
+        for path in ["latest_briefing.json", "/tmp/latest_briefing.json"]:
+            try:
+                with open(path, "w", encoding="utf-8") as f:
+                    json.dump(briefing, f, indent=2)
+            except Exception:
+                pass
+
+    def get_latest_briefing(self) -> Optional[Dict[str, Any]]:
+        if "latest_briefing" in self.state and self.state["latest_briefing"]:
+            return self.state["latest_briefing"]
+        
+        for path in ["latest_briefing.json", "/tmp/latest_briefing.json"]:
+            if os.path.exists(path):
+                try:
+                    with open(path, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        if data:
+                            self.state["latest_briefing"] = data
+                            return data
+                except Exception:
+                    pass
+        return None
+
+    def add_item_feedback(self, item_id: str, feedback_type: str, notes: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Record feedback on a briefing opportunity item (useful, not_useful, done, dismiss).
+        Persists into creator memory to influence future autonomous ranking cycles.
+        """
+        feedbacks = self.state.setdefault("item_feedbacks", [])
+        entry = {
+            "item_id": item_id,
+            "feedback_type": feedback_type,  # useful, not_useful, done, dismiss
+            "timestamp": time.time(),
+            "notes": notes
+        }
+        feedbacks.append(entry)
+
+        # If user explicitly marked item as useful or dismiss, persist as voice/preference rule
+        if feedback_type == "useful":
+            rule_str = f"Creator prefers opportunities matching item '{item_id}'"
+            self.add_learned_voice_rule(rule_str)
+        elif feedback_type in ("not_useful", "dismiss"):
+            rule_str = f"Creator rejected opportunity format in item '{item_id}'"
+            self.add_learned_voice_rule(rule_str)
+
+        self.save_state()
+        return entry
 
     def add_learned_voice_rule(self, rule: str) -> None:
         rules = self.state.setdefault("learned_voice_rules", [])

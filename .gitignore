@@ -7,3 +7,5 @@ __pycache__/
 venv/
 test_venv/
 node_modules/
+latest_briefing.json
+

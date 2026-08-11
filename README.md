@@ -1,8 +1,38 @@
-# Greenroom — Persistent Creator Engine
+# Greenroom — Persistent Creator Growth Mind
 
-> Built on Google Antigravity & the **Official Animoca Brands Minds Builder API** ([build.hellominds.ai](https://build.hellominds.ai)).
+> Built for Creative Minds Jam / Animoca Brands Minds. Built on Google Antigravity & the **Official Animoca Brands Minds Builder API** ([build.hellominds.ai](https://build.hellominds.ai)).
 
-**Greenroom** is an always-on multi-agent creator staff built using the official `@animocabrands/minds-client-lib` and Animoca Brands Minds Builder API. Instead of acting as another context-less chatbot wrapper or static SaaS analytics dashboard, Greenroom creates an autonomous digital staff that accumulates long-term knowledge regarding a creator’s identity, audience behavior, performance benchmarks, and commercial goals.
+**Greenroom** is a persistent creator-growth Mind that keeps working when the creator logs off — monitoring new audience/community signals against what it remembers about the creator, ranking the highest-value opportunities, and leaving a ready-to-act **"While You Were Away" briefing** for when they return.
+
+---
+
+## 🎯 Hackathon Positioning & Framework Fit
+
+### USER
+A solo creator who publishes regularly but does not have a dedicated growth/community team.
+
+### PAIN
+After publishing, the creator cannot continuously watch audience/community signals and decide what deserves attention. Valuable growth opportunities disappear while the creator is making content, sleeping, working, or offline.
+
+### MIND
+Greenroom monitors, remembers, evaluates, and prioritizes the creator's next growth actions.
+
+### DEMO
+The creator leaves Greenroom. New signals are processed autonomously. The creator later returns. A ranked **"While You Were Away" briefing** is already waiting on screen.
+
+### ASYNC
+Greenroom performs useful work asynchronously on the server — NOT while the creator sits and types chat messages.
+
+---
+
+## 💡 Why This Must Be a Mind (Not a Chatbot)
+
+> *"If it only works while someone types at it, it is a chatbot. Build for the hours nobody's watching."*
+
+A standard AI chatbot waits for a prompt, responds in a vacuum, and forgets context between sessions. **Greenroom is a Mind**:
+1. **Persistent Memory:** It holds long-term creator context, niche boundaries, CPM target benchmarks, and learned voice/format preferences in `creator_profile.json`.
+2. **Autonomous Execution:** It runs server-side background analysis cycles (`AsyncJobRunner`), evaluating incoming signals without requiring active browser presence.
+3. **Structured Briefing Delivery:** When the creator opens Greenroom, a ranked **"While You Were Away"** briefing is waiting with explicit memory grounding (*why* an item was prioritized).
 
 ---
 
@@ -17,43 +47,34 @@
 
 ### Official Client-Lib Node Bridge (`minds_bridge.mjs`):
 - Production Mind interactions run through an internal Node bridge script importing the official `@animocabrands/minds-client-lib` SDK (`createMindsClient`).
-- **Strict Verification (`verify_real_mind`):** Verification requires the API response itself to contain all 4 matching fields: `mindId == 8208493e-f36b-1410-8466-00039ce7df11`, `email == udophia@hellominds.ai`, `walletAddress == 0xB675Ec9857776678aE540cF3248d898f015987Cb`, and `isEnabled == true`. Missing or mismatched fields evaluate `verified = false` and prevent the "Remote Minds Connected" status.
-- **Documented Conversation Flow:** Production messaging uses the official `@animocabrands/minds-client-lib` conversation flow: `ensureConversation` -> `getLatestHistoryFingerprint` -> `sendMessage` -> `waitForReply({ afterFingerprint, sentMessageText })`. Production completion exclusively relies on this client library; Node or client-lib errors immediately raise `MindsExecutionError` with zero silent REST messaging fallback.
-
-### Clear Architecture Separation:
-1. **Real Platform Mind (`8208493e-f36b-1410-8466-00039ce7df11`):** The real remote platform Mind created on Animoca Brands Builder, handling strategy completions and remote interactions.
-2. **Greenroom Local Specialist Orchestration:** In-process Python specialist agents (`ScoutMind`, `CommunityMind`, `BusinessMind`) that execute domain-specific skills (trend signal filtering, audience sentiment analysis, sponsorship deal scoring) locally before feeding structured context to the Core Mind.
-3. **Local Creator Profile Persistence (`creator_profile.json`):** Stores long-term creator memory, voice rules, recency decay scoring, and learned preferences locally.
+- **Strict Verification (`verify_real_mind`):** Requires the API response itself to contain all 4 matching fields: `mindId == 8208493e-f36b-1410-8466-00039ce7df11`, `email == udophia@hellominds.ai`, `walletAddress == 0xB675Ec9857776678aE540cF3248d898f015987Cb`, and `isEnabled == true`.
+- **Documented Conversation Flow:** Production messaging uses `@animocabrands/minds-client-lib`: `ensureConversation` -> `getLatestHistoryFingerprint` -> `sendMessage` -> `waitForReply({ afterFingerprint, sentMessageText })`.
 
 ---
 
-## 🛑 Strict Mode Execution Rules
+## 🤖 Greenroom Topology & Signal Abstraction
 
-* **Production Mode Strictness (`DEMO_MODE=false`):** If `MINDS_BUILDER_API_KEY` is missing or a remote API call fails, Greenroom raises a `MindsConfigurationError` or `MindsExecutionError`. It **never** silently falls back to local simulation in production mode.
-* **Explicit Mock Mode (`DEMO_MODE=true`):** Local simulated execution is strictly isolated behind `DEMO_MODE=true`. When active, every output payload, execution log, and status endpoint is visibly labeled with `[MOCK DEMO MODE]`.
-* **Dynamic Production Metrics:** In production mode, all trend fit scores, sentiment scores, and sponsor deal valuations are computed dynamically from actual input text, keyword boundary rules, or remote Mind completions (static numbers exist strictly in explicit `DEMO_MODE` mock fixtures).
-
----
-
-## 🤖 Greenroom Staff Topology
-
-1. **Greenroom Core Mind (`GreenroomCore`):** Chief of Staff & Strategic Router Engine managing memory aggregation and agent orchestration (`remote_mind_id: 8208493e-f36b-1410-8466-00039ce7df11`).
-2. **Scout Mind (`ScoutMind`):** Local Trend & Niche Signal Researcher executing the `search_trends` skill.
-3. **Community Mind (`CommunityMind`):** Local Audience Intelligence Analyst executing the `analyze_comments` skill.
-4. **Business Mind (`BusinessMind`):** Local Monetization & Sponsorship Strategist executing the `score_deal` skill.
+1. **Greenroom Core Mind (`GreenroomCore`):** Chief of Staff & Strategic Router Engine managing memory aggregation, briefing synthesis, and Animoca Mind orchestration (`remote_mind_id: 8208493e-f36b-1410-8466-00039ce7df11`).
+2. **Scout Mind (`ScoutMind`):** Local Trend & Niche Signal Researcher executing signal vs noise filtering against creator rules.
+3. **Community Mind (`CommunityMind`):** Local Audience Intelligence Analyst evaluating comment sentiment and retention drivers.
+4. **Business Mind (`BusinessMind`):** Local Monetization & Partnership Strategist scoring brand sponsorship match against CPM target benchmarks.
+5. **SignalProvider Abstraction:** Clean `SignalProvider` base class with `DemoSignalProvider` (returns simulated signals tagged explicitly with `is_demo: True` and `[DEMO DATASET]` UI labels) and `RealSignalProvider`.
 
 ---
 
-## 🛠️ Tech Stack & System Tools
+## 🧠 Persistence & Memory Continuity
 
-* **Orchestration & IDE:** Google Antigravity
-* **Platform API:** Animoca Brands Minds Builder API (`https://api.build.hellominds.ai`)
-* **Official Client Tooling:** `@animocabrands/minds-cli` & `@animocabrands/minds-client-lib`
-* **Backend Framework:** Python 3.10+, FastAPI, Uvicorn, Pydantic, `python-dotenv`
-* **Minds Integration & Persistence:** `minds_integration.py`, `memory_engine.py` (`creator_profile.json`)
-* **Protocols & Prompts:** `imp_protocol.py`, `agent_prompts.py`
-* **Demo Orchestration & Testing:** `demo_runner.py`, `test_greenroom.py`
-* **Frontend UI:** HTML5, Tailwind CSS, JavaScript (WebSockets)
+- **Local Creator Profile Persistence (`creator_profile.json`):** Stores creator niche, brand voice attributes, monetization benchmarks ($45 target CPM), rejected topics (*"Crypto trading bots"*, *"Generic AI news clickbait"*), and learned voice rules.
+- **Briefing Store (`latest_briefing.json`):** Stores the latest ranked "While You Were Away" briefing so page refreshes/reloads immediately present the finished work.
+- **Multi-Run Continuity:** When a creator provides feedback (*"Emphasize open-source terminal setup steps"* or marks an item as *Useful*), the rule is saved to persistent state. The next autonomous cycle dynamically incorporates that learned preference into its signal ranking and memory grounding.
+
+---
+
+## 🛑 Demo Mode vs Production Strictness
+
+* **Production Mode (`DEMO_MODE=false`):** Requires a valid `MINDS_BUILDER_API_KEY`. If credentials are missing or the Mind API call fails, Greenroom raises `MindsConfigurationError` or `MindsExecutionError`. It **never** silently falls back to local simulation in production mode.
+* **Explicit Mock Mode (`DEMO_MODE=true`):** Used for offline development. Every output payload and status badge is visibly labeled with `[MOCK DEMO MODE]`.
+* **Truthful Signal Labeling:** Demo signals are explicitly labeled as `Demo Dataset (Simulated)` in both API responses and UI badges.
 
 ---
 
@@ -68,8 +89,6 @@ MINDS_BUILDER_API_KEY=your_builder_api_key_here
 # Explicit Local Demo Mock Flag (Optional, set to true for offline testing without API key)
 DEMO_MODE=false
 ```
-
-> **Note on Loud Failure:** If `MINDS_BUILDER_API_KEY` is not provided and `DEMO_MODE` is `false` or unset, Greenroom will raise a `MindsConfigurationError` on startup/execution to prevent unannounced mock fallback.
 
 ---
 
@@ -86,28 +105,45 @@ cd GreenRoom
 python -m venv venv
 source venv/bin/activate  # On Windows use: venv\Scripts\activate
 pip install -r requirements.txt
+npm install
 ```
 
-### 3. Run System Test Suite
+### 3. Run System Test Suite (25 Tests)
 ```bash
 python test_greenroom.py
 ```
 
-### 4. Launch Local Command Center
+### 4. Launch Command Center
 ```bash
 python server.py
 ```
 
-Open your browser and navigate to:
-* **Visual Command Center:** `http://127.0.0.1:8000`
-* **Minds Status Endpoint:** `http://127.0.0.1:8000/api/minds/status`
+Open browser to `http://127.0.0.1:8000`.
 
 ---
 
-## 🎬 5-Minute Demo Flow
+## 🎬 2-Minute Judge Demo Guide
 
-1. **Minute 1 — Zero-State Profile Ingestion:** Core Mind ingests initial creator script analytics and retention metrics into persistent profile state.
-2. **Minute 2 — Autonomous Trend Filtering (`ScoutMind`):** Scout Mind executes `search_trends` to filter high-signal niche opportunities against creator boundaries.
-3. **Minute 3 — Deep Audience Sentiment Analysis (`CommunityMind`):** Community Mind executes `analyze_comments` to evaluate audience retention drivers and code setup requests.
-4. **Minute 4 — Sponsorship Fit & Automated Pitch Generation (`BusinessMind`):** Business Mind executes `score_deal` to evaluate brand match score and generate targeted pitch proposals.
-5. **Minute 5 — Autonomous Feedback Loop & Memory Consolidation ("The Magic Moment"):** System processes user feedback (*"Too formal, keep it punchy"*), syncing learned voice rules to remote Mind completions and `creator_profile.json`.
+1. **Scene 1 — Problem Statement (0:00–0:15):** Explain that solo creators lose growth opportunities because they can't monitor community signals 24/7.
+2. **Scene 2 — Creator Memory (0:15–0:30):** Show that Greenroom already remembers the creator's niche, CPM targets, and rejected topics.
+3. **Scene 3 — Creator Offline / Async Trigger (0:30–0:50):** Click **"Simulate Creator Offline (Async Run)"**. Show Greenroom executing autonomously in the background without live chat typing.
+4. **Scene 4 — Creator Return / "While You Were Away" Briefing (0:50–1:25):** Show the finished briefing on screen. Highlight the 3 ranked items (`HIGH PRIORITY`, `MEDIUM PRIORITY`, `WATCH`), what changed, why it matters, and explicit **Memory Grounding** badges.
+5. **Scene 5 — Continuity & Proof of Learning (1:25–1:45):** Provide feedback (*"Emphasize open-source terminal setup steps"*). Re-trigger an async run and show how Run 2 adapts based on persisted memory.
+6. **Scene 6 — Official Animoca Mind Proof (1:45–2:00):** Expand the technical drawer to show verified Mind UUID `8208493e-f36b-1410-8466-00039ce7df11` connection and Inter-Mind Protocol (IMP) logs.
+
+---
+
+## 📊 MVP Scope & Future Vision
+
+### IN V1 MVP:
+- Creator Memory & Profile Persistence (`creator_profile.json`).
+- Autonomous Server-Side Background Execution (`AsyncJobRunner`).
+- Ranked **"While You Were Away"** Briefing with Memory Grounding.
+- Item Feedback & Multi-Run Continuity.
+- Official Animoca Minds Client Integration (`@animocabrands/minds-client-lib`).
+- Truthful Signal Abstraction (`DemoSignalProvider` & `RealSignalProvider`).
+
+### OUT OF V1 (Future Vision):
+- Automatic social posting.
+- Direct fan DM automation.
+- Full account management suites.
