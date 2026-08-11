@@ -29,11 +29,25 @@ export default async function handler(req, res) {
       bodyText = JSON.stringify(req.body);
     }
 
+    const host = req.headers["x-forwarded-host"] || req.headers.host || "greenroom-ruby.vercel.app";
+    const proto = req.headers["x-forwarded-proto"] || "https";
+    const reqUrl = `${proto}://${host}/api/briefing-worker`;
+
     try {
-      const isValid = await receiver.verify({
+      let isValid = await receiver.verify({
         signature,
         body: bodyText,
-      });
+        url: reqUrl,
+      }).catch(() => false);
+
+      if (!isValid) {
+        // Retry without explicit URL parameter in case QStash payload signature omits target URL matching
+        isValid = await receiver.verify({
+          signature,
+          body: bodyText,
+        }).catch(() => false);
+      }
+
       if (!isValid) {
         return res.status(401).json({ error: "Unauthorized: Invalid QStash signature" });
       }
@@ -41,6 +55,7 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: `Unauthorized: QStash signature verification failed (${err.message})` });
     }
   }
+
 
   // 2. Parse payload & run_id
   let payload = req.body || {};
