@@ -70,7 +70,7 @@ export function PendingApprovals({
         </p>
 
         <div className="mt-3 p-3 bg-slate-900/80 rounded-lg text-xs font-mono text-slate-300 border border-slate-800/80 max-h-32 overflow-y-auto">
-          {pitchDraftText || 'Run Minute 4 demo step to generate autonomous pitch proposal.'}
+          {pitchDraftText || 'Execute Business Mind deal scoring skill (Step 4) to generate autonomous pitch proposal.'}
         </div>
 
         <div className="mt-4 flex gap-2">
@@ -108,7 +108,7 @@ export function PendingApprovals({
           Synthesized Creative Direction
         </h3>
         <div className="mt-2.5 p-3 bg-slate-900/80 rounded-lg text-xs font-mono text-slate-300 border border-slate-800/80 flex-1 max-h-48 overflow-y-auto whitespace-pre-wrap">
-          {scriptData?.script_concept || 'Run Minute 3 demo step to trigger multi-mind strategy synthesis.'}
+          {scriptData?.script_concept || 'Execute Multi-Mind Strategy Synthesis skill (Step 3) to synthesize creative direction.'}
         </div>
       </div>
 

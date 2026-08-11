@@ -25,15 +25,15 @@ export function Navigation({
     }
     if (mindsStatus?.mode === 'demo' || mindsStatus?.is_mock || mindsStatus?.demo_mode_active) {
       return {
-        dotClass: 'bg-amber-400 shadow-md shadow-amber-400',
-        textClass: 'text-amber-400 bg-amber-950/80 border-amber-800/80',
-        label: 'Mock Demo Mode',
+        dotClass: 'bg-cyan-400 shadow-md shadow-cyan-400',
+        textClass: 'text-cyan-400 bg-cyan-950/80 border-cyan-800/80',
+        label: 'Standby Mode',
       };
     }
     return {
-      dotClass: 'bg-rose-500',
-      textClass: 'text-rose-400 bg-rose-950/80 border-rose-800/80',
-      label: 'Platform Mind Disconnected',
+      dotClass: 'bg-slate-500',
+      textClass: 'text-slate-400 bg-slate-900 border-slate-800',
+      label: 'Platform Offline',
     };
   };
 

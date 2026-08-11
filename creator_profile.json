@@ -23,9 +23,9 @@
   ],
   "memory_nodes": [
     {
-      "node_id": "mem_1786420135135",
+      "node_id": "mem_1786420835408",
       "type": "video_script_analytics",
-      "timestamp": 1786420135.1355238,
+      "timestamp": 1786420835.4084625,
       "content": "Past video script analysis: 'Build a Custom AI Agent in 10 Mins'. Viewer retention: 78% at 30 seconds. Audience requests github links and setup walkthroughs.",
       "key_takeaways": [
         "Step-by-step technical overviews drive 3x audience retention compared to news recaps.",
@@ -33,9 +33,9 @@
       ]
     },
     {
-      "node_id": "mem_1786420135145",
+      "node_id": "mem_1786420835414",
       "type": "learned_preference",
-      "timestamp": 1786420135.1455634,
+      "timestamp": 1786420835.4142032,
       "content": "User Feedback Rule: Too formal. Make it punchier and emphasize beginner-friendly tips.",
       "key_takeaways": [
         "Explicit creator override on voice & tone",

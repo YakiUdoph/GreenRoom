@@ -1,4 +1,4 @@
-import { INITIAL_CREATOR_STATE, DEMO_STEP_TITLES, DEMO_STEP_DESCRIPTIONS } from '../lib/constants';
+import { INITIAL_CREATOR_STATE, PIPELINE_STEP_TITLES, PIPELINE_STEP_DESCRIPTIONS } from '../lib/constants';
 
 class GreenroomStore {
   constructor() {
@@ -86,8 +86,8 @@ class GreenroomStore {
     this.state.demoProgress = {
       activeStep: stepId,
       isRunning,
-      stepTitle: DEMO_STEP_TITLES[stepId] || `Executing Step ${stepId}...`,
-      stepDesc: DEMO_STEP_DESCRIPTIONS[stepId] || '',
+      stepTitle: PIPELINE_STEP_TITLES[stepId] || `Executing Step ${stepId}...`,
+      stepDesc: PIPELINE_STEP_DESCRIPTIONS[stepId] || '',
     };
     this.notify();
   }

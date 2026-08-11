@@ -36,7 +36,7 @@ export function ImpMessageStream({ messages, onInspectPayload }) {
       <div className="space-y-3 text-xs font-mono flex-1 max-h-[620px] overflow-y-auto pr-1">
         {impList.length === 0 ? (
           <div className="p-4 bg-slate-950/60 border border-slate-800/60 rounded-xl text-slate-400 text-center italic">
-            Waiting for agent network initialization... Run demo or trigger steps above.
+            Waiting for agent network initialization... Trigger agent pipeline skills above.
           </div>
         ) : (
           impList.slice().reverse().map((msg) => {

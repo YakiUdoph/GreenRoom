@@ -14,7 +14,7 @@ export function DemoBanner({ progress }) {
         </span>
         <div>
           <span className="font-bold text-sm text-emerald-400">
-            {progress.stepTitle || 'Executing Demo Step...'}
+            {progress.stepTitle || 'Executing Agent Pipeline Step...'}
           </span>
           <p className="text-xs text-slate-400">
             {progress.stepDesc || 'Orchestrating agent protocol communication and updating persistent state.'}

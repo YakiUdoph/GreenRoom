@@ -8,8 +8,14 @@ import { api } from './lib/api';
 
 import { Sidebar } from './components/layout/Sidebar';
 import { CursorSpotlight } from './components/motion/CursorSpotlight';
-import { IntelligenceShader } from './components/motion/IntelligenceShader';
 import { PayloadModal } from './components/ui/PayloadModal';
+
+import { HomeBackground } from './components/motion/HomeBackground';
+import { MindBackground } from './components/motion/MindBackground';
+import { MemoryBackground } from './components/motion/MemoryBackground';
+import { IntelligenceBackground } from './components/motion/IntelligenceBackground';
+import { ActionsBackground } from './components/motion/ActionsBackground';
+import { SystemBackground } from './components/motion/SystemBackground';
 
 import { HomePage } from './pages/HomePage';
 import { MindPage } from './pages/MindPage';
@@ -119,6 +125,20 @@ export function App() {
     }
   };
 
+  // User Feedback / Learning Handler
+  const handleSubmitFeedback = async (feedbackText) => {
+    setIsExecuting(true);
+    try {
+      const res = await api.submitActionFeedback(feedbackText);
+      if (res.state) greenroomStore.setMemoryState(res.state);
+      if (res.minds_status) greenroomStore.setMindsStatus(res.minds_status);
+    } catch (err) {
+      console.error('[GreenroomApp] Error submitting feedback:', err);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   // Render Active Page
   const renderPage = () => {
     switch (activeTab) {
@@ -143,7 +163,14 @@ export function App() {
           />
         );
       case 'memory':
-        return <MemoryPage key="memory" memoryState={memoryState} />;
+        return (
+          <MemoryPage
+            key="memory"
+            memoryState={memoryState}
+            onSubmitFeedback={handleSubmitFeedback}
+            isExecuting={isExecuting}
+          />
+        );
       case 'intelligence':
         return (
           <IntelligencePage
@@ -191,10 +218,32 @@ export function App() {
     }
   };
 
+  // Render Dynamic Thematic Motion Background based on activeTab
+  const renderBackground = () => {
+    switch (activeTab) {
+      case 'home':
+        return <HomeBackground key="bg-home" />;
+      case 'mind':
+        return <MindBackground key="bg-mind" />;
+      case 'memory':
+        return <MemoryBackground key="bg-memory" />;
+      case 'intelligence':
+        return <IntelligenceBackground key="bg-intelligence" />;
+      case 'actions':
+        return <ActionsBackground key="bg-actions" />;
+      case 'system':
+        return <SystemBackground key="bg-system" />;
+      default:
+        return <HomeBackground key="bg-default" />;
+    }
+  };
+
   return (
     <div className="min-h-screen flex bg-[#131313] text-[#e5e2e1] font-sans selection:bg-[#72ff70] selection:text-[#002203] relative overflow-hidden">
-      {/* WebGL Procedural Simplex Noise Motion Background */}
-      <IntelligenceShader />
+      {/* Dynamic Thematic Motion Background based on Active Domain */}
+      <AnimatePresence mode="wait">
+        {renderBackground()}
+      </AnimatePresence>
 
       {/* Cursor Spotlight Physics */}
       <CursorSpotlight />
