@@ -10,30 +10,40 @@ from persistence import get_persistence_store, PersistenceStore
 def publish_qstash_job(target_url: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     """
     Publishes a background execution job to Upstash QStash REST API.
-    Uses QSTASH_TOKEN server-side environment variable.
+    Uses http.client.HTTPSConnection to preserve double-slashes in target_url path without urllib normalization.
     """
     token = os.getenv("QSTASH_TOKEN")
     if not token:
         return {"published": False, "reason": "QSTASH_TOKEN environment variable not set"}
 
-    publish_endpoint = f"https://qstash.upstash.io/v2/publish/{target_url}"
-    req = urllib.request.Request(
-        publish_endpoint,
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-            "Upstash-Retries": "2"
-        },
-        method="POST"
-    )
+    import http.client
+
+    if not target_url.startswith("http"):
+        target_url = f"https://{target_url}"
+
+    path = f"/v2/publish/{target_url}"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json",
+        "Upstash-Retries": "2"
+    }
+
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            res_data = json.loads(resp.read().decode("utf-8"))
+        conn = http.client.HTTPSConnection("qstash.upstash.io", timeout=10)
+        conn.request("POST", path, body=json.dumps(payload), headers=headers)
+        resp = conn.getresponse()
+        resp_body = resp.read().decode("utf-8")
+        conn.close()
+
+        if resp.status in (200, 201, 202):
+            res_data = json.loads(resp_body) if resp_body else {}
             return {"published": True, "messageId": res_data.get("messageId")}
+        else:
+            return {"published": False, "reason": f"QStash HTTP {resp.status}: {resp_body}"}
     except Exception as e:
         print(f"[QStash] Publish failed: {e}")
         return {"published": False, "reason": str(e)}
+
 
 
 class QStashJobRunner:
