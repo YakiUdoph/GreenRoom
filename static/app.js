@@ -199,9 +199,10 @@ async function submitItemFeedback(itemId, feedbackType) {
       currentMemoryState = data.state;
       renderStateStore();
     }
-    alert(`Feedback saved to creator profile memory: [${feedbackType.toUpperCase()}]`);
+    showBanner('Feedback saved', `Memory updated: ${feedbackType} — re-running briefing.`);
     // Re-run autonomous cycle so the briefing dynamically demonstrates continuity!
     await triggerAsyncRun(true);
+    setTimeout(hideBanner, 2000);
   } catch (err) {
     console.error('[Greenroom] Error submitting item feedback:', err);
   }
@@ -463,7 +464,7 @@ async function submitFeedback() {
     await triggerAsyncRun(true);
   } catch (err) {
     console.error('[Greenroom] Error submitting feedback:', err);
-  } font-medium;
+  }
 }
 
 async function approveSponsorship() {
@@ -473,7 +474,8 @@ async function approveSponsorship() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action_name: "Sponsorship Pitch for TechBrand Inc." })
     });
-    alert("Sponsorship Pitch Approved & Sent to TechBrand Inc.!");
+    showBanner('Pitch approved', 'Sponsorship brief sent to TechBrand Inc.');
+    setTimeout(hideBanner, 2500);
   } catch (err) {
     console.error('[Greenroom] Error approving pitch:', err);
   }

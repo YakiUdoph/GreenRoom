@@ -1,65 +1,1003 @@
-/* Custom Greenroom Command Center Styles */
+/* ============================================================
+   GREENROOM DESIGN SYSTEM
+   Linear precision × Raycast atmosphere — Greenroom identity
+   ============================================================ */
 
-/* Custom scrollbars */
-::-webkit-scrollbar {
+/* ── 0. Tokens ─────────────────────────────────────────────── */
+:root {
+  /* Canvas & surfaces */
+  --gr-canvas:    #070809;
+  --gr-surface-1: #0d0e10;
+  --gr-surface-2: #131416;
+  --gr-surface-3: #1a1b1e;
+
+  /* Borders */
+  --gr-border:       rgba(255,255,255,0.08);
+  --gr-border-solid: #25272b;
+  --gr-border-strong:#34363b;
+
+  /* Text */
+  --gr-text-primary:   #f7f7f8;
+  --gr-text-secondary: #c6c9cf;
+  --gr-text-muted:     #7f848d;
+  --gr-text-faint:     #565a62;
+
+  /* Brand accent — sparse, purposeful */
+  --gr-accent:        #8ee8a8;
+  --gr-accent-strong: #a7f3bb;
+  --gr-accent-muted:  rgba(142, 232, 168, 0.10);
+  --gr-accent-fg:     #071009;
+
+  /* Semantic */
+  --gr-danger:  #eb5757;
+  --gr-warning: #e9b949;
+  --gr-info:    #63a1ff;
+
+  /* Overlay */
+  --gr-overlay: rgba(7, 8, 9, 0.80);
+
+  /* Radii */
+  --gr-radius-sm:      4px;
+  --gr-radius-control: 7px;
+  --gr-radius-card:    12px;
+  --gr-radius-feature: 16px;
+  --gr-radius-pill:    9999px;
+
+  /* Spacing (4px base grid) */
+  --gr-sp-1:  4px;
+  --gr-sp-2:  8px;
+  --gr-sp-3:  12px;
+  --gr-sp-4:  16px;
+  --gr-sp-5:  20px;
+  --gr-sp-6:  24px;
+  --gr-sp-8:  32px;
+  --gr-sp-10: 40px;
+  --gr-sp-12: 48px;
+  --gr-sp-16: 64px;
+  --gr-sp-20: 80px;
+  --gr-sp-24: 96px;
+
+  /* Typography */
+  --gr-font-sans: Inter, "Inter Variable", ui-sans-serif, system-ui, -apple-system,
+                  BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --gr-font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  --gr-text-micro:      11px;
+  --gr-text-caption:    12px;
+  --gr-text-label:      13px;
+  --gr-text-body-sm:    14px;
+  --gr-text-body:       16px;
+  --gr-text-body-lg:    18px;
+  --gr-text-subheading: 24px;
+  --gr-text-heading-sm: 32px;
+  --gr-text-heading:    48px;
+  --gr-text-hero: clamp(40px, 5.5vw, 68px);
+
+  /* Motion */
+  --gr-ease-fast:   140ms ease-out;
+  --gr-ease-normal: 220ms ease-out;
+  --gr-ease-slow:   300ms ease-out;
+}
+
+/* ── 1. Reset & Base ────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--gr-font-sans);
+  font-size: var(--gr-text-body);
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--gr-text-primary);
+  background-color: var(--gr-canvas);
+  min-height: 100vh;
+}
+
+::selection {
+  background: var(--gr-accent-muted);
+  color: var(--gr-accent-strong);
+}
+
+/* ── 2. Scrollbars ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--gr-border-solid);
+  border-radius: var(--gr-radius-pill);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--gr-border-strong); }
+
+/* ── 3. Layout ──────────────────────────────────────────────── */
+.gr-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--gr-sp-6);
+}
+
+.gr-page-wide {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--gr-sp-6);
+}
+
+/* ── 4. Navigation ──────────────────────────────────────────── */
+.gr-nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  padding: var(--gr-sp-3) var(--gr-sp-6);
+  border-bottom: 1px solid var(--gr-border);
+  background: rgba(7, 8, 9, 0.80);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+.gr-nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--gr-sp-4);
+}
+
+.gr-nav-logo {
+  display: flex;
+  align-items: center;
+  gap: var(--gr-sp-3);
+  text-decoration: none;
+}
+
+.gr-nav-logo-mark {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--gr-radius-control);
+  background: var(--gr-accent-muted);
+  border: 1px solid rgba(142, 232, 168, 0.20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--gr-font-mono);
+  font-size: var(--gr-text-caption);
+  font-weight: 500;
+  color: var(--gr-accent);
+  letter-spacing: -0.01em;
+  flex-shrink: 0;
+}
+
+.gr-nav-wordmark {
+  font-size: var(--gr-text-body-sm);
+  font-weight: 500;
+  color: var(--gr-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.gr-nav-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--gr-sp-3);
+}
+
+/* ── 5. Main content area ───────────────────────────────────── */
+.gr-main {
+  padding: var(--gr-sp-8) var(--gr-sp-6) var(--gr-sp-16);
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gr-sp-6);
+}
+
+/* ── 6. Buttons ─────────────────────────────────────────────── */
+.gr-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gr-sp-2);
+  border: none;
+  border-radius: var(--gr-radius-control);
+  font-family: var(--gr-font-sans);
+  font-size: var(--gr-text-label);
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background var(--gr-ease-fast),
+    color var(--gr-ease-fast),
+    border-color var(--gr-ease-fast),
+    box-shadow var(--gr-ease-fast);
+  white-space: nowrap;
+  user-select: none;
+  padding: 9px var(--gr-sp-4);
+}
+
+/* Primary — one per view */
+.gr-btn-primary {
+  background: var(--gr-accent);
+  color: var(--gr-accent-fg);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.gr-btn-primary:hover {
+  background: var(--gr-accent-strong);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.20), 0 0 0 1px rgba(142,232,168,0.25);
+}
+.gr-btn-primary:active { background: var(--gr-accent); transform: translateY(1px); }
+
+/* Ghost — secondary actions */
+.gr-btn-ghost {
+  background: transparent;
+  color: var(--gr-text-secondary);
+  border: 1px solid var(--gr-border);
+}
+.gr-btn-ghost:hover {
+  background: var(--gr-surface-3);
+  color: var(--gr-text-primary);
+  border-color: var(--gr-border-strong);
+}
+.gr-btn-ghost:active { transform: translateY(1px); }
+
+/* Danger ghost */
+.gr-btn-danger {
+  background: transparent;
+  color: var(--gr-text-faint);
+  border: 1px solid var(--gr-border);
+}
+.gr-btn-danger:hover {
+  color: var(--gr-danger);
+  border-color: rgba(235, 87, 87, 0.30);
+  background: rgba(235, 87, 87, 0.05);
+}
+
+/* Small modifier */
+.gr-btn-sm {
+  padding: 6px 10px;
+  font-size: var(--gr-text-caption);
+  border-radius: var(--gr-radius-sm);
+}
+
+/* Accent ghost — for mild accent actions like "Useful" */
+.gr-btn-accent {
+  background: var(--gr-accent-muted);
+  color: var(--gr-accent);
+  border: 1px solid rgba(142,232,168,0.18);
+}
+.gr-btn-accent:hover {
+  background: rgba(142,232,168,0.16);
+  border-color: rgba(142,232,168,0.28);
+}
+
+/* Warning ghost — for feedback/teach actions */
+.gr-btn-warn {
+  background: rgba(233,185,73,0.08);
+  color: var(--gr-warning);
+  border: 1px solid rgba(233,185,73,0.18);
+}
+.gr-btn-warn:hover {
+  background: rgba(233,185,73,0.14);
+  border-color: rgba(233,185,73,0.30);
+}
+
+/* ── 7. Status / Badge ──────────────────────────────────────── */
+.gr-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--gr-text-micro);
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--gr-radius-pill);
+  border: 1px solid;
+  letter-spacing: 0.01em;
+}
+
+.gr-badge-accent {
+  color: var(--gr-accent);
+  background: var(--gr-accent-muted);
+  border-color: rgba(142,232,168,0.18);
+}
+
+.gr-badge-warning {
+  color: var(--gr-warning);
+  background: rgba(233,185,73,0.08);
+  border-color: rgba(233,185,73,0.18);
+}
+
+.gr-badge-danger {
+  color: var(--gr-danger);
+  background: rgba(235,87,87,0.08);
+  border-color: rgba(235,87,87,0.18);
+}
+
+.gr-badge-muted {
+  color: var(--gr-text-muted);
+  background: var(--gr-surface-2);
+  border-color: var(--gr-border);
+}
+
+.gr-badge-info {
+  color: var(--gr-info);
+  background: rgba(99,161,255,0.08);
+  border-color: rgba(99,161,255,0.18);
+}
+
+.gr-dot {
   width: 6px;
   height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.6);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
-  border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 1);
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
 }
 
-/* Glassmorphism subtle glow */
-.glass-panel {
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(12px);
+.gr-dot-pulse { animation: gr-pulse 2s ease-in-out infinite; }
+
+@keyframes gr-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
-/* Highlight flash for learned rules */
-@keyframes flashGlow {
-  0% { background-color: rgba(217, 119, 6, 0.4); transform: scale(1.02); }
-  100% { background-color: rgba(15, 23, 42, 1); transform: scale(1); }
+/* ── 8. Eyebrow label ───────────────────────────────────────── */
+.gr-eyebrow {
+  font-size: var(--gr-text-micro);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--gr-text-muted);
 }
 
-.flash-rule {
-  animation: flashGlow 1.2s ease-out;
+.gr-eyebrow-accent {
+  color: var(--gr-accent);
 }
 
-/* Custom Mind Badge Colors */
-.badge-scout {
-  color: #38bdf8;
-  border-color: #0284c7;
-  background-color: rgba(12, 74, 110, 0.5);
+/* ── 9. Cards ───────────────────────────────────────────────── */
+.gr-card {
+  background: var(--gr-surface-1);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-card);
+  padding: var(--gr-sp-5);
 }
 
-.badge-community {
-  color: #fbbf24;
-  border-color: #d97706;
-  background-color: rgba(120, 53, 15, 0.5);
+.gr-card-interactive {
+  background: var(--gr-surface-1);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-card);
+  padding: var(--gr-sp-5);
+  transition:
+    background var(--gr-ease-fast),
+    border-color var(--gr-ease-fast),
+    transform var(--gr-ease-fast);
+}
+.gr-card-interactive:hover {
+  background: var(--gr-surface-2);
+  border-color: var(--gr-border-strong);
+  transform: translateY(-1px);
 }
 
-.badge-business {
-  color: #34d399;
-  border-color: #059669;
-  background-color: rgba(6, 78, 59, 0.5);
+/* Priority accent variants */
+.gr-card-high {
+  border-color: rgba(142,232,168,0.20);
+}
+.gr-card-high:hover { border-color: rgba(142,232,168,0.36); }
+
+.gr-card-medium {
+  border-color: rgba(233,185,73,0.16);
+}
+.gr-card-medium:hover { border-color: rgba(233,185,73,0.28); }
+
+/* Feature card — Raycast influence allowed here */
+.gr-card-feature {
+  background: var(--gr-surface-1);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-feature);
+  padding: var(--gr-sp-6);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    inset 0 -1px 0 rgba(0,0,0,0.20);
 }
 
-.badge-core {
-  color: #a78bfa;
-  border-color: #7c3aed;
-  background-color: rgba(76, 29, 149, 0.5);
+/* ── 10. Inputs ─────────────────────────────────────────────── */
+.gr-input {
+  font-family: var(--gr-font-sans);
+  font-size: var(--gr-text-body-sm);
+  font-weight: 400;
+  color: var(--gr-text-primary);
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-control);
+  padding: 9px var(--gr-sp-3);
+  width: 100%;
+  outline: none;
+  transition:
+    border-color var(--gr-ease-fast),
+    background var(--gr-ease-fast),
+    box-shadow var(--gr-ease-fast);
+}
+.gr-input::placeholder { color: var(--gr-text-faint); }
+.gr-input:focus {
+  border-color: rgba(142,232,168,0.35);
+  background: rgba(255,255,255,0.04);
+  box-shadow: 0 0 0 3px rgba(142,232,168,0.08);
 }
 
-.badge-user {
-  color: #f472b6;
-  border-color: #db2777;
-  background-color: rgba(131, 24, 67, 0.5);
+/* ── 11. Meta strip (monospace data row) ────────────────────── */
+.gr-meta-strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gr-sp-2);
+  font-family: var(--gr-font-mono);
+  font-size: var(--gr-text-micro);
+}
+
+.gr-meta-chip {
+  padding: 3px 8px;
+  background: var(--gr-surface-2);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-sm);
+  color: var(--gr-text-secondary);
+}
+
+.gr-meta-chip strong {
+  font-weight: 500;
+  color: var(--gr-text-primary);
+}
+
+.gr-meta-chip-accent strong { color: var(--gr-accent); }
+.gr-meta-chip-warn strong { color: var(--gr-warning); }
+.gr-meta-chip-info strong { color: var(--gr-info); }
+.gr-meta-chip-muted strong { color: var(--gr-text-muted); }
+
+/* ── 12. Section divider ────────────────────────────────────── */
+.gr-divider {
+  border: none;
+  border-top: 1px solid var(--gr-border);
+  margin: 0;
+}
+
+/* ── 13. Priority indicator row ─────────────────────────────── */
+.gr-priority-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--gr-text-micro);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.gr-priority-high { color: var(--gr-accent); }
+.gr-priority-medium { color: var(--gr-warning); }
+.gr-priority-watch { color: var(--gr-info); }
+
+/* ── 14. Info sub-sections inside cards ─────────────────────── */
+.gr-card-section {
+  padding: var(--gr-sp-3);
+  background: rgba(255,255,255,0.02);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-sm);
+}
+
+.gr-card-section-accent {
+  background: var(--gr-accent-muted);
+  border-color: rgba(142,232,168,0.14);
+}
+
+.gr-card-section-warn {
+  background: rgba(233,185,73,0.06);
+  border-color: rgba(233,185,73,0.14);
+}
+
+.gr-section-label {
+  display: block;
+  font-size: var(--gr-text-micro);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gr-text-muted);
+  margin-bottom: var(--gr-sp-1);
+}
+.gr-section-label-accent { color: var(--gr-accent); }
+.gr-section-label-warn { color: var(--gr-warning); }
+.gr-section-label-info { color: var(--gr-info); }
+
+/* ── 15. Progress Banner ────────────────────────────────────── */
+.gr-banner {
+  display: none;
+  align-items: center;
+  gap: var(--gr-sp-4);
+  padding: var(--gr-sp-3) var(--gr-sp-5);
+  background: var(--gr-surface-2);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-card);
+}
+
+.gr-banner.active { display: flex; }
+
+.gr-banner-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--gr-border-strong);
+  border-top-color: var(--gr-accent);
+  border-radius: 50%;
+  flex-shrink: 0;
+  animation: gr-spin 0.7s linear infinite;
+}
+
+@keyframes gr-spin { to { transform: rotate(360deg); } }
+
+.gr-banner-title {
+  font-size: var(--gr-text-label);
+  font-weight: 500;
+  color: var(--gr-text-primary);
+}
+
+.gr-banner-desc {
+  font-size: var(--gr-text-caption);
+  color: var(--gr-text-muted);
+  margin-top: 2px;
+}
+
+/* ── 16. Judge Proof Strip ──────────────────────────────────── */
+.gr-proof-strip {
+  background: var(--gr-surface-1);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-card);
+  padding: var(--gr-sp-3) var(--gr-sp-5);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--gr-sp-3);
+}
+
+.gr-proof-label {
+  font-size: var(--gr-text-micro);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--gr-text-faint);
+  display: flex;
+  align-items: center;
+  gap: var(--gr-sp-2);
+  flex-shrink: 0;
+}
+
+.gr-proof-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--gr-accent);
+  flex-shrink: 0;
+}
+
+.gr-proof-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--gr-sp-2);
+}
+
+/* ── 17. Briefing Hero Section ──────────────────────────────── */
+.gr-briefing {
+  background: var(--gr-surface-1);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-feature);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.04),
+    inset 0 -1px 0 rgba(0,0,0,0.15);
+  overflow: hidden;
+}
+
+.gr-briefing-header {
+  padding: var(--gr-sp-5) var(--gr-sp-6);
+  border-bottom: 1px solid var(--gr-border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--gr-sp-4);
+}
+
+.gr-briefing-body {
+  padding: var(--gr-sp-6);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gr-sp-4);
+}
+
+/* ── 18. Continuity Banner (inline) ─────────────────────────── */
+.gr-continuity {
+  display: none;
+  align-items: center;
+  gap: var(--gr-sp-2);
+  margin-top: var(--gr-sp-3);
+  padding: var(--gr-sp-2) var(--gr-sp-3);
+  background: rgba(233,185,73,0.06);
+  border: 1px solid rgba(233,185,73,0.18);
+  border-radius: var(--gr-radius-control);
+  font-size: var(--gr-text-caption);
+  color: var(--gr-text-secondary);
+}
+.gr-continuity.visible { display: flex; }
+.gr-continuity-label {
+  font-weight: 500;
+  color: var(--gr-warning);
+  flex-shrink: 0;
+}
+
+/* ── 19. Feedback Section ───────────────────────────────────── */
+.gr-feedback {
+  background: var(--gr-surface-1);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-card);
+  padding: var(--gr-sp-5) var(--gr-sp-6);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--gr-sp-5);
+}
+
+.gr-feedback-info { flex: 1; min-width: 200px; }
+.gr-feedback-info h3 {
+  font-size: var(--gr-text-label);
+  font-weight: 500;
+  color: var(--gr-text-primary);
+  margin-bottom: 3px;
+}
+.gr-feedback-info p {
+  font-size: var(--gr-text-caption);
+  color: var(--gr-text-muted);
+  line-height: 1.5;
+}
+
+.gr-feedback-controls {
+  display: flex;
+  gap: var(--gr-sp-2);
+  flex: 1;
+  min-width: 260px;
+}
+
+/* ── 20. Technical Drawer ───────────────────────────────────── */
+.gr-drawer {
+  background: var(--gr-surface-1);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-card);
+  overflow: hidden;
+}
+
+.gr-drawer summary {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--gr-sp-4) var(--gr-sp-5);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--gr-ease-fast);
+}
+.gr-drawer summary::-webkit-details-marker { display: none; }
+.gr-drawer summary:hover { background: var(--gr-surface-2); }
+
+.gr-drawer-title {
+  display: flex;
+  align-items: center;
+  gap: var(--gr-sp-2);
+  font-size: var(--gr-text-label);
+  font-weight: 500;
+  color: var(--gr-text-secondary);
+}
+
+.gr-drawer-toggle {
+  font-size: var(--gr-text-caption);
+  color: var(--gr-text-faint);
+  font-family: var(--gr-font-mono);
+  transition: transform var(--gr-ease-fast);
+}
+details.gr-drawer[open] .gr-drawer-toggle {
+  transform: rotate(180deg);
+}
+
+.gr-drawer-body {
+  border-top: 1px solid var(--gr-border);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+}
+
+.gr-drawer-panel {
+  padding: var(--gr-sp-5);
+}
+.gr-drawer-panel + .gr-drawer-panel {
+  border-left: 1px solid var(--gr-border);
+}
+
+.gr-drawer-panel-title {
+  font-size: var(--gr-text-micro);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding-bottom: var(--gr-sp-3);
+  margin-bottom: var(--gr-sp-3);
+  border-bottom: 1px solid var(--gr-border);
+}
+
+/* ── 21. Activity Stream (IMP Log) ──────────────────────────── */
+.gr-stream {
+  font-family: var(--gr-font-mono);
+  font-size: var(--gr-text-caption);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gr-sp-2);
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.gr-stream-item {
+  padding: var(--gr-sp-3);
+  background: var(--gr-surface-2);
+  border: 1px solid var(--gr-border);
+  border-left-width: 2px;
+  border-radius: var(--gr-radius-sm);
+  transition: border-left-width var(--gr-ease-fast);
+}
+.gr-stream-item:hover { border-left-width: 3px; }
+
+.gr-stream-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--gr-sp-1);
+}
+
+.gr-stream-sender { font-weight: 500; }
+.gr-stream-meta { display: flex; align-items: center; gap: var(--gr-sp-2); }
+.gr-stream-tag {
+  font-size: var(--gr-text-micro);
+  padding: 2px 5px;
+  background: var(--gr-surface-3);
+  border-radius: var(--gr-radius-sm);
+  color: var(--gr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.gr-stream-content {
+  font-size: var(--gr-text-caption);
+  color: var(--gr-text-secondary);
+  font-family: var(--gr-font-sans);
+  line-height: 1.5;
+}
+
+/* Border color variants for IMP senders */
+.gr-stream-scout    { border-left-color: var(--gr-info); }
+.gr-stream-community { border-left-color: var(--gr-warning); }
+.gr-stream-business  { border-left-color: var(--gr-accent); }
+.gr-stream-core      { border-left-color: #a78bfa; }
+.gr-stream-user      { border-left-color: #f472b6; }
+
+/* Sender text colors */
+.gr-stream-scout .gr-stream-sender    { color: var(--gr-info); }
+.gr-stream-community .gr-stream-sender { color: var(--gr-warning); }
+.gr-stream-business .gr-stream-sender  { color: var(--gr-accent); }
+.gr-stream-core .gr-stream-sender      { color: #a78bfa; }
+.gr-stream-user .gr-stream-sender      { color: #f472b6; }
+
+/* ── 22. State Store Panels ─────────────────────────────────── */
+.gr-state-block {
+  padding: var(--gr-sp-3);
+  background: var(--gr-surface-2);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-sm);
+  margin-bottom: var(--gr-sp-2);
+}
+
+.gr-state-block:last-child { margin-bottom: 0; }
+
+.gr-tag {
+  display: inline-block;
+  padding: 2px 7px;
+  background: var(--gr-surface-3);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-sm);
+  font-size: var(--gr-text-micro);
+  color: var(--gr-text-secondary);
+}
+
+.gr-rule-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--gr-sp-2);
+  padding: var(--gr-sp-2) var(--gr-sp-3);
+  background: rgba(233,185,73,0.05);
+  border: 1px solid rgba(233,185,73,0.12);
+  border-radius: var(--gr-radius-sm);
+  font-size: var(--gr-text-caption);
+  color: var(--gr-text-secondary);
+  margin-bottom: var(--gr-sp-1);
+}
+.gr-rule-item:last-child { margin-bottom: 0; }
+.gr-rule-tick { color: var(--gr-accent); font-weight: 500; flex-shrink: 0; }
+
+.gr-node-item {
+  padding: var(--gr-sp-2) var(--gr-sp-3);
+  background: var(--gr-surface-2);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-sm);
+  margin-bottom: var(--gr-sp-1);
+  font-size: var(--gr-text-caption);
+}
+.gr-node-item:last-child { margin-bottom: 0; }
+.gr-node-type {
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-family: var(--gr-font-mono);
+  color: var(--gr-info);
+  display: inline-block;
+  margin-bottom: 3px;
+}
+
+/* ── 23. Modal ──────────────────────────────────────────────── */
+.gr-modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--gr-overlay);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: var(--gr-sp-6);
+}
+.gr-modal-backdrop.open { display: flex; }
+
+.gr-modal {
+  background: var(--gr-surface-2);
+  border: 1px solid var(--gr-border-strong);
+  border-radius: var(--gr-radius-feature);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 32px 64px rgba(0,0,0,0.60);
+  max-width: 680px;
+  width: 100%;
+  padding: var(--gr-sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gr-sp-5);
+}
+
+.gr-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--gr-sp-4);
+  border-bottom: 1px solid var(--gr-border);
+}
+
+.gr-modal-title {
+  font-size: var(--gr-text-body-sm);
+  font-weight: 500;
+  color: var(--gr-text-primary);
+}
+
+.gr-modal-close {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-sm);
+  background: transparent;
+  color: var(--gr-text-muted);
+  cursor: pointer;
+  font-size: var(--gr-text-caption);
+  transition: all var(--gr-ease-fast);
+}
+.gr-modal-close:hover {
+  background: var(--gr-surface-3);
+  color: var(--gr-text-primary);
+}
+
+.gr-modal-code {
+  font-family: var(--gr-font-mono);
+  font-size: var(--gr-text-caption);
+  color: #93c5fd;
+  background: var(--gr-canvas);
+  border: 1px solid var(--gr-border);
+  border-radius: var(--gr-radius-control);
+  padding: var(--gr-sp-4);
+  overflow-x: auto;
+  max-height: 320px;
+  overflow-y: auto;
+  white-space: pre;
+  line-height: 1.6;
+}
+
+/* ── 24. Empty / placeholder states ─────────────────────────── */
+.gr-empty {
+  padding: var(--gr-sp-8);
+  text-align: center;
+  color: var(--gr-text-faint);
+  font-size: var(--gr-text-body-sm);
+  font-style: italic;
+  border: 1px dashed var(--gr-border);
+  border-radius: var(--gr-radius-card);
+}
+
+/* ── 25. Flash animation (learned rule) ─────────────────────── */
+@keyframes gr-flash-learn {
+  0%   { background: rgba(142,232,168,0.14); border-color: rgba(142,232,168,0.30); }
+  100% { background: rgba(233,185,73,0.05); border-color: rgba(233,185,73,0.12); }
+}
+.flash-rule { animation: gr-flash-learn 1.4s ease-out forwards; }
+
+/* ── 26. Utility ────────────────────────────────────────────── */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+.hidden { display: none !important; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── 27. Responsive ─────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .gr-briefing-body {
+    grid-template-columns: 1fr;
+  }
+  .gr-drawer-body {
+    grid-template-columns: 1fr;
+  }
+  .gr-drawer-panel + .gr-drawer-panel {
+    border-left: none;
+    border-top: 1px solid var(--gr-border);
+  }
+}
+
+@media (max-width: 640px) {
+  .gr-main {
+    padding: var(--gr-sp-5) var(--gr-sp-4) var(--gr-sp-12);
+  }
+  .gr-nav {
+    padding: var(--gr-sp-3) var(--gr-sp-4);
+  }
+  .gr-briefing-header {
+    flex-direction: column;
+    gap: var(--gr-sp-3);
+  }
+  .gr-feedback {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .gr-feedback-controls {
+    flex-direction: column;
+  }
+  .gr-proof-strip {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .gr-btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
