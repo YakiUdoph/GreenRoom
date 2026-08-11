@@ -8,6 +8,7 @@ import { api } from './lib/api';
 
 import { Sidebar } from './components/layout/Sidebar';
 import { CursorSpotlight } from './components/motion/CursorSpotlight';
+import { IntelligenceShader } from './components/motion/IntelligenceShader';
 import { PayloadModal } from './components/ui/PayloadModal';
 
 import { HomePage } from './pages/HomePage';
@@ -18,7 +19,7 @@ import { ActionsPage } from './pages/ActionsPage';
 import { SystemPage } from './pages/SystemPage';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState('memory');
+  const [activeTab, setActiveTab] = useState('home');
   const [isExecuting, setIsExecuting] = useState(false);
 
   // Enable Cursor-Aware Spotlight Physics
@@ -181,14 +182,17 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#09090b] text-zinc-100 font-sans selection:bg-emerald-500 selection:text-zinc-950 relative overflow-hidden">
-      {/* Dynamic Ambient Cursor Spotlight */}
+    <div className="min-h-screen flex bg-[#050507] text-zinc-100 font-sans selection:bg-[#00ff87] selection:text-zinc-950 relative overflow-hidden">
+      {/* WebGL Procedural Simplex Noise Shader Motion Field */}
+      <IntelligenceShader />
+
+      {/* Dynamic Cursor Spotlight Aura */}
       <CursorSpotlight />
 
       {/* Left Sidebar Navigation */}
       <Sidebar activeTab={activeTab} onTabChange={(tab) => setActiveTab(tab)} />
 
-      {/* Main Content Area with AnimatePresence Tab Transitions */}
+      {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-h-screen overflow-y-auto z-10">
         <AnimatePresence mode="wait">
           {renderPage()}
