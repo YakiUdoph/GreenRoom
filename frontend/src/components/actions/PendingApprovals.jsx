@@ -99,7 +99,7 @@ export function PendingApprovals({
           </span>
           {scriptData?.is_punchy_voice && (
             <span className="text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-700 px-2 py-0.5 rounded animate-bounce">
-              ⚡ Learned Punchy Voice
+              Learned Punchy Voice
             </span>
           )}
         </div>

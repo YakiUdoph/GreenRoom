@@ -546,7 +546,7 @@
         } else {
           rulesContainer.innerHTML = learnedRules.map(r => `
             <div class="gr-rule-item flash-rule">
-              <span class="gr-rule-tick">✓</span>
+              <span class="gr-rule-tick"></span>
               <span>${escapeHtml(r)}</span>
             </div>
           `).join('');
@@ -667,7 +667,7 @@
               <div style="display:flex;gap:var(--gr-sp-2);">
                 ${approveBtn}
                 <button onclick="submitItemFeedback('${escapeHtml(item.id)}', 'done')" class="gr-btn gr-btn-sm gr-btn-ghost">Done</button>
-                <button onclick="submitItemFeedback('${escapeHtml(item.id)}', 'dismiss')" class="gr-btn gr-btn-sm gr-btn-ghost" title="Dismiss">✕</button>
+                <button onclick="submitItemFeedback('${escapeHtml(item.id)}', 'dismiss')" class="gr-btn gr-btn-sm gr-btn-ghost" title="Dismiss">Dismiss</button>
               </div>
             </div>
           </article>

@@ -24,7 +24,7 @@ function fetchMindsStatus() {
       const statusEl = document.getElementById('connection-status');
       if (statusEl) {
         statusEl.className = 'px-3 py-1 bg-slate-900 text-slate-400 border border-slate-800 rounded-full text-xs flex items-center gap-2 font-medium';
-        statusEl.innerHTML = '⚠️ Minds Status Unavailable';
+        statusEl.innerHTML = 'Minds Status Unavailable';
       }
     });
 }
@@ -35,13 +35,13 @@ function updateStatusBadge(data) {
   if (data.mode === 'production' && data.connected) {
     const mindIdSnippet = data.real_platform_mind?.mindId ? ` (${data.real_platform_mind.mindId.slice(0, 8)}...)` : '';
     statusEl.className = 'px-3.5 py-1.5 bg-emerald-950 text-emerald-400 border border-emerald-800 rounded-full text-xs flex items-center gap-2 font-semibold shadow-inner';
-    statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span> 🟢 Remote Animoca Mind Connected${mindIdSnippet}`;
+    statusEl.innerHTML = `<span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span> Remote Animoca Mind Connected${mindIdSnippet}`;
   } else if (data.mode === 'demo' || data.is_mock || data.demo_mode_active) {
     statusEl.className = 'px-3.5 py-1.5 bg-amber-950 text-amber-400 border border-amber-800 rounded-full text-xs flex items-center gap-2 font-semibold shadow-inner';
-    statusEl.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> 🟡 MOCK DEMO MODE — Offline Development';
+    statusEl.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Standby Mode';
   } else {
     statusEl.className = 'px-3.5 py-1.5 bg-rose-950 text-rose-400 border border-rose-800 rounded-full text-xs flex items-center gap-2 font-semibold shadow-inner';
-    statusEl.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> 🔴 Animoca Minds Builder Disconnected';
+    statusEl.innerHTML = '<span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> Animoca Minds Builder Disconnected';
   }
 }
 
@@ -308,9 +308,9 @@ function renderBriefing(briefing) {
         <div class="pt-2 border-t border-slate-900 flex justify-between items-center gap-2">
           <span class="text-[10px] text-slate-500 font-mono">Memory: ${escapeHtml(item.memory_context_used || 'creator_profile')}</span>
           <div class="flex gap-1.5">
-            <button onclick="submitItemFeedback('${item.id}', 'useful')" class="px-2.5 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 rounded-lg text-xs font-semibold transition" title="Mark Useful">✓ Useful</button>
-            <button onclick="submitItemFeedback('${item.id}', 'done')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-lg text-xs transition" title="Mark Done">⚡ Done</button>
-            <button onclick="submitItemFeedback('${item.id}', 'dismiss')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-xs transition" title="Dismiss">✕</button>
+            <button onclick="submitItemFeedback('${item.id}', 'useful')" class="px-2.5 py-1 bg-emerald-950 hover:bg-emerald-900 border border-emerald-800 text-emerald-400 rounded-lg text-xs font-semibold transition" title="Mark Useful">Useful</button>
+            <button onclick="submitItemFeedback('${item.id}', 'done')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 rounded-lg text-xs transition" title="Mark Done">Done</button>
+            <button onclick="submitItemFeedback('${item.id}', 'dismiss')" class="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-400 rounded-lg text-xs transition" title="Dismiss">Dismiss</button>
           </div>
         </div>
       </div>
@@ -365,7 +365,7 @@ function renderIMPStream() {
           <div class="flex items-center gap-1.5">
             ${conf ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-900 text-slate-400 border border-slate-800">${conf}</span>` : ''}
             <span class="px-1.5 py-0.5 rounded text-[10px] bg-slate-900 text-slate-300 font-sans uppercase">${action}</span>
-            <button onclick="inspectPayload('${msg.message_id}')" class="text-slate-500 hover:text-slate-300 ml-1 text-[11px]" title="View raw JSON">🔍</button>
+            <button onclick="inspectPayload('${msg.message_id}')" class="text-slate-500 hover:text-slate-300 ml-1 text-[11px]" title="View raw JSON">View JSON</button>
           </div>
         </div>
         <p class="mt-1.5 text-slate-300 leading-relaxed font-sans text-xs">${escapeHtml(payloadSnippet)}</p>
@@ -420,7 +420,7 @@ function renderStateStore() {
     } else {
       rulesContainer.innerHTML = learnedRules.map(r => `
         <div class="p-2 bg-amber-950/40 border border-amber-800/60 rounded-lg text-amber-200 text-[11px] font-sans flex items-start gap-1.5 shadow-sm">
-          <span class="text-amber-400 font-bold">✓</span>
+          <span class="text-amber-400 font-bold">[OK]</span>
           <span>${escapeHtml(r)}</span>
         </div>
       `).join('');

@@ -106,7 +106,7 @@ export function IntelligencePage({
                       onClick={() => onInspectPayload(msg)}
                       className="font-mono text-xs text-primary-fixed hover:underline font-bold"
                     >
-                      🔍 Inspect Payload JSON
+                      Inspect Payload JSON
                     </button>
                   </div>
                 </div>

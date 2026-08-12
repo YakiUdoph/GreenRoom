@@ -124,7 +124,7 @@ def test_explicit_demo_mode():
         status = mgr.get_status()
         
         assert status["demo_mode_active"] is True
-        assert status["mode"] in ("demo", "[MOCK DEMO MODE]")
+        assert status["mode"] in ("demo", "DEMO_MODE", "[MOCK DEMO MODE]")
         print(f"[OK] Status mode correctly labeled: {status['mode']}")
 
         agent = mgr.get_agent("ScoutMind")

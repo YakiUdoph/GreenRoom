@@ -16,7 +16,7 @@ export function Header({
       return {
         className: 'px-3 py-1.5 bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 rounded-full text-xs font-semibold flex items-center gap-2 shadow-inner',
         dotClass: 'w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-md shadow-emerald-400',
-        label: `🟢 Remote Minds Connected${mindIdSnippet}`,
+        label: `Remote Minds Connected${mindIdSnippet}`,
       };
     }
 
@@ -24,14 +24,14 @@ export function Header({
       return {
         className: 'px-3 py-1.5 bg-cyan-950/80 text-cyan-400 border border-cyan-800/80 rounded-full text-xs font-semibold flex items-center gap-2 shadow-inner',
         dotClass: 'w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-md shadow-cyan-400',
-        label: '🔵 Standby / Offline Development Mode',
+        label: 'Standby Mode',
       };
     }
 
     return {
       className: 'px-3 py-1.5 bg-slate-900 text-slate-400 border border-slate-800 rounded-full text-xs font-semibold flex items-center gap-2 shadow-inner',
       dotClass: 'w-2.5 h-2.5 rounded-full bg-slate-500',
-      label: '⚪ Minds Gateway Offline',
+      label: 'Minds Gateway Offline',
     };
   };
 

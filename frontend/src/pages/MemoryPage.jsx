@@ -144,8 +144,8 @@ export function MemoryPage({ memoryState, onSubmitFeedback, isExecuting }) {
             <h3 className="text-sm font-bold text-white font-sans">"Tailored 3-Step Setup Script Concept"</h3>
             <p className="font-mono text-xs text-primary-fixed leading-relaxed bg-[#0a0c0e] p-3 rounded border border-[#234d28]">
               {learnedRules.length > 0
-                ? `⚡ PUNCHY VOICE RULE ACTIVE: "${learnedRules[learnedRules.length - 1]}"\n\n[HOOK]: Stop wasting hours configuring local pipelines. 3 setup steps to launch your agent today.`
-                : `⚡ BRAND VOICE MATRIX: Educational, Technical, Direct.\n\n[HOOK]: Stop wasting hours configuring complex local pipelines. Here are the 3 setup steps to launch today.`}
+                ? `PUNCHY VOICE RULE ACTIVE: "${learnedRules[learnedRules.length - 1]}"\n\n[HOOK]: Stop wasting hours configuring local pipelines. 3 setup steps to launch your agent today.`
+                : `BRAND VOICE MATRIX: Educational, Technical, Direct.\n\n[HOOK]: Stop wasting hours configuring complex local pipelines. Here are the 3 setup steps to launch today.`}
             </p>
             <p className="text-[11px] text-zinc-300 font-medium">Derived directly from accumulated creator rules and viewer retention analytics.</p>
           </div>
@@ -254,7 +254,7 @@ export function MemoryPage({ memoryState, onSubmitFeedback, isExecuting }) {
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {node.key_takeaways.map((takeaway, tIdx) => (
                     <span key={tIdx} className="px-2.5 py-0.5 bg-[#0a0c0e] border border-outline-variant rounded text-[11px] font-mono text-zinc-300">
-                      ✓ {takeaway}
+                      {takeaway}
                     </span>
                   ))}
                 </div>

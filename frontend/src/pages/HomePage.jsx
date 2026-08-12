@@ -194,7 +194,7 @@ export function HomePage({
               </span>
               {isPunchy && (
                 <span className="font-mono text-[10px] font-bold text-amber-300 bg-amber-950 border border-amber-800 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
-                  ⚡ Punchy Voice Active
+                  Punchy Voice Active
                 </span>
               )}
             </div>

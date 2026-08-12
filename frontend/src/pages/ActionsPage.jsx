@@ -83,11 +83,11 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
 
           {approvedActions.has('pitch') ? (
             <div className="p-3 bg-[#142616] border border-[#234d28] text-primary-fixed font-mono text-xs font-bold rounded text-center shadow-lg">
-              ✓ APPROVED & EXECUTED
+              APPROVED & EXECUTED
             </div>
           ) : rejectedActions.has('pitch') ? (
             <div className="p-3 bg-rose-950/80 border border-rose-800 text-rose-300 font-mono text-xs font-bold rounded text-center shadow-lg">
-              ✕ ACTION REJECTED
+              ACTION REJECTED
             </div>
           ) : (
             <div className="flex gap-3 pt-2">
@@ -138,13 +138,13 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
             </div>
 
             <div className="p-3 bg-[#0a0c0e] border border-outline-variant rounded font-mono text-xs text-zinc-300 max-h-32 overflow-y-auto leading-relaxed shadow-inner whitespace-pre-wrap">
-              {scriptData?.script_concept || '⚡ SCRIPT CONCEPT: Beginner AI Workflows\n\n[HOOK - 0:00-0:10]\nStop wasting hours configuring local pipelines. 3 steps to launch today.'}
+              {scriptData?.script_concept || 'SCRIPT CONCEPT: Beginner AI Workflows\n\n[HOOK - 0:00-0:10]\nStop wasting hours configuring local pipelines. 3 steps to launch today.'}
             </div>
           </div>
 
           {approvedActions.has('script') ? (
             <div className="p-3 bg-[#142616] border border-[#234d28] text-primary-fixed font-mono text-xs font-bold rounded text-center shadow-lg">
-              ✓ APPROVED FOR PRODUCTION
+              APPROVED FOR PRODUCTION
             </div>
           ) : (
             <div className="flex gap-3 pt-2">

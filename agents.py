@@ -166,7 +166,7 @@ class GreenroomCoreMind:
 
         if custom_terminal_rule:
             script_concept = (
-                f"⚡ ADAPTED SCRIPT CONCEPT: {trend_name} (OPEN-SOURCE TERMINAL FOCUS)\n\n"
+                f"ADAPTED SCRIPT CONCEPT: {trend_name} (OPEN-SOURCE TERMINAL FOCUS)\n\n"
                 f"[HOOK - 0:00-0:15]\n"
                 f"No heavy UI bloat. Today we are launching {trend_name} purely using local open-source models and 3 terminal commands.\n\n"
                 f"[TERMINAL DEMO - 0:15-2:40]\n"
@@ -176,7 +176,7 @@ class GreenroomCoreMind:
             )
         elif is_punchy:
             script_concept = (
-                f"⚡ SCRIPT CONCEPT: {trend_name} (PUNCHY EDITION)\n\n"
+                f"SCRIPT CONCEPT: {trend_name} (PUNCHY EDITION)\n\n"
                 f"[HOOK - 0:00-0:10]\n"
                 f"Stop wasting hours configuring AI workflows. Here are the 3 exact steps to launch your first local agent today—no fluff, just code.\n\n"
                 f"[CORE DEMO - 0:10-2:30]\n"

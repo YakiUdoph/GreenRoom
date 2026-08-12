@@ -335,7 +335,7 @@ class MindsAgent:
             raise ValueError(f"Skill '{skill_name}' not registered on Mind '{self.name}'")
         res = await self.skills[skill_name].execute(**kwargs)
         
-        mode_tag = "[MOCK DEMO MODE]" if self.is_mock_mode else "Animoca_Minds_Builder_API"
+        mode_tag = "DEMO_MODE" if self.is_mock_mode else "Animoca_Minds_Builder_API"
         if isinstance(res, dict):
             res["execution_mode"] = mode_tag
         elif isinstance(res, list):
@@ -354,11 +354,11 @@ class MindsAgent:
             is_punchy = any("punchy" in r.lower() or "formal" in r.lower() for r in self.learned_rules)
             return {
                 "agent": self.name,
-                "source": "[MOCK DEMO MODE]",
+                "source": "DEMO_MODE",
                 "role": self.role,
                 "is_punchy_voice": is_punchy,
                 "learned_rules_active": self.learned_rules,
-                "status": "PROCESSED_LOCALLY_MOCK"
+                "status": "PROCESSED_LOCALLY"
             }
 
         if not self.builder_client:
@@ -738,7 +738,7 @@ class GreenroomMindsIntegrationManager:
                     "remote_mind_id": agent.remote_mind_id,
                     "skills": list(agent.skills.keys()),
                     "learned_rules_count": len(agent.learned_rules),
-                    "execution_mode": "[MOCK DEMO MODE]" if agent.is_mock_mode else "Animoca_Minds_Builder_API"
+                    "execution_mode": "DEMO_MODE" if agent.is_mock_mode else "Animoca_Minds_Builder_API"
                 }
                 for key, agent in self.agents.items()
             ] if not has_config_error else []

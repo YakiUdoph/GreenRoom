@@ -187,7 +187,7 @@ export function MindTopology({
                   {/* Output Header & Body */}
                   <div className="p-4 bg-[#142616]/40 border border-[#234d28] rounded space-y-1.5">
                     <span className="font-mono text-[10px] font-bold text-primary-fixed uppercase tracking-wider block">
-                      ⚡ {selectedMind.outputHeader}
+                      {selectedMind.outputHeader}
                     </span>
                     <p className="text-xs font-sans text-white leading-relaxed font-medium">
                       {selectedMind.outputBody}
@@ -202,7 +202,7 @@ export function MindTopology({
                     <div className="flex flex-wrap gap-2">
                       {selectedMind.capabilities.map((cap, i) => (
                         <span key={i} className="px-2.5 py-1 bg-[#111115] border border-outline-variant text-zinc-200 rounded text-xs font-mono">
-                          ✓ {cap}
+                          {cap}
                         </span>
                       ))}
                     </div>
