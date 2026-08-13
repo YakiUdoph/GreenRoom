@@ -83,4 +83,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ constraint_text: constraintText }),
     }),
+
+  getMindsProvenanceTrace: () => request('/api/minds/provenance-trace'),
 };

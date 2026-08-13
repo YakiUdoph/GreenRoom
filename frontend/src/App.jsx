@@ -13,6 +13,7 @@ import { PayloadModal } from './components/ui/PayloadModal';
 import { CreatorOnboardingModal } from './components/onboarding/CreatorOnboardingModal';
 import { OfflineLifecycleModal } from './components/activity/OfflineLifecycleModal';
 import { MemoryBehaviorProofModal } from './components/memory/MemoryBehaviorProofModal';
+import { SpecialistMindsProofModal } from './components/mind/SpecialistMindsProofModal';
 
 import { HomeBackground } from './components/motion/HomeBackground';
 import { MindBackground } from './components/motion/MindBackground';
@@ -35,6 +36,7 @@ export function App() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
   const [isMemoryProofModalOpen, setIsMemoryProofModalOpen] = useState(false);
+  const [isSpecialistProofModalOpen, setIsSpecialistProofModalOpen] = useState(false);
 
   // Enable Mouse Position Physics Hook
   useMousePosition();
@@ -208,6 +210,7 @@ export function App() {
             impMessages={impMessages}
             onInspectPayload={(msg) => greenroomStore.openPayloadModal(msg)}
             onRunStep={handleRunStep}
+            onOpenSpecialistProofModal={() => setIsSpecialistProofModalOpen(true)}
             isExecuting={isExecuting}
           />
         );
@@ -337,6 +340,12 @@ export function App() {
         onMemoryUpdated={() => {
           loadInitialData();
         }}
+      />
+
+      {/* Specialist Minds Multi-Agent Architecture Proof Modal */}
+      <SpecialistMindsProofModal
+        isOpen={isSpecialistProofModalOpen}
+        onClose={() => setIsSpecialistProofModalOpen(false)}
       />
     </div>
   );

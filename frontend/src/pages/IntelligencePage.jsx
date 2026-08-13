@@ -5,6 +5,7 @@ export function IntelligencePage({
   impMessages,
   onInspectPayload,
   onRunStep,
+  onOpenSpecialistProofModal,
   isExecuting,
   onRunFullDemo,
 }) {
@@ -31,6 +32,20 @@ export function IntelligencePage({
         </div>
 
         <div className="flex items-center gap-3">
+          {onOpenSpecialistProofModal && (
+            <button
+              onClick={() => {
+                soundFx.playSynapsePulse();
+                onOpenSpecialistProofModal();
+              }}
+              className="px-4 py-2.5 bg-emerald-950/80 border border-emerald-500/60 hover:border-primary-fixed text-emerald-300 hover:text-white font-mono text-xs font-bold transition flex items-center gap-2 rounded shadow-lg shadow-emerald-950/40"
+              title="Trace why Greenroom is split into 4 specialist Minds: Scout finds -> Community validates -> Business evaluates -> Greenroom decides"
+            >
+              <span className="material-symbols-outlined text-base text-primary-fixed animate-pulse">account_tree</span>
+              <span>Prove 4 Specialist Minds</span>
+            </button>
+          )}
+
           <button
             onClick={() => onRunStep(3)}
             disabled={isExecuting}
@@ -44,6 +59,23 @@ export function IntelligencePage({
           >
             {showRawInspector ? 'Hide Technical Inspector' : 'Expand Raw Protocol Stream'}
           </button>
+        </div>
+      </div>
+
+      {/* Multi-Mind Verb Lifecycle Thesis Banner */}
+      <div className="p-4 bg-[#142616] border border-[#234d28] rounded-xl flex flex-col md:flex-row items-center justify-between gap-4 font-mono text-xs shadow-lg">
+        <div className="flex items-center gap-2 text-primary-fixed font-bold">
+          <span className="material-symbols-outlined text-xl">hub</span>
+          <span>SPECIALIST MINDS RESPONSIBILITY TRACE:</span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+          <span className="px-3 py-1 bg-[#111115] text-emerald-400 border border-emerald-800 rounded">SCOUT FINDS</span>
+          <span className="text-zinc-500">→</span>
+          <span className="px-3 py-1 bg-[#111115] text-cyan-400 border border-cyan-800 rounded">COMMUNITY VALIDATES</span>
+          <span className="text-zinc-500">→</span>
+          <span className="px-3 py-1 bg-[#111115] text-amber-400 border border-amber-800 rounded">BUSINESS EVALUATES</span>
+          <span className="text-zinc-500">→</span>
+          <span className="px-3 py-1 bg-[#142616] text-primary-fixed border border-[#234d28] rounded shadow-[0_0_8px_#72ff70]">GREENROOM DECIDES</span>
         </div>
       </div>
 
