@@ -168,6 +168,37 @@ export function App() {
     }
   };
 
+  const handleCreateObjective = async (title, details = '') => {
+    setIsExecuting(true);
+    try {
+      const res = await api.createObjective(title, details);
+      if (res.state) greenroomStore.setMemoryState(res.state);
+    } catch (err) {
+      console.error('[GreenroomApp] Error creating objective:', err);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
+  const handleRunObjective = async (objectiveId) => {
+    setIsExecuting(true);
+    try {
+      const res = await api.runObjective(objectiveId);
+      if (res.state) greenroomStore.setMemoryState(res.state);
+      if (res.result && res.result.script_concept) {
+        greenroomStore.setActiveCard('script', {
+          trend_name: 'Beginner AI Workflows & Automation',
+          script_concept: res.result.script_concept,
+          is_punchy_voice: true,
+        });
+      }
+    } catch (err) {
+      console.error('[GreenroomApp] Error running objective:', err);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   // Render Active Page
   const renderPage = () => {
     switch (activeTab) {
@@ -184,6 +215,8 @@ export function App() {
             onOpenOfflineModal={() => setIsOfflineModalOpen(true)}
             onOpenMemoryProofModal={() => setIsMemoryProofModalOpen(true)}
             onOpenNinetySecProof={() => setIsNinetySecProofOpen(true)}
+            onCreateObjective={handleCreateObjective}
+            onRunObjective={handleRunObjective}
             isExecuting={isExecuting}
           />
         );
