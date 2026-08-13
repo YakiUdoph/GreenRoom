@@ -1,5 +1,4 @@
-import React from 'react';
-import { Search } from 'lucide-react';
+import React, { useState } from 'react';
 
 function getPayloadSnippet(payload, action) {
   if (!payload) return 'No payload data';
@@ -15,31 +14,59 @@ function getPayloadSnippet(payload, action) {
   if (payload.extracted_learned_rule) return `PROOF OF LEARNING: Updated persistent voice rule -> "${payload.extracted_learned_rule}"`;
   if (payload.action_name) return `Action approved: "${payload.action_name}"`;
 
-  return JSON.stringify(payload).slice(0, 120) + '...';
+  return JSON.stringify(payload).slice(0, 140) + '...';
 }
 
 export function ImpMessageStream({ messages, onInspectPayload }) {
+  const [filterMind, setFilterMind] = useState('ALL');
   const impList = Array.isArray(messages) ? messages : [];
 
+  const filteredMessages = filterMind === 'ALL'
+    ? impList
+    : impList.filter((m) => (m.sender_mind || 'Core').toLowerCase().includes(filterMind.toLowerCase()));
+
   return (
-    <section className="col-span-12 lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-2xl p-4 flex flex-col shadow-xl">
-      <div className="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
-        <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-cyan-400"></div>
-          <h2 className="text-base font-bold text-slate-200">Inter-Mind Message Log (IMP)</h2>
+    <section className="noir-card p-6 flex flex-col space-y-4 shadow-2xl border border-outline-variant/60 bg-[#0e1014]/95 backdrop-blur-md">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-outline-variant/60 pb-3">
+        <div className="flex items-center gap-2.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-primary-fixed animate-pulse shadow-[0_0_8px_#72ff70]" />
+          <h2 className="text-base font-display font-bold text-white uppercase tracking-tight">
+            Inter-Mind Protocol Log (IMP v1.0)
+          </h2>
         </div>
-        <span className="text-xs text-slate-500 font-mono">
-          {impList.length} messages
-        </span>
+
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-xs text-zinc-400 font-bold bg-[#111115] px-2.5 py-1 rounded border border-outline-variant">
+            {filteredMessages.length} Messages
+          </span>
+        </div>
       </div>
 
-      <div className="space-y-3 text-xs font-mono flex-1 max-h-[620px] overflow-y-auto pr-1">
-        {impList.length === 0 ? (
-          <div className="p-4 bg-slate-950/60 border border-slate-800/60 rounded-xl text-slate-400 text-center italic">
-            Waiting for agent network initialization... Trigger agent pipeline skills above.
+      {/* Filter Tabs */}
+      <div className="flex flex-wrap gap-1.5 font-mono text-xs">
+        {['ALL', 'GreenroomCore', 'ScoutMind', 'CommunityMind', 'BusinessMind', 'User'].map((mind) => (
+          <button
+            key={mind}
+            onClick={() => setFilterMind(mind)}
+            className={`px-2.5 py-1 rounded border transition font-bold text-[11px] ${
+              filterMind === mind
+                ? 'bg-primary-container text-on-primary-container border-primary-fixed'
+                : 'bg-[#0a0c0e] text-zinc-400 border-outline-variant hover:text-white'
+            }`}
+          >
+            {mind === 'GreenroomCore' ? 'Core' : mind}
+          </button>
+        ))}
+      </div>
+
+      {/* Message Stream Scroll Area */}
+      <div className="space-y-3 font-mono text-xs flex-1 max-h-[580px] overflow-y-auto pr-1">
+        {filteredMessages.length === 0 ? (
+          <div className="p-6 bg-[#0a0c0e] border border-outline-variant/60 rounded-xl text-zinc-400 text-center italic">
+            Waiting for agent network initialization... Trigger agent pipeline skills to broadcast IMP messages.
           </div>
         ) : (
-          impList.slice().reverse().map((msg) => {
+          filteredMessages.slice().reverse().map((msg, idx) => {
             const sender = msg.sender_mind || 'Core';
             const target = msg.target_mind ? ` → ${msg.target_mind}` : '';
             const action = msg.action_type || 'INFO';
@@ -47,53 +74,54 @@ export function ImpMessageStream({ messages, onInspectPayload }) {
               ? `${(msg.confidence_score * 100).toFixed(0)}%`
               : '';
 
-            let borderClass = 'border-purple-500/80';
-            let textClass = 'text-purple-400';
+            let borderClass = 'border-primary-fixed';
+            let textClass = 'text-primary-fixed';
 
             if (sender === 'ScoutMind') {
-              borderClass = 'border-cyan-500/80';
+              borderClass = 'border-cyan-400';
               textClass = 'text-cyan-400';
             } else if (sender === 'CommunityMind') {
-              borderClass = 'border-amber-500/80';
+              borderClass = 'border-amber-400';
               textClass = 'text-amber-400';
             } else if (sender === 'BusinessMind') {
-              borderClass = 'border-emerald-500/80';
+              borderClass = 'border-emerald-400';
               textClass = 'text-emerald-400';
             } else if (sender === 'User') {
-              borderClass = 'border-pink-500/80';
-              textClass = 'text-pink-400';
+              borderClass = 'border-rose-400';
+              textClass = 'text-rose-400';
             }
 
             const payloadSnippet = getPayloadSnippet(msg.payload, action);
 
             return (
               <div
-                key={msg.message_id || Math.random()}
-                className={`p-3 bg-slate-950 border-l-2 ${borderClass} rounded-xl shadow transition hover:border-l-4`}
+                key={msg.message_id || idx}
+                className={`p-3.5 bg-[#0a0c0e] border-l-4 ${borderClass} border-t border-r border-b border-outline-variant/60 rounded-xl shadow-md space-y-1.5 transition hover:translate-x-1`}
               >
                 <div className="flex justify-between items-center">
-                  <span className={`font-bold ${textClass}`}>
+                  <span className={`font-bold text-xs ${textClass}`}>
                     [{sender}{target}]
                   </span>
                   <div className="flex items-center gap-1.5">
                     {conf && (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-900 text-slate-400 border border-slate-800">
+                      <span className="px-2 py-0.5 rounded text-[10px] bg-[#111115] text-zinc-300 border border-outline-variant font-bold">
                         {conf}
                       </span>
                     )}
-                    <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-900 text-slate-300 font-sans uppercase">
+                    <span className="px-2 py-0.5 rounded text-[10px] bg-[#142616] text-primary-fixed border border-[#234d28] font-bold uppercase">
                       {action}
                     </span>
                     <button
                       onClick={() => onInspectPayload(msg)}
-                      className="text-slate-500 hover:text-slate-300 ml-1 p-0.5"
-                      title="View raw JSON"
+                      className="px-2 py-0.5 bg-[#111115] hover:bg-primary-container hover:text-on-primary-container text-zinc-300 rounded border border-outline-variant text-[10px] font-bold transition flex items-center gap-1"
+                      title="Inspect Raw Payload JSON"
                     >
-                      <Search className="w-3 h-3" />
+                      <span className="material-symbols-outlined text-xs">code</span>
+                      <span>JSON</span>
                     </button>
                   </div>
                 </div>
-                <p className="mt-1.5 text-slate-300 leading-relaxed font-sans text-xs">
+                <p className="text-zinc-200 leading-relaxed font-sans text-xs font-medium">
                   {payloadSnippet}
                 </p>
               </div>
@@ -104,3 +132,5 @@ export function ImpMessageStream({ messages, onInspectPayload }) {
     </section>
   );
 }
+
+export default ImpMessageStream;
