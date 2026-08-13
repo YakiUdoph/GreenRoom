@@ -266,7 +266,7 @@ export function HomePage({
           </div>
           <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
             <span className="text-cyan-400 font-bold block text-[10px] uppercase">EVIDENCE CITATION</span>
-            <span className="text-zinc-200">Scout 145k/day + Community 88% demand.</span>
+            <span className="text-zinc-200">Scout Market Volume + Community Viewer Demand.</span>
           </div>
           <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
             <span className="text-amber-400 font-bold block text-[10px] uppercase">PERSISTED MEMORY RULE</span>
@@ -274,7 +274,7 @@ export function HomePage({
           </div>
           <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
             <span className="text-emerald-400 font-bold block text-[10px] uppercase">CONFIDENCE SCORE</span>
-            <span className="text-primary-fixed font-bold">95% High Alignment</span>
+            <span className="text-primary-fixed font-bold">95% Alignment (Multi-Mind Verified)</span>
           </div>
         </div>
 

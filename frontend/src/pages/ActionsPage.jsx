@@ -79,7 +79,7 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
                 Pitch Brief for {pitchData?.sponsor_name || 'TechBrand Inc.'}
               </h3>
               <p className="font-mono text-xs text-zinc-300 mt-1">
-                Calculated target deal size: <strong className="text-primary-fixed">${pitchData?.target_deal_size || '5,400'}</strong> ($45 CPM Benchmark).
+                Calculated target deal size: <strong className="text-primary-fixed">${pitchData?.target_deal_size || (memoryState?.monetization_benchmarks?.minimum_deal_size ? memoryState.monetization_benchmarks.minimum_deal_size.toLocaleString() : '5,000')}</strong> (Derived: ${memoryState?.monetization_benchmarks?.cpm_target || 45} CPM Benchmark).
               </p>
             </div>
 
@@ -88,15 +88,10 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
                 <span className="font-mono text-[10px] font-bold text-primary-fixed block uppercase">WHAT</span>
                 <p className="text-zinc-200 font-medium">Integrate {pitchData?.sponsor_name || 'TechBrand Inc.'} as native developer infrastructure in upcoming workflow tutorial.</p>
               </div>
-
-              <div className="p-3 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
-                <span className="font-mono text-[10px] font-bold text-amber-400 block uppercase">EVIDENCE & CITATIONS</span>
-                <p className="text-zinc-200 font-medium">Evaluated against 30-day viewer retention metrics & developer audience demographic profile.</p>
-              </div>
             </div>
 
-            <div className="p-3 bg-[#0a0c0e] border border-outline-variant rounded font-mono text-xs text-zinc-300 max-h-32 overflow-y-auto leading-relaxed shadow-inner">
-              {pitchData?.pitch_draft || 'Hey TechBrand Inc. team,\n\nOur technical viewers are software engineers actively seeking developer tools. Let\'s showcase TechBrand Inc. in our upcoming tutorial.'}
+            <div className="p-3 bg-[#0a0c0e] border border-outline-variant rounded font-mono text-xs text-zinc-300 max-h-32 overflow-y-auto leading-relaxed shadow-inner whitespace-pre-wrap">
+              {pitchData?.pitch_draft || 'PITCH BRIEF: TechBrand Inc.\n\nProposed Integration: Native Developer SDK Walkthrough\nTarget CPM: $45 | Estimated Audience Reach: 120,000 Developers'}
             </div>
           </div>
 
@@ -154,7 +149,7 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
             <div className="space-y-2.5 font-sans text-xs">
               <div className="p-3 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
                 <span className="font-mono text-[10px] font-bold text-primary-fixed block uppercase">WHY GREENROOM RECOMMENDS THIS</span>
-                <p className="text-zinc-200 font-medium">Scout Mind flagged trend volume at 145k discussions/day while Community Mind confirmed 88% demand for local code setups.</p>
+                <p className="text-zinc-200 font-medium">Scout Mind flagged high-volume niche discussions while Community Mind confirmed strong viewer demand for local setup walkthroughs.</p>
               </div>
             </div>
 

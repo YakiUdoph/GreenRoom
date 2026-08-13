@@ -447,7 +447,7 @@ def get_minds_provenance_trace():
             "mind_id": "ScoutMind",
             "role": "Market & Niche Trend Discovery",
             "verb": "Scout Finds",
-            "contribution": "Identified 'Beginner AI Workflows & Automation' (145k/day volume, 0.92 raw fit score) and filtered out 3 clickbait hype topics.",
+            "contribution": "Identified 'Beginner AI Workflows & Automation' (High Niche Signal Volume, 0.92 raw fit score) and filtered out clickbait noise.",
             "imp_event": "SCOUT_TREND_DISCOVERED",
             "confidence": 0.92
         },
@@ -456,7 +456,7 @@ def get_minds_provenance_trace():
             "mind_id": "CommunityMind",
             "role": "Audience Sentiment & Retention Analysis",
             "verb": "Community Validates",
-            "contribution": "Confirmed 88% viewer demand for setup walkthroughs & benchmarked 78% retention at 30 seconds.",
+            "contribution": "Confirmed high viewer demand for setup walkthroughs & benchmarked 30-second retention analytics.",
             "imp_event": "COMMUNITY_SENTIMENT_VERIFIED",
             "confidence": 0.88
         },
@@ -465,7 +465,7 @@ def get_minds_provenance_trace():
             "mind_id": "BusinessMind",
             "role": "Commercial & Sponsorship Monetization",
             "verb": "Business Evaluates",
-            "contribution": "Scored TechBrand Inc. sponsor pitch at $5,400 deal value, matching the creator's $45 CPM target benchmark.",
+            "contribution": "Scored TechBrand Inc. sponsor pitch deal value, matching the creator's $45 CPM target benchmark.",
             "imp_event": "BUSINESS_MONETIZATION_EVALUATED",
             "confidence": 0.89
         },

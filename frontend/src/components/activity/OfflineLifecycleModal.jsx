@@ -294,7 +294,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
 
                   <p className="font-mono text-xs text-zinc-300 leading-relaxed bg-[#0a0c0e] p-3.5 rounded border border-outline-variant whitespace-pre-wrap">
                     {briefingData?.script_concept?.concept ||
-                      `WHILE YOU WERE AWAY BRIEFING:\n\n[SCOUT MIND]\nFlagged trend volume at 145k/day while filtering out clickbait.\n\n[COMMUNITY MIND]\n88% positive demand for beginner setup walkthroughs.\n\n[BUSINESS MIND]\nMatched TechBrand Inc. at $5,400 pitch ($45 CPM target).`}
+                      `WHILE YOU WERE AWAY BRIEFING:\n\n[SCOUT MIND]\nFlagged high-volume niche trend while filtering out clickbait noise.\n\n[COMMUNITY MIND]\nHigh positive viewer demand for beginner setup walkthroughs.\n\n[BUSINESS MIND]\nMatched TechBrand Inc. pitch brief against creator $45 CPM target benchmark.`}
                   </p>
 
                   <div className="flex justify-between items-center pt-2 font-mono text-xs">

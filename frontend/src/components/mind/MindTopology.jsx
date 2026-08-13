@@ -42,7 +42,7 @@ export function MindTopology({
         'Scans external platforms for emerging technical trends while filtering clickbait against your creator DNA.',
       outputHeader: 'Latest Scout Discovery',
       outputBody:
-        'Flagged Topic: "Beginner AI Workflows & Automation" (Fit Score: 0.92, Volume: 145k discussions/day). Filtered generic trading spam.',
+        'Flagged Topic: "Beginner AI Workflows & Automation" (Fit Score: 0.92 [Scout Stream]). Filtered generic hype noise.',
       capabilities: [
         'Macro Niche Trend Mining',
         'Brand Boundary Noise Filtering',
@@ -61,10 +61,10 @@ export function MindTopology({
         'Mines viewer comment streams, retention drops, and sentiment patterns to extract high-intent content hooks.',
       outputHeader: 'Latest Audience Signal',
       outputBody:
-        'Comment Mining: 88% positive demand for step-by-step code execution tutorials and direct GitHub repository links.',
+        'Comment Mining: High positive viewer demand for step-by-step code execution tutorials and direct GitHub repository links.',
       capabilities: [
-        'Sentiment Mining (88% Positive)',
-        'Retention Curve Breakdown (78% at 30s)',
+        'Sentiment Mining (Viewer Intent)',
+        'Retention Curve Analytics',
         'High-Intent Hook Extraction',
       ],
     },
@@ -80,9 +80,9 @@ export function MindTopology({
         'Evaluates incoming sponsorship deals against CPM benchmarks and drafts customized pitch briefs.',
       outputHeader: 'Latest Business Deal Score',
       outputBody:
-        'Scored TechBrand Inc. at 89% match size. Drafted $5,400 pitch brief based on your $45 CPM target benchmark.',
+        'Scored TechBrand Inc. at 89% match size. Drafted pitch brief matching your creator CPM target benchmark.',
       capabilities: [
-        'CPM Benchmark Valuation ($45 Target)',
+        'CPM Benchmark Valuation (Target CPM)',
         'Sponsorship Match Scoring',
         'Autonomous Pitch Brief Drafting',
       ],
