@@ -292,10 +292,77 @@ class OnboardingRequest(BaseModel):
     content_wanted: Optional[List[str]] = None
     content_not_wanted: Optional[List[str]] = None
 
-class RejectionRequest(BaseModel):
-    item_id: str
-    reason_category: str
-    notes: Optional[str] = None
+class ObjectiveCreateRequest(BaseModel):
+    title: str
+    details: Optional[str] = ""
+
+class ObjectiveRunRequest(BaseModel):
+    objective_id: str
+
+@app.post("/api/objective/create")
+async def create_objective(req: ObjectiveCreateRequest):
+    entry = memory_tool.add_objective(req.title, req.details or "")
+    
+    await imp_bus.publish(IMPMessage(
+        sender_mind="User",
+        target_mind="GreenroomCore",
+        action_type="OBJECTIVE_CREATED",
+        confidence_score=1.00,
+        payload=entry
+    ))
+
+    return {
+        "status": "success",
+        "objective": entry,
+        "state": memory_tool.get_full_state()
+    }
+
+@app.post("/api/objective/run")
+async def run_objective(req: ObjectiveRunRequest):
+    # 1. Transition status to QUEUED -> RUNNING
+    memory_tool.update_objective_status(req.objective_id, "QUEUED")
+    await imp_bus.publish(IMPMessage(
+        sender_mind="User",
+        target_mind="GreenroomCore",
+        action_type="OBJECTIVE_QUEUED",
+        confidence_score=1.00,
+        payload={"objective_id": req.objective_id, "status": "QUEUED"}
+    ))
+
+    memory_tool.update_objective_status(req.objective_id, "RUNNING")
+    
+    try:
+        # Execute real strategy synthesis run
+        res = await demo_runner_tool.run_minute_3()
+        memory_tool.update_objective_status(req.objective_id, "COMPLETED", result=res)
+        
+        await imp_bus.publish(IMPMessage(
+            sender_mind="GreenroomCore",
+            target_mind="User",
+            action_type="OBJECTIVE_COMPLETED",
+            confidence_score=1.00,
+            payload={"objective_id": req.objective_id, "result": res}
+        ))
+
+        return {
+            "status": "success",
+            "objective_status": "COMPLETED",
+            "result": res,
+            "state": memory_tool.get_full_state()
+        }
+    except Exception as e:
+        memory_tool.update_objective_status(req.objective_id, "FAILED", result={"error": str(e)})
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "objective_status": "FAILED", "message": str(e)}
+        )
+
+@app.get("/api/objective/list")
+def list_objectives():
+    return {
+        "status": "success",
+        "objectives": memory_tool.get_objectives()
+    }
 
 @app.post("/api/creator/onboard")
 async def onboard_creator(req: OnboardingRequest):

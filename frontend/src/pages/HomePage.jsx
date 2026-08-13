@@ -157,7 +157,7 @@ export function HomePage({
                   className="px-4 py-2.5 bg-[#142616] border border-[#234d28] hover:border-primary-fixed/60 text-primary-fixed text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-md"
                 >
                   <span className="material-symbols-outlined text-base">edit_note</span>
-                  <span>Edit Profile</span>
+                  <span>Onboard Profile</span>
                 </button>
               )}
 
@@ -170,34 +170,6 @@ export function HomePage({
                 <span>Export Briefing</span>
               </button>
 
-              {onOpenOfflineModal && (
-                <button
-                  onClick={() => {
-                    soundFx.playSynapsePulse();
-                    onOpenOfflineModal();
-                  }}
-                  className="px-4 py-2.5 bg-emerald-950/80 border border-emerald-500/60 hover:border-primary-fixed text-emerald-300 hover:text-white text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-lg shadow-emerald-950/40"
-                  title="Prove the complete offline chain: QStash Queue -> Minds SDK -> Durable Storage -> Briefing Delivery"
-                >
-                  <span className="material-symbols-outlined text-base text-primary-fixed animate-pulse">cloud_done</span>
-                  <span>Prove Offline Story</span>
-                </button>
-              )}
-
-              {onOpenNinetySecProof && (
-                <button
-                  onClick={() => {
-                    soundFx.playSynapsePulse();
-                    onOpenNinetySecProof();
-                  }}
-                  className="px-4 py-2.5 bg-emerald-950/80 border border-emerald-500/60 hover:border-primary-fixed text-emerald-300 hover:text-white text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-lg shadow-emerald-950/40"
-                  title="Watch Greenroom learn a constraint in 0:00 and filter clickbait trends in 0:90 after an offline background run"
-                >
-                  <span className="material-symbols-outlined text-base text-primary-fixed animate-pulse">timer</span>
-                  <span>Prove 90-Sec Memory Proof</span>
-                </button>
-              )}
-
               <button
                 onClick={() => {
                   soundFx.playSynapsePulse();
@@ -207,7 +179,7 @@ export function HomePage({
                 className="px-5 py-2.5 bg-primary-container text-on-primary-container text-xs font-sans font-bold hover:bg-primary-fixed-dim transition-colors flex items-center gap-2 rounded disabled:opacity-50 shadow-lg shadow-primary-container/20 whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-base font-bold">play_arrow</span>
-                <span>Run Agent Briefing</span>
+                <span>Run Background Work</span>
               </button>
             </div>
           </div>

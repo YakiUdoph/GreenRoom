@@ -148,6 +148,43 @@ class GreenroomMemoryEngine:
             pass
         self.save_state()
 
+    def add_objective(self, title: str, details: str = "") -> Dict[str, Any]:
+        """
+        Creates and persists a real Creator Objective with lifecycle status 'CREATED'.
+        """
+        objectives = self.state.setdefault("creator_objectives", [])
+        obj_id = f"obj_{int(time.time())}"
+        entry = {
+            "id": obj_id,
+            "title": title,
+            "details": details,
+            "status": "CREATED",  # CREATED, QUEUED, RUNNING, COMPLETED, FAILED
+            "created_at": time.time(),
+            "updated_at": time.time(),
+            "result": None
+        }
+        objectives.insert(0, entry)
+        self.save_state()
+        return entry
+
+    def update_objective_status(self, objective_id: str, status: str, result: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:
+        """
+        Updates objective lifecycle status in persistent creator profile.
+        """
+        objectives = self.state.setdefault("creator_objectives", [])
+        for obj in objectives:
+            if obj.get("id") == objective_id:
+                obj["status"] = status
+                obj["updated_at"] = time.time()
+                if result:
+                    obj["result"] = result
+                self.save_state()
+                return obj
+        return None
+
+    def get_objectives(self) -> List[Dict[str, Any]]:
+        return self.state.get("creator_objectives", [])
+
     def onboard_creator(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Ingest and persist structured onboarding profile context.

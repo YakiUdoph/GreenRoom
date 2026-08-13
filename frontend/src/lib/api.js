@@ -85,4 +85,18 @@ export const api = {
     }),
 
   getMindsProvenanceTrace: () => request('/api/minds/provenance-trace'),
+
+  createObjective: (title, details = '') =>
+    request('/api/objective/create', {
+      method: 'POST',
+      body: JSON.stringify({ title, details }),
+    }),
+
+  runObjective: (objectiveId) =>
+    request('/api/objective/run', {
+      method: 'POST',
+      body: JSON.stringify({ objective_id: objectiveId }),
+    }),
+
+  listObjectives: () => request('/api/objective/list'),
 };

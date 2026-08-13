@@ -74,39 +74,12 @@ export function Header({
           <span>{statusInfo.label}</span>
         </span>
 
-        {/* Agent Pipeline Execution Controls */}
         <div className="flex items-center bg-slate-900 border border-slate-800 rounded-xl p-1 gap-1">
-          <button
-            onClick={onRunFullDemo}
-            disabled={isExecuting}
-            className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-emerald-900/30 disabled:opacity-50"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            Run Agent Pipeline
-          </button>
-
-          <div className="h-4 w-px bg-slate-800 mx-1"></div>
-
-          {[1, 2, 3, 4, 5].map((step) => (
-            <button
-              key={step}
-              onClick={() => onRunStep(step)}
-              disabled={isExecuting}
-              className="px-2.5 py-1 text-slate-300 hover:text-white hover:bg-slate-800 rounded text-xs font-mono font-medium transition disabled:opacity-50"
-              title={stepLabels[step]}
-            >
-              {stepLabels[step]}
-            </button>
-          ))}
-
-          <div className="h-4 w-px bg-slate-800 mx-1"></div>
-
           <button
             onClick={() => {
               const current = soundFx.enabled;
               soundFx.enabled = !current;
-              // Force state re-render
-              onRunStep(0);
+              if (onRunStep) onRunStep(0);
             }}
             className={`p-1.5 rounded text-xs font-medium transition ${
               soundFx.enabled ? 'text-emerald-400 hover:bg-slate-800' : 'text-zinc-500 hover:text-white hover:bg-slate-800'
@@ -122,9 +95,9 @@ export function Header({
             onClick={onResetState}
             disabled={isExecuting}
             className="px-2.5 py-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded text-xs font-medium transition disabled:opacity-50"
-            title="Reset Memory State"
+            title="Reset Memory Profile State"
           >
-            Reset
+            Reset Profile
           </button>
         </div>
       </div>
