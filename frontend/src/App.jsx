@@ -7,6 +7,7 @@ import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
 
 import { Sidebar } from './components/layout/Sidebar';
+import { MobileNavbar } from './components/layout/MobileNavbar';
 import { CursorSpotlight } from './components/motion/CursorSpotlight';
 import { PayloadModal } from './components/ui/PayloadModal';
 import { CreatorOnboardingModal } from './components/onboarding/CreatorOnboardingModal';
@@ -286,28 +287,12 @@ export function App() {
 
       {/* Main Content View Container */}
       <main className="flex-1 flex flex-col min-h-screen overflow-y-auto z-10 min-w-0 md:ml-64">
-        {/* Mobile Navigation Header */}
-        <div className="md:hidden flex items-center justify-between p-4 bg-[#0e1014] border-b border-[#72ff70]/20 z-30 sticky top-0">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary-fixed">all_inclusive</span>
-            <span className="font-sans font-black text-primary-fixed text-lg">GREENROOM</span>
-          </div>
-          <div className="flex gap-1 overflow-x-auto font-mono text-[10px]">
-            {['home', 'mind', 'memory', 'intelligence', 'actions', 'system', 'docs'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-2.5 py-1 rounded font-bold uppercase transition ${
-                  activeTab === tab
-                    ? 'bg-primary-container text-on-primary-container'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                {tab === 'docs' ? 'docs' : tab}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Mobile Navigation Bar & Drawer */}
+        <MobileNavbar
+          activeTab={activeTab}
+          onTabChange={(tab) => setActiveTab(tab)}
+          onInitialize={loadInitialData}
+        />
 
         <AnimatePresence mode="wait">
           {renderPage()}
