@@ -65,4 +65,11 @@ export const api = {
     request('/api/recommendation/compare', {
       method: 'POST',
     }),
+
+  getSignals: () => request('/api/signals'),
+
+  triggerBriefing: () =>
+    request('/api/briefing/trigger', {
+      method: 'POST',
+    }),
 };

@@ -20,6 +20,7 @@ class GreenroomStore {
         pitch: null,
         script: null,
       },
+      signals: [],
     };
   }
 
@@ -50,6 +51,12 @@ class GreenroomStore {
   setMemoryState(memoryState) {
     if (!memoryState) return;
     this.state = { ...this.state, memoryState };
+    this.notify();
+  }
+
+  setSignals(signals) {
+    if (!Array.isArray(signals)) return;
+    this.state = { ...this.state, signals };
     this.notify();
   }
 

@@ -44,20 +44,23 @@ export function App() {
     selectedPayload,
     isModalOpen,
     activeCards,
+    signals,
   } = useGreenroomState();
 
   // Load Real Data from REST API
   const loadInitialData = async () => {
     try {
-      const [mState, mStatus, impHist] = await Promise.all([
+      const [mState, mStatus, impHist, sigs] = await Promise.all([
         api.getMemoryState().catch(() => null),
         api.getMindsStatus().catch(() => null),
         api.getImpHistory().catch(() => null),
+        api.getSignals().catch(() => null),
       ]);
 
       if (mState) greenroomStore.setMemoryState(mState);
       if (mStatus) greenroomStore.setMindsStatus(mStatus);
       if (impHist) greenroomStore.setImpHistory(impHist);
+      if (sigs && sigs.signals) greenroomStore.setSignals(sigs.signals);
     } catch (err) {
       console.warn('[GreenroomApp] REST fetch error:', err);
     }
@@ -164,6 +167,7 @@ export function App() {
             key="home"
             memoryState={memoryState}
             activeCards={activeCards}
+            signals={signals}
             onNavigate={(tab) => setActiveTab(tab)}
             onRunFullDemo={handleRunFullDemo}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}

@@ -7,6 +7,7 @@ export function HomePage({
   memoryState,
   activeCards,
   mindsStatus,
+  signals = [],
   onNavigate,
   onRunFullDemo,
   onOpenOnboarding,
@@ -62,6 +63,42 @@ export function HomePage({
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
+
+  const defaultSignals = [
+    {
+      id: 'sig_1',
+      category: 'AUDIENCE SIGNAL',
+      icon: 'radar',
+      badge: '88% Sentiment',
+      title: 'Audience Demand Spike',
+      description: 'Viewers requesting beginner local agent setup guides and direct GitHub repository links.',
+    },
+    {
+      id: 'sig_2',
+      category: 'SCOUT TREND',
+      icon: 'trending_up',
+      badge: 'Fit Score: 0.92',
+      title: 'Niche Trend Flagged',
+      description: '"Beginner AI Workflows & Automation" flagged as high-fit topic while clickbait was filtered out.',
+    },
+    {
+      id: 'sig_3',
+      category: 'BUSINESS MATCH',
+      icon: 'monetization_on',
+      badge: `$${benchmarks.cpm_target || 45} CPM`,
+      title: 'Sponsorship Deal Draft',
+      description: `Business Mind scored TechBrand Inc. at 89% match size and drafted a $${benchmarks.minimum_deal_size || 5000} pitch brief.`,
+    },
+  ];
+
+  const activeSignals = signals && signals.length > 0 ? signals.map((s, idx) => ({
+    id: s.signal_id || `sig_${idx}`,
+    category: (s.source || 'LIVE SIGNAL').toUpperCase(),
+    icon: s.type === 'trend' ? 'trending_up' : s.type === 'deal' ? 'monetization_on' : 'radar',
+    badge: s.fit_score ? `Fit: ${s.fit_score}` : s.sentiment ? `${(s.sentiment * 100).toFixed(0)}% Sentiment` : 'VERIFIED',
+    title: s.title || s.trend_name || 'Audience Signal Item',
+    description: s.summary || s.description || 'Live audience signal ingested from creator stream.',
+  })) : defaultSignals;
 
   return (
     <div className="flex-1 flex flex-col min-w-0 pb-16 text-white font-sans space-y-8 max-w-container-max mx-auto px-6 md:px-10 pt-4">
@@ -153,86 +190,34 @@ export function HomePage({
         </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Signal 1: Audience Signal */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            onClick={() => soundFx.playSynapsePulse()}
-            className="noir-card p-5 flex flex-col justify-between space-y-4 cursor-pointer group"
-          >
-            <div className="flex justify-between items-start">
-              <span className="material-symbols-outlined text-primary-fixed group-hover:scale-110 transition-transform text-2xl">
-                radar
-              </span>
-              <span className="font-mono text-xs text-primary-fixed font-bold bg-[#142616] px-2.5 py-0.5 rounded border border-[#234d28]">
-                88% Sentiment
-              </span>
-            </div>
-            <div className="space-y-1">
-              <span className="font-mono text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">AUDIENCE SIGNAL</span>
-              <h3 className="text-base font-sans font-bold text-white group-hover:text-primary-fixed transition-colors">
-                Audience Demand Spike
-              </h3>
-              <p className="text-xs font-sans text-zinc-300 leading-relaxed font-medium">
-                Viewers requesting beginner local agent setup guides and direct GitHub repository links.
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Signal 2: Trend Detected */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.05 }}
-            onClick={() => soundFx.playSynapsePulse()}
-            className="noir-card p-5 flex flex-col justify-between space-y-4 cursor-pointer group"
-          >
-            <div className="flex justify-between items-start">
-              <span className="material-symbols-outlined text-primary-fixed group-hover:scale-110 transition-transform text-2xl">
-                trending_up
-              </span>
-              <span className="font-mono text-xs text-primary-fixed font-bold bg-[#142616] px-2.5 py-0.5 rounded border border-[#234d28]">
-                Fit Score: 0.92
-              </span>
-            </div>
-            <div className="space-y-1">
-              <span className="font-mono text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">SCOUT TREND</span>
-              <h3 className="text-base font-sans font-bold text-white group-hover:text-primary-fixed transition-colors">
-                Niche Trend Flagged
-              </h3>
-              <p className="text-xs font-sans text-zinc-300 leading-relaxed font-medium">
-                "Beginner AI Workflows & Automation" flagged as high-fit topic while clickbait was filtered out.
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Signal 3: Business Opportunity */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
-            onClick={() => soundFx.playSynapsePulse()}
-            className="noir-card p-5 flex flex-col justify-between space-y-4 cursor-pointer group"
-          >
-            <div className="flex justify-between items-start">
-              <span className="material-symbols-outlined text-primary-fixed group-hover:scale-110 transition-transform text-2xl">
-                monetization_on
-              </span>
-              <span className="font-mono text-xs text-primary-fixed font-bold bg-[#142616] px-2.5 py-0.5 rounded border border-[#234d28]">
-                ${benchmarks.cpm_target || 45} CPM
-              </span>
-            </div>
-            <div className="space-y-1">
-              <span className="font-mono text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">BUSINESS MATCH</span>
-              <h3 className="text-base font-sans font-bold text-white group-hover:text-primary-fixed transition-colors">
-                Sponsorship Deal Draft
-              </h3>
-              <p className="text-xs font-sans text-zinc-300 leading-relaxed font-medium">
-                Business Mind scored TechBrand Inc. at 89% match size and drafted a ${benchmarks.minimum_deal_size || 5000} pitch brief.
-              </p>
-            </div>
-          </motion.div>
+          {activeSignals.map((sig, index) => (
+            <motion.div
+              key={sig.id || index}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+              onClick={() => soundFx.playSynapsePulse()}
+              className="noir-card p-5 flex flex-col justify-between space-y-4 cursor-pointer group"
+            >
+              <div className="flex justify-between items-start">
+                <span className="material-symbols-outlined text-primary-fixed group-hover:scale-110 transition-transform text-2xl">
+                  {sig.icon}
+                </span>
+                <span className="font-mono text-xs text-primary-fixed font-bold bg-[#142616] px-2.5 py-0.5 rounded border border-[#234d28]">
+                  {sig.badge}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <span className="font-mono text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">{sig.category}</span>
+                <h3 className="text-base font-sans font-bold text-white group-hover:text-primary-fixed transition-colors">
+                  {sig.title}
+                </h3>
+                <p className="text-xs font-sans text-zinc-300 leading-relaxed font-medium">
+                  {sig.description}
+                </p>
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
 
