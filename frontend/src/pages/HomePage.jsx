@@ -13,6 +13,7 @@ export function HomePage({
   onRunFullDemo,
   onOpenOnboarding,
   onOpenOfflineModal,
+  onOpenMemoryProofModal,
   isExecuting,
 }) {
   const creatorName = memoryState?.creator_name || 'CREATOR';

@@ -180,6 +180,7 @@ export function App() {
             onRunFullDemo={handleRunFullDemo}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
             onOpenOfflineModal={() => setIsOfflineModalOpen(true)}
+            onOpenMemoryProofModal={() => setIsMemoryProofModalOpen(true)}
             isExecuting={isExecuting}
           />
         );
