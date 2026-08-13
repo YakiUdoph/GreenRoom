@@ -1,5 +1,8 @@
 # Greenroom — Autonomous Persistent Creator Engine
 
+> **GREENROOM WORKS WHILE YOU WORK.**  
+> **GREENROOM REMEMBERS WHY.**
+
 Greenroom is an autonomous, persistent creator intelligence engine built on the official Animoca Brands Minds Builder API (`@animocabrands/minds-client-lib`). Designed for solo content creators, Greenroom operates asynchronously in the background to monitor audience retention signals, filter market trends, evaluate brand sponsorship matches, and maintain long-term creator voice rules.
 
 Live Deployment: [greenroom-ruby.vercel.app](https://greenroom-ruby.vercel.app)

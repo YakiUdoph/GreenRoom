@@ -126,8 +126,25 @@ export function HomePage({
               </h1>
 
               <p className="text-xs md:text-sm font-sans text-zinc-200 border-l-2 border-primary-fixed pl-3 py-1 leading-relaxed font-medium">
-                Autonomous AI Chief of Staff monitoring signals for your <strong className="text-primary-fixed">{niche}</strong> channel and synthesizing strategic creator directions while you work.
+                Autonomous AI Chief of Staff monitoring signals for your <strong className="text-primary-fixed">{niche}</strong> channel and synthesizing strategic creator directions.
               </p>
+
+              {/* Core Product Thesis Banner */}
+              <div className="p-3.5 bg-[#142616] border border-[#234d28] rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono text-xs shadow-lg mt-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary-fixed text-lg">auto_awesome</span>
+                  <span className="text-white font-bold tracking-tight">PRODUCT THESIS:</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
+                  <span className="text-primary-fixed bg-[#0a0c0e] px-2.5 py-1 rounded border border-emerald-800/80 shadow-[0_0_8px_rgba(114,255,112,0.15)]">
+                    GREENROOM WORKS WHILE YOU WORK.
+                  </span>
+                  <span className="text-zinc-500 hidden sm:inline">•</span>
+                  <span className="text-emerald-300 bg-[#0a0c0e] px-2.5 py-1 rounded border border-emerald-800/80 shadow-[0_0_8px_rgba(114,255,112,0.15)]">
+                    GREENROOM REMEMBERS WHY.
+                  </span>
+                </div>
+              </div>
             </div>
 
             {/* Quick Action Buttons */}

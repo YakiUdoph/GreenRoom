@@ -32,6 +32,9 @@ export function Sidebar({ activeTab, onTabChange, onInitialize }) {
               <span className="w-1.5 h-1.5 rounded-full bg-primary-fixed animate-pulse" />
               <p className="font-mono text-zinc-400 text-xs font-bold">AI Chief of Staff</p>
             </div>
+            <p className="font-mono text-[9px] text-emerald-400/90 font-bold mt-1.5 leading-snug uppercase">
+              Works while you work.<br />Remembers why.
+            </p>
           </div>
         </div>
       </div>
