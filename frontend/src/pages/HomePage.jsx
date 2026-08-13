@@ -188,17 +188,17 @@ export function HomePage({
         </div>
       </section>
 
-      {/* Returning Creator Context Banner */}
+      {/* 1. WHAT DID GREENROOM LEARN? (PERSISTED CREATOR CONTEXT) */}
       {learnedRules.length > 0 && (
-        <div className="p-4 bg-[#142616]/60 border border-[#234d28] rounded-xl flex items-center justify-between gap-4 font-mono text-xs shadow-lg">
+        <div className="p-4 bg-[#142616]/60 border border-[#234d28] rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 font-mono text-xs shadow-lg">
           <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary-fixed text-xl">psychology</span>
+            <span className="material-symbols-outlined text-primary-fixed text-2xl">psychology</span>
             <div>
               <span className="text-primary-fixed font-bold uppercase block text-[10px] tracking-wider">
-                PERSISTENT CREATOR CONTEXT ACTIVE
+                1. WHAT DID GREENROOM LEARN? (PERSISTED VOICE RULES)
               </span>
               <span className="text-zinc-200 font-medium">
-                Last time you told me: <strong className="text-white">"{learnedRules[learnedRules.length - 1]}"</strong>
+                Active Creator Constraint: <strong className="text-white">"{learnedRules[learnedRules.length - 1]}"</strong>
               </span>
             </div>
           </div>
@@ -209,7 +209,7 @@ export function HomePage({
                   soundFx.playSynapsePulse();
                   onOpenMemoryProofModal();
                 }}
-                className="px-3 py-1 bg-emerald-950/80 border border-emerald-500/60 hover:border-primary-fixed text-emerald-300 hover:text-white font-bold text-xs rounded flex items-center gap-1 transition shadow-sm"
+                className="px-3 py-1.5 bg-emerald-950/80 border border-emerald-500/60 hover:border-primary-fixed text-emerald-300 hover:text-white font-bold text-xs rounded flex items-center gap-1 transition shadow-sm"
               >
                 <span className="material-symbols-outlined text-sm text-primary-fixed">psychology</span>
                 <span>Prove Memory Adaptation</span>
@@ -219,20 +219,59 @@ export function HomePage({
               onClick={() => onNavigate('memory')}
               className="text-primary-fixed hover:underline font-bold text-xs flex items-center gap-1 whitespace-nowrap"
             >
-              Inspect Memory →
+              Inspect DNA ({learnedRules.length} Rules) →
             </button>
           </div>
         </div>
       )}
 
-      {/* 2. PRIMARY RECOMMENDED CREATIVE DIRECTION (EXECUTIVE ACTION CARD) */}
-      <div className="noir-card p-6 flex flex-col space-y-5 border-l-4 border-l-primary-fixed">
+      {/* 2. WHAT DID GREENROOM DISCOVER? (SIGNALS STREAM) */}
+      <div className="space-y-4">
+        <h2 className="text-xs font-mono text-primary-fixed uppercase tracking-widest flex items-center gap-2 font-bold">
+          <span className="w-3 h-[2px] bg-primary-fixed block" />
+          2. WHAT DID GREENROOM DISCOVER? (SCOUT + COMMUNITY + BUSINESS SIGNALS)
+        </h2>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {activeSignals.map((sig, index) => (
+            <motion.div
+              key={sig.id || index}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+              onClick={() => soundFx.playSynapsePulse()}
+              className="noir-card p-5 flex flex-col justify-between space-y-4 cursor-pointer group"
+            >
+              <div className="flex justify-between items-start">
+                <span className="material-symbols-outlined text-primary-fixed group-hover:scale-110 transition-transform text-2xl">
+                  {sig.icon}
+                </span>
+                <span className="font-mono text-xs text-primary-fixed font-bold bg-[#142616] px-2.5 py-0.5 rounded border border-[#234d28]">
+                  {sig.badge}
+                </span>
+              </div>
+              <div className="space-y-1">
+                <span className="font-mono text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">{sig.category}</span>
+                <h3 className="text-base font-sans font-bold text-white group-hover:text-primary-fixed transition-colors">
+                  {sig.title}
+                </h3>
+                <p className="text-xs font-sans text-zinc-300 leading-relaxed font-medium">
+                  {sig.description}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+
+      {/* 3 & 4. WHY DOES GREENROOM RECOMMEND THIS? & WHAT CAN GREENROOM DO? */}
+      <div className="noir-card p-6 flex flex-col space-y-6 border-l-4 border-l-primary-fixed">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-outline-variant/60 pb-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <span className="material-symbols-outlined text-primary-fixed text-base">priority_high</span>
               <span className="font-mono text-primary-fixed text-xs uppercase tracking-wider font-bold">
-                RECOMMENDED CREATIVE DIRECTION
+                3. WHY DOES GREENROOM RECOMMEND THIS? • STRATEGIC DIRECTIVE
               </span>
               {isPunchy && (
                 <span className="font-mono text-[10px] font-bold text-amber-300 bg-amber-950 border border-amber-800 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
@@ -246,16 +285,22 @@ export function HomePage({
             </h2>
           </div>
 
-          <button
-            onClick={() => {
-              soundFx.playSynapsePulse();
-              onNavigate('actions');
-            }}
-            className="bg-primary-container text-on-primary-container text-xs font-sans font-bold py-3 px-5 hover:bg-primary-fixed-dim transition-colors flex justify-center items-center gap-2 rounded disabled:opacity-50 shadow-lg shadow-primary-container/20 whitespace-nowrap"
-          >
-            <span>Build This Recommendation</span>
-            <span className="material-symbols-outlined text-base font-bold">arrow_forward</span>
-          </button>
+          {/* 4. WHAT CAN GREENROOM DO? (ACTION TRIGGER) */}
+          <div className="space-y-1">
+            <span className="font-mono text-[10px] text-zinc-400 font-bold uppercase block text-right">
+              4. WHAT CAN GREENROOM DO?
+            </span>
+            <button
+              onClick={() => {
+                soundFx.playSynapsePulse();
+                onNavigate('actions');
+              }}
+              className="bg-primary-container text-on-primary-container text-xs font-sans font-bold py-3 px-5 hover:bg-primary-fixed-dim transition-colors flex justify-center items-center gap-2 rounded disabled:opacity-50 shadow-lg shadow-primary-container/20 whitespace-nowrap"
+            >
+              <span>Execute Actions & Pitch Brief</span>
+              <span className="material-symbols-outlined text-base font-bold">arrow_forward</span>
+            </button>
+          </div>
         </div>
 
         {/* Transparent Grounding Breakdown */}
@@ -292,74 +337,35 @@ export function HomePage({
         </div>
       </div>
 
-      {/* 3. WHILE YOU WERE AWAY — LIVE SIGNALS STREAM */}
-      <div className="space-y-4">
-        <h2 className="text-xs font-mono text-primary-fixed uppercase tracking-widest flex items-center gap-2 font-bold">
-          <span className="w-3 h-[2px] bg-primary-fixed block" />
-          WHILE YOU WERE AWAY — SIGNALS & CONTEXT
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {activeSignals.map((sig, index) => (
-            <motion.div
-              key={sig.id || index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.05 }}
-              onClick={() => soundFx.playSynapsePulse()}
-              className="noir-card p-5 flex flex-col justify-between space-y-4 cursor-pointer group"
-            >
-              <div className="flex justify-between items-start">
-                <span className="material-symbols-outlined text-primary-fixed group-hover:scale-110 transition-transform text-2xl">
-                  {sig.icon}
-                </span>
-                <span className="font-mono text-xs text-primary-fixed font-bold bg-[#142616] px-2.5 py-0.5 rounded border border-[#234d28]">
-                  {sig.badge}
-                </span>
-              </div>
-              <div className="space-y-1">
-                <span className="font-mono text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">{sig.category}</span>
-                <h3 className="text-base font-sans font-bold text-white group-hover:text-primary-fixed transition-colors">
-                  {sig.title}
-                </h3>
-                <p className="text-xs font-sans text-zinc-300 leading-relaxed font-medium">
-                  {sig.description}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* 4. GREENROOM'S STRATEGIC SYNTHESIS TAKE */}
+      {/* 5. WHAT DID IT LEARN FROM MY DECISION? (LEARNING LOOP) */}
       <div className="noir-card p-6 space-y-4">
         <div className="space-y-2">
           <h2 className="text-xs font-mono text-primary-fixed uppercase tracking-widest flex items-center gap-2 font-bold">
             <span className="w-3 h-[2px] bg-primary-fixed block" />
-            GREENROOM'S STRATEGIC TAKE
+            5. WHAT DID IT LEARN FROM MY DECISION? (CONTINUOUS FEEDBACK LOOP)
           </h2>
 
           <div className="text-lg md:text-xl font-display font-bold text-white leading-snug">
-            Audience engagement is shifting toward practical setup tutorials and direct open-source repositories.
+            Every rejection or approval extracts rules that persist across browser reloads.
           </div>
 
           <p className="text-xs md:text-sm font-sans text-zinc-200 leading-relaxed font-medium">
-            Based on retention metrics ({memoryNodes.length > 0 ? '78% retention at 30s' : '88% positive sentiment'}) and recent comment stream analysis, your audience responds strongest to no-fluff technical execution tutorials rather than broad news recaps.
+            When you approve a pitch or reject a clickbait concept on the Actions page, Greenroom extracts constraint rules and persists them into <strong className="text-primary-fixed">creator_profile.json</strong> to ensure future recommendations adapt to your preference.
           </p>
         </div>
 
         <div className="pt-3 border-t border-outline-variant/60 flex items-center justify-between font-mono text-xs">
           <span className="text-zinc-300 font-bold">
-            {learnedRules.length} learned rules active in creator memory
+            {learnedRules.length} learned rules active in creator memory matrix
           </span>
           <button
             onClick={() => {
               soundFx.playSynapsePulse();
-              onNavigate('memory');
+              onNavigate('actions');
             }}
             className="text-primary-fixed hover:underline font-bold text-xs flex items-center gap-1"
           >
-            Inspect Memory DNA →
+            Go to Actions & Teach Greenroom →
           </button>
         </div>
       </div>
