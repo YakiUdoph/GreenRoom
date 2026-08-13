@@ -8,6 +8,9 @@ __pycache__/
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.cert
 
 # Local State & Persistence Data
 creator_profile.json
@@ -15,6 +18,8 @@ latest_briefing.json
 run_statuses.json
 *.log
 logs/
+*.tmp
+scratch/
 
 # Dependencies & Build Outputs
 node_modules/
@@ -31,5 +36,6 @@ Thumbs.db
 # IDE & Tooling Settings
 .idea/
 .vscode/
+.gemini/
 *.swp
 *.swo
