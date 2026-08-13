@@ -72,4 +72,9 @@ export const api = {
     request('/api/briefing/trigger', {
       method: 'POST',
     }),
+
+  getLatestBriefing: () => request('/api/briefing/latest'),
+
+  getBriefingStatus: (runId) =>
+    request(runId ? `/api/briefing/status?run_id=${runId}` : '/api/briefing/status'),
 };

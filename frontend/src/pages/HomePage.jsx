@@ -11,6 +11,7 @@ export function HomePage({
   onNavigate,
   onRunFullDemo,
   onOpenOnboarding,
+  onOpenOfflineModal,
   isExecuting,
 }) {
   const creatorName = memoryState?.creator_name || 'CREATOR';
@@ -148,6 +149,20 @@ export function HomePage({
                 <span className="material-symbols-outlined text-base text-primary-fixed">download</span>
                 <span>Export Briefing</span>
               </button>
+
+              {onOpenOfflineModal && (
+                <button
+                  onClick={() => {
+                    soundFx.playSynapsePulse();
+                    onOpenOfflineModal();
+                  }}
+                  className="px-4 py-2.5 bg-emerald-950/80 border border-emerald-500/60 hover:border-primary-fixed text-emerald-300 hover:text-white text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-lg shadow-emerald-950/40"
+                  title="Prove the complete offline chain: QStash Queue -> Minds SDK -> Durable Storage -> Briefing Delivery"
+                >
+                  <span className="material-symbols-outlined text-base text-primary-fixed animate-pulse">cloud_done</span>
+                  <span>Prove Offline Story</span>
+                </button>
+              )}
 
               <button
                 onClick={() => {

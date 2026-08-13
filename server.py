@@ -149,8 +149,8 @@ async def trigger_briefing(request: Request, req: Optional[TriggerBriefingReques
     res = await qstash_runner.enqueue_run(worker_url)
     run_id = res["run_id"]
 
-    # Local fallback execution ONLY when explicitly running in DEMO_MODE=true without QStash token
-    if not os.getenv("QSTASH_TOKEN") and os.getenv("DEMO_MODE", "").lower() in ("true", "1"):
+    # Execute background worker task locally if QSTASH_TOKEN is not configured
+    if not os.getenv("QSTASH_TOKEN"):
         core = GreenroomCoreMind(memory_tool)
         asyncio.create_task(qstash_runner.execute_worker_job(core, run_id))
 

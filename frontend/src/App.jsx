@@ -11,6 +11,7 @@ import { MobileNavbar } from './components/layout/MobileNavbar';
 import { CursorSpotlight } from './components/motion/CursorSpotlight';
 import { PayloadModal } from './components/ui/PayloadModal';
 import { CreatorOnboardingModal } from './components/onboarding/CreatorOnboardingModal';
+import { OfflineLifecycleModal } from './components/activity/OfflineLifecycleModal';
 
 import { HomeBackground } from './components/motion/HomeBackground';
 import { MindBackground } from './components/motion/MindBackground';
@@ -31,6 +32,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [isExecuting, setIsExecuting] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
 
   // Enable Mouse Position Physics Hook
   useMousePosition();
@@ -173,6 +175,7 @@ export function App() {
             onNavigate={(tab) => setActiveTab(tab)}
             onRunFullDemo={handleRunFullDemo}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
+            onOpenOfflineModal={() => setIsOfflineModalOpen(true)}
             isExecuting={isExecuting}
           />
         );
@@ -312,6 +315,16 @@ export function App() {
         onClose={() => setIsOnboardingOpen(false)}
         onSave={handleSaveOnboarding}
         initialData={memoryState}
+      />
+
+      {/* Offline Story Lifecycle Proof Modal */}
+      <OfflineLifecycleModal
+        isOpen={isOfflineModalOpen}
+        onClose={() => setIsOfflineModalOpen(false)}
+        memoryState={memoryState}
+        onBriefingUpdated={() => {
+          loadInitialData();
+        }}
       />
     </div>
   );
