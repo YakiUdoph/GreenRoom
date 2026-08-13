@@ -12,6 +12,7 @@ import { CursorSpotlight } from './components/motion/CursorSpotlight';
 import { PayloadModal } from './components/ui/PayloadModal';
 import { CreatorOnboardingModal } from './components/onboarding/CreatorOnboardingModal';
 import { OfflineLifecycleModal } from './components/activity/OfflineLifecycleModal';
+import { MemoryBehaviorProofModal } from './components/memory/MemoryBehaviorProofModal';
 
 import { HomeBackground } from './components/motion/HomeBackground';
 import { MindBackground } from './components/motion/MindBackground';
@@ -33,6 +34,7 @@ export function App() {
   const [isExecuting, setIsExecuting] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
+  const [isMemoryProofModalOpen, setIsMemoryProofModalOpen] = useState(false);
 
   // Enable Mouse Position Physics Hook
   useMousePosition();
@@ -195,6 +197,7 @@ export function App() {
             memoryState={memoryState}
             onSubmitFeedback={handleSubmitFeedback}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
+            onOpenMemoryProofModal={() => setIsMemoryProofModalOpen(true)}
             isExecuting={isExecuting}
           />
         );
@@ -323,6 +326,15 @@ export function App() {
         onClose={() => setIsOfflineModalOpen(false)}
         memoryState={memoryState}
         onBriefingUpdated={() => {
+          loadInitialData();
+        }}
+      />
+
+      {/* Memory Behavioral Adaptation Proof Modal */}
+      <MemoryBehaviorProofModal
+        isOpen={isMemoryProofModalOpen}
+        onClose={() => setIsMemoryProofModalOpen(false)}
+        onMemoryUpdated={() => {
           loadInitialData();
         }}
       />

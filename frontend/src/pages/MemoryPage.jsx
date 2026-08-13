@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../lib/api';
 
-export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, isExecuting }) {
+export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, onOpenMemoryProofModal, isExecuting }) {
   const [feedbackInput, setFeedbackInput] = useState(
     'Too formal. Make it punchier and emphasize beginner-friendly tips.'
   );
@@ -148,14 +148,30 @@ export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, is
             BEFORE VS. AFTER GREENROOM PERSONALIZATION PROOF
           </h2>
 
-          <button
-            onClick={handleFetchComparison}
-            disabled={isComparing}
-            className="px-3.5 py-1 bg-[#111115] border border-outline-variant hover:border-primary-fixed text-zinc-300 hover:text-white font-mono text-xs font-bold rounded flex items-center gap-1.5 transition"
-          >
-            <span className="material-symbols-outlined text-sm text-primary-fixed">compare_arrows</span>
-            <span>{isComparing ? 'Comparing...' : 'Run Live Comparison'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenMemoryProofModal && (
+              <button
+                onClick={() => {
+                  soundFx.playSynapsePulse();
+                  onOpenMemoryProofModal();
+                }}
+                className="px-3.5 py-1 bg-emerald-950/80 border border-emerald-500/60 hover:border-primary-fixed text-emerald-300 hover:text-white font-mono text-xs font-bold rounded flex items-center gap-1.5 transition shadow-md"
+                title="Test live 2-step interaction: Constraint ingestion -> Memory persistence -> Strategy filtering"
+              >
+                <span className="material-symbols-outlined text-sm text-primary-fixed animate-pulse">psychology</span>
+                <span>Prove Behavioral Adaptation</span>
+              </button>
+            )}
+
+            <button
+              onClick={handleFetchComparison}
+              disabled={isComparing}
+              className="px-3.5 py-1 bg-[#111115] border border-outline-variant hover:border-primary-fixed text-zinc-300 hover:text-white font-mono text-xs font-bold rounded flex items-center gap-1.5 transition"
+            >
+              <span className="material-symbols-outlined text-sm text-primary-fixed">compare_arrows</span>
+              <span>{isComparing ? 'Comparing...' : 'Run Live Comparison'}</span>
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">

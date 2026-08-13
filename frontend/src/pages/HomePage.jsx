@@ -202,12 +202,26 @@ export function HomePage({
               </span>
             </div>
           </div>
-          <button
-            onClick={() => onNavigate('memory')}
-            className="text-primary-fixed hover:underline font-bold text-xs flex items-center gap-1 whitespace-nowrap"
-          >
-            Inspect Memory →
-          </button>
+          <div className="flex items-center gap-3">
+            {onOpenMemoryProofModal && (
+              <button
+                onClick={() => {
+                  soundFx.playSynapsePulse();
+                  onOpenMemoryProofModal();
+                }}
+                className="px-3 py-1 bg-emerald-950/80 border border-emerald-500/60 hover:border-primary-fixed text-emerald-300 hover:text-white font-bold text-xs rounded flex items-center gap-1 transition shadow-sm"
+              >
+                <span className="material-symbols-outlined text-sm text-primary-fixed">psychology</span>
+                <span>Prove Memory Adaptation</span>
+              </button>
+            )}
+            <button
+              onClick={() => onNavigate('memory')}
+              className="text-primary-fixed hover:underline font-bold text-xs flex items-center gap-1 whitespace-nowrap"
+            >
+              Inspect Memory →
+            </button>
+          </div>
         </div>
       )}
 

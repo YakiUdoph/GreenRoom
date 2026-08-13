@@ -77,4 +77,10 @@ export const api = {
 
   getBriefingStatus: (runId) =>
     request(runId ? `/api/briefing/status?run_id=${runId}` : '/api/briefing/status'),
+
+  runMemoryProofTest: (constraintText = "I don't like clickbait.") =>
+    request('/api/memory/proof-test', {
+      method: 'POST',
+      body: JSON.stringify({ constraint_text: constraintText }),
+    }),
 };
