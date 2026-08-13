@@ -293,6 +293,22 @@ status = minds_manager.get_status()
 
                 <div className="p-3 bg-[#0a0c0e] rounded border border-outline-variant flex items-center justify-between">
                   <div className="space-x-2">
+                    <span className="px-2 py-0.5 bg-emerald-950 text-emerald-400 font-bold rounded">POST</span>
+                    <span className="text-zinc-200 font-bold">/api/objective/create</span>
+                  </div>
+                  <span className="text-zinc-400 text-[11px]">Creates & persists new creator objective</span>
+                </div>
+
+                <div className="p-3 bg-[#0a0c0e] rounded border border-outline-variant flex items-center justify-between">
+                  <div className="space-x-2">
+                    <span className="px-2 py-0.5 bg-cyan-950 text-cyan-400 font-bold rounded">POST</span>
+                    <span className="text-zinc-200 font-bold">/api/objective/run</span>
+                  </div>
+                  <span className="text-zinc-400 text-[11px]">Executes objective across specialist Minds</span>
+                </div>
+
+                <div className="p-3 bg-[#0a0c0e] rounded border border-outline-variant flex items-center justify-between">
+                  <div className="space-x-2">
                     <span className="px-2 py-0.5 bg-purple-950 text-purple-400 font-bold rounded">POST</span>
                     <span className="text-zinc-200 font-bold">/api/recommendation/compare</span>
                   </div>

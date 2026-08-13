@@ -142,6 +142,7 @@ Access the local dashboard at `http://127.0.0.1:8000`.
 ## System Workflow & Verification
 
 1. **Dashboard Initialization**: Access `http://127.0.0.1:8000` to inspect initial creator memory rules ($45 CPM target, content constraints).
-2. **Asynchronous Cycle Execution**: Trigger **"Simulate Creator Offline (Async Run)"** to enqueue a background analysis job (`status: QUEUED`).
-3. **Briefing Inspection**: Review the generated **"While You Were Away" briefing**, featuring ranked strategy recommendations, memory grounding indicators, and system provenance metadata.
-4. **Memory Adaptation Verification**: Submit feedback (e.g. *"Emphasize open-source terminal setup steps"*) and run a second cycle to verify multi-run memory continuity.
+2. **Creator Objective Creation**: Set an objective (e.g. *"Find a content opportunity for my beginner AI developer audience this week"*), automatically paired with stored memory context.
+3. **Background Execution**: Trigger background work to coordinate specialist Minds asynchronously via QStash.
+4. **Briefing Inspection**: Review the generated **"While You Were Away"** briefing on the home dashboard, featuring multi-mind findings and evidence grounding.
+5. **Reject & Teach**: Submit feedback (e.g. *"Too clickbait. That's not how I want to grow."*) to extract persistent constraint rules, update decision history, and verify that future recommendations automatically filter non-compliant topics.
