@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { GreenroomCore } from '../components/mind/GreenroomCore';
 import { soundFx } from '../lib/sound';
+import { EvidenceGroundingMatrix } from '../components/evidence/EvidenceGroundingMatrix';
 
 export function HomePage({
   memoryState,
@@ -263,6 +264,13 @@ export function HomePage({
           ))}
         </div>
       </div>
+
+      {/* FIRST-CLASS EVIDENCE MATRIX */}
+      <EvidenceGroundingMatrix
+        memoryState={memoryState}
+        scriptData={scriptData}
+        pitchData={activeCards?.pitch}
+      />
 
       {/* 3 & 4. WHY DOES GREENROOM RECOMMEND THIS? & WHAT CAN GREENROOM DO? */}
       <div className="noir-card p-6 flex flex-col space-y-6 border-l-4 border-l-primary-fixed">

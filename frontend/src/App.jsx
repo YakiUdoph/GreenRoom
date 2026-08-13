@@ -218,6 +218,7 @@ export function App() {
         return (
           <ActionsPage
             key="actions"
+            memoryState={memoryState}
             activeCards={activeCards}
             onApproveSponsorship={handleApproveSponsorship}
             isExecuting={isExecuting}

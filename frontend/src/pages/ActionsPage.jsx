@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { api } from '../lib/api';
 import { soundFx } from '../lib/sound';
+import { EvidenceGroundingMatrix } from '../components/evidence/EvidenceGroundingMatrix';
 
-export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) {
+export function ActionsPage({ memoryState, activeCards, onApproveSponsorship, isExecuting }) {
   const pitchData = activeCards?.pitch;
   const scriptData = activeCards?.script;
 
@@ -60,6 +61,13 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
           2 PENDING EXECUTIVE ACTIONS
         </div>
       </div>
+
+      {/* FIRST-CLASS EVIDENCE MATRIX */}
+      <EvidenceGroundingMatrix
+        memoryState={memoryState}
+        scriptData={scriptData}
+        pitchData={pitchData}
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Action Card 1: Sponsorship Outreach Pitch */}
