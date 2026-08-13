@@ -24,6 +24,7 @@ import { MemoryPage } from './pages/MemoryPage';
 import { IntelligencePage } from './pages/IntelligencePage';
 import { ActionsPage } from './pages/ActionsPage';
 import { SystemPage } from './pages/SystemPage';
+import { DocsPage } from './pages/DocsPage';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('home');
@@ -226,12 +227,15 @@ export function App() {
             isExecuting={isExecuting}
           />
         );
+      case 'docs':
+        return <DocsPage key="docs" />;
       default:
         return (
           <HomePage
             key="home"
             memoryState={memoryState}
             activeCards={activeCards}
+            signals={signals}
             onNavigate={(tab) => setActiveTab(tab)}
             onRunFullDemo={handleRunFullDemo}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
@@ -256,8 +260,10 @@ export function App() {
         return <ActionsBackground key="bg-actions" />;
       case 'system':
         return <SystemBackground key="bg-system" />;
+      case 'docs':
+        return <SystemBackground key="bg-docs" />;
       default:
-        return <HomeBackground key="bg-default" />;
+        return <HomeBackground key="bg-[#default]" />;
     }
   };
 
@@ -287,7 +293,7 @@ export function App() {
             <span className="font-sans font-black text-primary-fixed text-lg">GREENROOM</span>
           </div>
           <div className="flex gap-1 overflow-x-auto font-mono text-[10px]">
-            {['home', 'mind', 'memory', 'intelligence', 'actions', 'system'].map((tab) => (
+            {['home', 'mind', 'memory', 'intelligence', 'actions', 'system', 'docs'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -297,7 +303,7 @@ export function App() {
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
-                {tab}
+                {tab === 'docs' ? 'docs' : tab}
               </button>
             ))}
           </div>

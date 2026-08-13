@@ -13,8 +13,7 @@ export function Sidebar({ activeTab, onTabChange, onInitialize }) {
   ];
 
   const footerNavItems = [
-    { id: 'connection', label: 'Connection', icon: 'sensors' },
-    { id: 'settings', label: 'Settings', icon: 'settings' },
+    { id: 'docs', label: 'Documentation', icon: 'menu_book' },
   ];
 
   return (
@@ -72,16 +71,25 @@ export function Sidebar({ activeTab, onTabChange, onInitialize }) {
 
       {/* Footer Navigation Links */}
       <div className="flex flex-col gap-1 border-t border-outline-variant/60 pt-4 px-4">
-        {footerNavItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onTabChange(item.id === 'connection' ? 'system' : 'home')}
-            className="flex items-center gap-3 text-zinc-400 px-3 py-2 hover:bg-[#15171c] hover:text-white transition-all text-xs font-mono rounded font-bold"
-          >
-            <span className="material-symbols-outlined text-base text-zinc-400">{item.icon}</span>
-            <span>{item.label}</span>
-          </button>
-        ))}
+        {footerNavItems.map((item) => {
+          const isActive = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => onTabChange(item.id)}
+              className={`flex items-center gap-3 px-4 py-2.5 transition-all text-xs font-mono rounded font-bold ${
+                isActive
+                  ? 'bg-[#142616] text-primary-fixed border border-[#234d28]'
+                  : 'text-zinc-400 hover:bg-[#15171c] hover:text-white'
+              }`}
+            >
+              <span className={`material-symbols-outlined text-base ${isActive ? 'text-primary-fixed font-bold' : 'text-zinc-400'}`}>
+                {item.icon}
+              </span>
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
       </div>
     </nav>
   );
