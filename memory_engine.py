@@ -213,9 +213,24 @@ class GreenroomMemoryEngine:
         # Add to learned rules
         self.add_learned_voice_rule(extracted_rule)
 
+        # Record decision entry in decision_history
+        history = self.state.setdefault("decision_history", [])
+        date_str = time.strftime("%b %d")
+        decision_entry = {
+            "id": f"dec_{int(time.time())}",
+            "date": date_str,
+            "action_type": "REJECTED_PROPOSAL",
+            "item_name": item_id.replace("_", " ").title(),
+            "decision": f"Rejected recommendation ({reason_category}). {notes or ''}".strip(),
+            "constraint_extracted": extracted_rule
+        }
+        history.insert(0, decision_entry)
+
         # Record item feedback entry
         entry = self.add_item_feedback(item_id=item_id, feedback_type="not_useful", notes=f"Reason: {reason_category}. {notes or ''}")
         entry["extracted_rule"] = extracted_rule
+        entry["decision_entry"] = decision_entry
+        self.save_state()
         return entry
 
     def get_full_state(self) -> Dict[str, Any]:

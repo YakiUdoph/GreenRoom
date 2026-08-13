@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { api } from '../lib/api';
+import { DecisionHistoryTimeline } from '../components/memory/DecisionHistoryTimeline';
 
-export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, onOpenMemoryProofModal, isExecuting }) {
+export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, onOpenMemoryProofModal, onOpenNinetySecProof, isExecuting }) {
   const [feedbackInput, setFeedbackInput] = useState(
     'Too formal. Make it punchier and emphasize beginner-friendly tips.'
   );
@@ -72,7 +73,17 @@ export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, on
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {onOpenNinetySecProof && (
+            <button
+              onClick={onOpenNinetySecProof}
+              className="px-4 py-2 bg-emerald-950/90 border border-emerald-500/60 hover:border-primary-fixed text-emerald-300 font-mono text-xs font-bold uppercase rounded transition shadow-md flex items-center gap-1.5"
+            >
+              <span className="material-symbols-outlined text-base animate-pulse">timer</span>
+              <span>Prove 90-Sec Memory Proof</span>
+            </button>
+          )}
+
           <button
             onClick={onOpenOnboarding}
             className="px-4 py-2 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition-colors shadow-md shadow-primary-container/20 flex items-center gap-1.5"
@@ -208,6 +219,9 @@ export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, on
           </div>
         </div>
       </div>
+
+      {/* DECISION INTELLIGENCE PAST DECISION HISTORY TIMELINE */}
+      <DecisionHistoryTimeline memoryState={memoryState} />
 
       {/* STRUCTURED CREATOR DNA MATRIX */}
       <div className="space-y-4">

@@ -14,6 +14,7 @@ export function HomePage({
   onOpenOnboarding,
   onOpenOfflineModal,
   onOpenMemoryProofModal,
+  onOpenNinetySecProof,
   isExecuting,
 }) {
   const creatorName = memoryState?.creator_name || 'CREATOR';
@@ -180,6 +181,20 @@ export function HomePage({
                 >
                   <span className="material-symbols-outlined text-base text-primary-fixed animate-pulse">cloud_done</span>
                   <span>Prove Offline Story</span>
+                </button>
+              )}
+
+              {onOpenNinetySecProof && (
+                <button
+                  onClick={() => {
+                    soundFx.playSynapsePulse();
+                    onOpenNinetySecProof();
+                  }}
+                  className="px-4 py-2.5 bg-emerald-950/80 border border-emerald-500/60 hover:border-primary-fixed text-emerald-300 hover:text-white text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-lg shadow-emerald-950/40"
+                  title="Watch Greenroom learn a constraint in 0:00 and filter clickbait trends in 0:90 after an offline background run"
+                >
+                  <span className="material-symbols-outlined text-base text-primary-fixed animate-pulse">timer</span>
+                  <span>Prove 90-Sec Memory Proof</span>
                 </button>
               )}
 

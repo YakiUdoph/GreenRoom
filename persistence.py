@@ -120,7 +120,33 @@ class LocalFileStore(PersistenceStore):
             "rejected_topics": ["Crypto trading bots", "Generic AI news clickbait"],
             "monetization_benchmarks": {"cpm_target": 45, "minimum_deal_size": 5000},
             "learned_voice_rules": [],
-            "memory_nodes": []
+            "memory_nodes": [],
+            "decision_history": [
+                {
+                    "id": "dec_1",
+                    "date": "Aug 5",
+                    "action_type": "REJECTED_SPONSORSHIP",
+                    "item_name": "Web3 Trading Protocol Sponsor Pitch",
+                    "decision": "Rejected pitch because it didn't fit developer audience profile.",
+                    "constraint_extracted": "Avoid crypto trading sponsorships; focus on native developer SDKs."
+                },
+                {
+                    "id": "dec_2",
+                    "date": "Aug 8",
+                    "action_type": "APPROVED_STRATEGY",
+                    "item_name": "Beginner AI Workflows & Automation Tutorial",
+                    "decision": "Approved strategy based on 78% viewer retention benchmark at 30 seconds.",
+                    "constraint_extracted": "Prioritize step-by-step setup guides over broad news recaps."
+                },
+                {
+                    "id": "dec_3",
+                    "date": "Aug 10",
+                    "action_type": "REJECTED_CLICKBAIT",
+                    "item_name": "Sensationalist AI Hype Trend",
+                    "decision": "Rejected recommendation: 'Too clickbait. That's not how I want to grow.'",
+                    "constraint_extracted": "Avoid clickbait-driven trends; enforce punchy technical clarity."
+                }
+            ]
         }
 
 

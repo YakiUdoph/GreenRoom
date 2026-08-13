@@ -14,6 +14,7 @@ import { CreatorOnboardingModal } from './components/onboarding/CreatorOnboardin
 import { OfflineLifecycleModal } from './components/activity/OfflineLifecycleModal';
 import { MemoryBehaviorProofModal } from './components/memory/MemoryBehaviorProofModal';
 import { SpecialistMindsProofModal } from './components/mind/SpecialistMindsProofModal';
+import { NinetySecondProofModal } from './components/memory/NinetySecondProofModal';
 
 import { HomeBackground } from './components/motion/HomeBackground';
 import { MindBackground } from './components/motion/MindBackground';
@@ -37,6 +38,7 @@ export function App() {
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
   const [isMemoryProofModalOpen, setIsMemoryProofModalOpen] = useState(false);
   const [isSpecialistProofModalOpen, setIsSpecialistProofModalOpen] = useState(false);
+  const [isNinetySecProofOpen, setIsNinetySecProofOpen] = useState(false);
 
   // Enable Mouse Position Physics Hook
   useMousePosition();
@@ -181,6 +183,7 @@ export function App() {
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
             onOpenOfflineModal={() => setIsOfflineModalOpen(true)}
             onOpenMemoryProofModal={() => setIsMemoryProofModalOpen(true)}
+            onOpenNinetySecProof={() => setIsNinetySecProofOpen(true)}
             isExecuting={isExecuting}
           />
         );
@@ -201,6 +204,7 @@ export function App() {
             onSubmitFeedback={handleSubmitFeedback}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
             onOpenMemoryProofModal={() => setIsMemoryProofModalOpen(true)}
+            onOpenNinetySecProof={() => setIsNinetySecProofOpen(true)}
             isExecuting={isExecuting}
           />
         );
@@ -348,6 +352,15 @@ export function App() {
       <SpecialistMindsProofModal
         isOpen={isSpecialistProofModalOpen}
         onClose={() => setIsSpecialistProofModalOpen(false)}
+      />
+
+      {/* 90-Second Unavoidable Memory Proof Modal */}
+      <NinetySecondProofModal
+        isOpen={isNinetySecProofOpen}
+        onClose={() => setIsNinetySecProofOpen(false)}
+        onMemoryUpdated={() => {
+          loadInitialData();
+        }}
       />
     </div>
   );
