@@ -62,6 +62,28 @@ export function ActionsPage({ memoryState, activeCards, onApproveSponsorship, is
         </div>
       </div>
 
+      {/* SECRET WEAPON: REJECT & TEACH PERSISTENCE BANNER */}
+      <div className="p-4 bg-[#1b0e14] border border-rose-800/80 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 font-mono text-xs shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded border border-rose-500/40 bg-rose-950 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-rose-400 text-2xl">psychology_alt</span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-rose-400 font-bold uppercase text-xs tracking-wider">
+                SECRET WEAPON: REJECT & TEACH PERSISTENCE
+              </span>
+              <span className="bg-rose-950 text-rose-300 text-[10px] px-2 py-0.5 rounded border border-rose-800 font-bold">
+                REAL PERSISTENT INTELLIGENCE
+              </span>
+            </div>
+            <p className="text-zinc-200 text-xs font-sans mt-0.5 font-medium">
+              Rejecting a proposal with feedback like <strong className="text-white">"Too clickbait. That's not how I want to grow."</strong> permanently extracts a constraint rule. In future runs, Scout Mind automatically rejects clickbait trends before you ever have to explain yourself again.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* FIRST-CLASS EVIDENCE MATRIX */}
       <EvidenceGroundingMatrix
         memoryState={memoryState}
@@ -253,8 +275,8 @@ export function ActionsPage({ memoryState, activeCards, onApproveSponsorship, is
                   type="text"
                   value={rejectionNotes}
                   onChange={(e) => setRejectionNotes(e.target.value)}
-                  placeholder="e.g. Focus purely on technical setup steps..."
-                  className="w-full bg-[#0a0c0e] border border-outline-variant rounded p-2.5 text-white focus:border-rose-500 focus:outline-none"
+                  placeholder="e.g. Too clickbait. That's not how I want to grow..."
+                  className="w-full bg-[#0a0c0e] border border-outline-variant rounded p-2.5 text-white focus:border-rose-500 focus:outline-none font-sans text-xs"
                 />
               </div>
             </div>
