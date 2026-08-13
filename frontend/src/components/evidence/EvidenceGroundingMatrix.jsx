@@ -64,13 +64,13 @@ export function EvidenceGroundingMatrix({ memoryState, scriptData, pitchData }) 
                 <span className="material-symbols-outlined text-xs">analytics</span> CONTENT
               </span>
             </div>
-            <span className="text-[10px] text-zinc-400 block font-bold uppercase">PREVIOUS PERFORMANCE</span>
+            <span className="text-[10px] text-zinc-400 block font-bold uppercase">PERFORMANCE BENCHMARK</span>
             <p className="text-zinc-200 text-[11px] leading-relaxed font-medium">
-              {memoryNodes.length > 0 ? '78% viewer retention at 30s on setup walkthroughs vs 42% on news recaps.' : '78% retention benchmark on step-by-step technical guides.'}
+              Targeting 78% viewer retention at 30s benchmark derived from technical setup walkthroughs.
             </p>
           </div>
           <span className="text-[9px] text-zinc-500 block uppercase font-bold pt-1 border-t border-outline-variant/40">
-            Source: Retention Curve Mining
+            Source: Retention Benchmark Target
           </span>
         </motion.div>
 
@@ -87,11 +87,11 @@ export function EvidenceGroundingMatrix({ memoryState, scriptData, pitchData }) 
             </div>
             <span className="text-[10px] text-zinc-400 block font-bold uppercase">DISCOVERED SIGNAL</span>
             <p className="text-zinc-200 text-[11px] leading-relaxed font-medium">
-              Flagged "{scriptData?.trend_name || 'Beginner AI Workflows & Automation'}" at 0.92 raw fit score.
+              Scout Mind surfaced "{scriptData?.trend_name || 'Beginner AI Workflows & Automation'}" signal stream.
             </p>
           </div>
           <span className="text-[9px] text-zinc-500 block uppercase font-bold pt-1 border-t border-outline-variant/40">
-            Source: Scout Niche Aggregator
+            Source: Scout Mind Signal Provider
           </span>
         </motion.div>
 
@@ -129,11 +129,11 @@ export function EvidenceGroundingMatrix({ memoryState, scriptData, pitchData }) 
             </div>
             <span className="text-[10px] text-zinc-400 block font-bold uppercase">AUDIENCE EVIDENCE</span>
             <p className="text-zinc-200 text-[11px] leading-relaxed font-medium">
-              Mined 88% positive sentiment for hands-on step-by-step code walkthroughs.
+              Community Mind sentiment analysis confirmed demand for practical hands-on setup steps.
             </p>
           </div>
           <span className="text-[9px] text-zinc-500 block uppercase font-bold pt-1 border-t border-outline-variant/40">
-            Source: Community Sentiment Stream
+            Source: Community Mind Stream
           </span>
         </motion.div>
       </div>
@@ -148,7 +148,7 @@ export function EvidenceGroundingMatrix({ memoryState, scriptData, pitchData }) 
             </span>
           </div>
           <span className="font-mono text-[10px] text-emerald-400 font-bold bg-[#111115] px-2 py-0.5 rounded border border-[#234d28]">
-            95% CONTEXT ALIGNMENT
+            DERIVED FROM 5 CONTEXT PILLARS
           </span>
         </div>
         <p className="text-white font-sans text-sm font-bold leading-relaxed">

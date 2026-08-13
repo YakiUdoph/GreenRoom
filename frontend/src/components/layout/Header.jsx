@@ -1,5 +1,6 @@
 import React from 'react';
 import { Play } from 'lucide-react';
+import { soundFx } from '../../lib/sound';
 
 export function Header({
   mindsStatus,
@@ -99,6 +100,23 @@ export function Header({
           ))}
 
           <div className="h-4 w-px bg-slate-800 mx-1"></div>
+
+          <button
+            onClick={() => {
+              const current = soundFx.enabled;
+              soundFx.enabled = !current;
+              // Force state re-render
+              onRunStep(0);
+            }}
+            className={`p-1.5 rounded text-xs font-medium transition ${
+              soundFx.enabled ? 'text-emerald-400 hover:bg-slate-800' : 'text-zinc-500 hover:text-white hover:bg-slate-800'
+            }`}
+            title={soundFx.enabled ? 'Audio FX Enabled (Click to Mute)' : 'Audio FX Muted (Click to Unmute)'}
+          >
+            <span className="material-symbols-outlined text-base">
+              {soundFx.enabled ? 'volume_up' : 'volume_off'}
+            </span>
+          </button>
 
           <button
             onClick={onResetState}

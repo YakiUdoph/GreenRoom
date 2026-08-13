@@ -128,7 +128,7 @@ export function ActionsPage({ memoryState, activeCards, onApproveSponsorship, is
           {approvedActions.has('pitch') ? (
             <div className="p-3 bg-[#142616] border border-[#234d28] text-primary-fixed font-mono text-xs font-bold rounded text-center shadow-lg flex items-center justify-center gap-1.5">
               <span className="material-symbols-outlined text-sm">check_circle</span>
-              <span>APPROVED & EXECUTED</span>
+              <span>APPROVED FOR PREPARATION</span>
             </div>
           ) : rejectedActions.has('pitch') ? (
             <div className="p-3 bg-rose-950/80 border border-rose-800 text-rose-300 font-mono text-xs font-bold rounded text-center shadow-lg flex items-center justify-center gap-1.5">
