@@ -9,6 +9,7 @@ import { api } from './lib/api';
 import { Sidebar } from './components/layout/Sidebar';
 import { CursorSpotlight } from './components/motion/CursorSpotlight';
 import { PayloadModal } from './components/ui/PayloadModal';
+import { CreatorOnboardingModal } from './components/onboarding/CreatorOnboardingModal';
 
 import { HomeBackground } from './components/motion/HomeBackground';
 import { MindBackground } from './components/motion/MindBackground';
@@ -27,6 +28,7 @@ import { SystemPage } from './pages/SystemPage';
 export function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [isExecuting, setIsExecuting] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
 
   // Enable Mouse Position Physics Hook
   useMousePosition();
@@ -64,6 +66,20 @@ export function App() {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  // Onboarding Save Handler
+  const handleSaveOnboarding = async (data) => {
+    setIsExecuting(true);
+    try {
+      const res = await api.onboardCreator(data);
+      if (res.state) greenroomStore.setMemoryState(res.state);
+      if (res.minds_status) greenroomStore.setMindsStatus(res.minds_status);
+    } catch (err) {
+      console.error('[GreenroomApp] Onboarding save error:', err);
+    } finally {
+      setIsExecuting(false);
+    }
+  };
 
   // Step Runner
   const handleRunStep = async (stepId, feedback = null) => {
@@ -150,6 +166,7 @@ export function App() {
             activeCards={activeCards}
             onNavigate={(tab) => setActiveTab(tab)}
             onRunFullDemo={handleRunFullDemo}
+            onOpenOnboarding={() => setIsOnboardingOpen(true)}
             isExecuting={isExecuting}
           />
         );
@@ -168,6 +185,7 @@ export function App() {
             key="memory"
             memoryState={memoryState}
             onSubmitFeedback={handleSubmitFeedback}
+            onOpenOnboarding={() => setIsOnboardingOpen(true)}
             isExecuting={isExecuting}
           />
         );
@@ -212,6 +230,7 @@ export function App() {
             activeCards={activeCards}
             onNavigate={(tab) => setActiveTab(tab)}
             onRunFullDemo={handleRunFullDemo}
+            onOpenOnboarding={() => setIsOnboardingOpen(true)}
             isExecuting={isExecuting}
           />
         );
@@ -267,6 +286,14 @@ export function App() {
         isOpen={isModalOpen}
         message={selectedPayload}
         onClose={() => greenroomStore.closePayloadModal()}
+      />
+
+      {/* Real Creator Onboarding Modal */}
+      <CreatorOnboardingModal
+        isOpen={isOnboardingOpen}
+        onClose={() => setIsOnboardingOpen(false)}
+        onSave={handleSaveOnboarding}
+        initialData={memoryState}
       />
     </div>
   );

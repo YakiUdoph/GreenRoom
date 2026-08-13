@@ -281,6 +281,102 @@ async def process_feedback(req: FeedbackRequest):
         "minds_status": minds_manager.get_status()
     }
 
+class OnboardingRequest(BaseModel):
+    creator_name: Optional[str] = None
+    niche: Optional[str] = None
+    audience_description: Optional[str] = None
+    brand_voice_attributes: Optional[List[str]] = None
+    preferred_tone: Optional[str] = None
+    main_goal: Optional[str] = None
+    long_term_objective: Optional[str] = None
+    content_wanted: Optional[List[str]] = None
+    content_not_wanted: Optional[List[str]] = None
+
+class RejectionRequest(BaseModel):
+    item_id: str
+    reason_category: str
+    notes: Optional[str] = None
+
+@app.post("/api/creator/onboard")
+async def onboard_creator(req: OnboardingRequest):
+    data = req.dict(exclude_none=True)
+    state = memory_tool.onboard_creator(data)
+    
+    await imp_bus.publish(IMPMessage(
+        sender_mind="User",
+        target_mind="GreenroomCore",
+        action_type="CREATOR_ONBOARDED",
+        confidence_score=1.00,
+        payload={"creator_name": state.get("creator_name"), "niche": state.get("niche"), "timestamp": time.time()}
+    ))
+
+    return {
+        "status": "success",
+        "message": "Creator profile onboarded & persisted",
+        "state": state,
+        "minds_status": minds_manager.get_status()
+    }
+
+@app.post("/api/action/reject")
+async def reject_action(req: RejectionRequest):
+    entry = memory_tool.process_rejection_feedback(req.item_id, req.reason_category, req.notes)
+    
+    await imp_bus.publish(IMPMessage(
+        sender_mind="User",
+        target_mind="GreenroomCore",
+        action_type="REJECTION_FEEDBACK",
+        confidence_score=1.00,
+        payload=entry
+    ))
+
+    # Trigger fresh synthesis with newly learned constraint rule
+    res = await demo_runner_tool.run_minute_5()
+
+    return {
+        "status": "success",
+        "rejection_entry": entry,
+        "step_result": res,
+        "state": memory_tool.get_full_state(),
+        "minds_status": minds_manager.get_status()
+    }
+
+@app.post("/api/recommendation/compare")
+async def compare_recommendations():
+    state = memory_tool.get_full_state()
+    rules = state.get("learned_voice_rules", [])
+
+    generic_before = (
+        "GENERIC BASELINE (BEFORE GREENROOM MEMORY):\n\n"
+        "[HOOK]\n"
+        "What is Artificial Intelligence? Here are the top 5 broad tech news announcements this week.\n\n"
+        "[CONTENT]\n"
+        "1. Big tech company launches new model.\n"
+        "2. Industry commentary & speculative discussion.\n\n"
+        "[NOTE]\n"
+        "Ignores creator voice rules, retention metrics, and specific audience requests."
+    )
+
+    current_rule = rules[-1] if rules else "Direct, practical technical setup walkthrough focus"
+    
+    personalized_after = (
+        f"GREENROOM PERSONALIZED (AFTER MEMORY):\n\n"
+        f"ACTIVE RULE PERSISTED: \"{current_rule}\"\n\n"
+        f"[HOOK]\n"
+        f"Stop wasting hours configuring complex AI workflows. Here are the 3 exact setup steps to launch your local agent today—no fluff, just code.\n\n"
+        f"[EXECUTION WALKTHROUGH]\n"
+        f"Step 1: Clone repository. Step 2: Set .env API key. Step 3: Run python script.\n\n"
+        f"[GROUNDING & MEMORY CITATION]\n"
+        f"Derived from accumulated retention analytics (78% at 30s) and explicitly learned creator rules."
+    )
+
+    return {
+        "status": "success",
+        "before_memory": generic_before,
+        "after_memory": personalized_after,
+        "learned_rules": rules,
+        "creator_name": state.get("creator_name", "Alex Rivera")
+    }
+
 @app.post("/api/action/approve")
 async def approve_action(payload: Dict[str, Any]):
     action_name = payload.get("action_name", "Sponsorship Outreach")

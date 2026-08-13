@@ -48,4 +48,21 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ action_name: actionName }),
     }),
+
+  onboardCreator: (data) =>
+    request('/api/creator/onboard', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  rejectAction: (itemId, reasonCategory, notes = '') =>
+    request('/api/action/reject', {
+      method: 'POST',
+      body: JSON.stringify({ item_id: itemId, reason_category: reasonCategory, notes }),
+    }),
+
+  compareRecommendations: () =>
+    request('/api/recommendation/compare', {
+      method: 'POST',
+    }),
 };

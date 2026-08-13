@@ -3,6 +3,9 @@ import json
 import os
 import sys
 
+from memory_engine import GreenroomMemoryEngine, memory_tool
+from agents import GreenroomCoreMind
+
 def test_loud_failure_when_unconfigured():
     print("--- [TEST 1] Testing Loud Failure when Unconfigured ---")
     orig_builder_key = os.environ.pop("MINDS_BUILDER_API_KEY", None)
@@ -767,6 +770,50 @@ async def test_qstash_async_job_runner_lifecycle_and_security():
     print("[OK] [TEST 27 PASSED]\n")
 
 
+async def test_creator_onboarding_persistence():
+    print("--- [TEST 28] Testing Real Creator Onboarding Persistence ---")
+    memory = GreenroomMemoryEngine()
+    onboard_data = {
+        "creator_name": "Test Creator",
+        "niche": "Developer Infrastructure & AI Agents",
+        "audience_description": "Software engineers and AI builders",
+        "preferred_tone": "Direct, practical and fluff-free",
+        "main_goal": "Build technical audience trust",
+        "content_wanted": ["Code setup guides"],
+        "content_not_wanted": ["Crypto trading bots", "Sensational clickbait"]
+    }
+    state = memory.onboard_creator(onboard_data)
+    assert state["creator_name"] == "Test Creator"
+    assert state["niche"] == "Developer Infrastructure & AI Agents"
+    assert "Sensational clickbait" in state["rejected_topics"]
+    
+    # Reload from disk to prove persistence
+    reloaded = GreenroomMemoryEngine()
+    assert reloaded.state["creator_name"] == "Test Creator"
+    print("[OK] Verified onboarding profile persists to disk and updates creator identity context.")
+    print("[OK] [TEST 28 PASSED]\n")
+
+
+async def test_rejection_feedback_constraint_extraction():
+    print("--- [TEST 29] Testing Rejection Feedback & Constraint Extraction ---")
+    memory = GreenroomMemoryEngine()
+    entry = memory.process_rejection_feedback(item_id="opp_001", reason_category="Too clickbait", notes="Make it practical")
+    assert "clickbait" in entry["extracted_rule"].lower()
+    assert entry["extracted_rule"] in memory.state["learned_voice_rules"]
+    print("[OK] Verified rejection feedback extracts constraint rule and persists into creator memory.")
+    print("[OK] [TEST 29 PASSED]\n")
+
+
+async def test_recommendation_grounding_breakdown():
+    print("--- [TEST 30] Testing Recommendation Grounding Breakdown ---")
+    core = GreenroomCoreMind()
+    payload = await core.synthesize_strategy("Local AI Setup")
+    assert "script_concept" in payload
+    assert payload.get("is_punchy_voice") is True or "cited_memory_nodes" in payload
+    print("[OK] Verified strategy synthesis returns grounded recommendation breakdown.")
+    print("[OK] [TEST 30 PASSED]\n")
+
+
 async def main():
     test_loud_failure_when_unconfigured()
     await test_production_mode_execution_error_without_fallback()
@@ -795,7 +842,10 @@ async def main():
     await test_strict_production_error_during_autonomous_run()
     test_persistence_store_mode_labeling_and_provenance()
     await test_qstash_async_job_runner_lifecycle_and_security()
-    print("SUCCESS: ALL 27 GREENROOM INTEGRATION & SHARPENED MVP TESTS PASSED CLEANLY!")
+    await test_creator_onboarding_persistence()
+    await test_rejection_feedback_constraint_extraction()
+    await test_recommendation_grounding_breakdown()
+    print("SUCCESS: ALL 30 GREENROOM INTEGRATION & REAL PERSISTENT INTELLIGENCE TESTS PASSED CLEANLY!")
 
 if __name__ == "__main__":
     asyncio.run(main())

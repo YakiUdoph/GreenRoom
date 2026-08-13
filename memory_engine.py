@@ -148,6 +148,76 @@ class GreenroomMemoryEngine:
             pass
         self.save_state()
 
+    def onboard_creator(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Ingest and persist structured onboarding profile context.
+        Explicit creator preferences carry higher authority than AI inference.
+        """
+        if "creator_name" in data and data["creator_name"]:
+            self.state["creator_name"] = data["creator_name"]
+        if "niche" in data and data["niche"]:
+            self.state["niche"] = data["niche"]
+        if "audience_description" in data and data["audience_description"]:
+            self.state["audience_description"] = data["audience_description"]
+        if "brand_voice_attributes" in data and data["brand_voice_attributes"]:
+            self.state["brand_voice_attributes"] = data["brand_voice_attributes"]
+        if "preferred_tone" in data and data["preferred_tone"]:
+            self.state["preferred_tone"] = data["preferred_tone"]
+        if "main_goal" in data and data["main_goal"]:
+            self.state["main_goal"] = data["main_goal"]
+        if "long_term_objective" in data and data["long_term_objective"]:
+            self.state["long_term_objective"] = data["long_term_objective"]
+        if "content_wanted" in data and data["content_wanted"]:
+            self.state["content_wanted"] = data["content_wanted"]
+        if "content_not_wanted" in data and data["content_not_wanted"]:
+            rejected = self.state.setdefault("rejected_topics", [])
+            for item in data["content_not_wanted"]:
+                if item not in rejected:
+                    rejected.append(item)
+
+        # Record explicit onboarding artifact
+        self.ingest_creator_artifact(
+            artifact_type="onboarding_profile",
+            raw_data={
+                "content": f"Creator Profile Onboarded: {self.state.get('creator_name')} ({self.state.get('niche', 'Creator')}). Goal: {self.state.get('main_goal', 'Audience Trust')}.",
+                "insights": [
+                    f"Niche: {self.state.get('niche', 'Tech')}",
+                    f"Tone: {self.state.get('preferred_tone', 'Direct & Practical')}",
+                    f"Goal: {self.state.get('main_goal', 'Trust & Growth')}"
+                ],
+                "source": "EXPLICIT_CREATOR_INPUT"
+            }
+        )
+
+        self.save_state()
+        self._sync_to_minds_sdk()
+        return self.state
+
+    def process_rejection_feedback(self, item_id: str, reason_category: str, notes: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Process explicit creator rejection of a recommendation item.
+        Extracts constraint rules and persists them into creator memory.
+        """
+        reason_rule_map = {
+            "Too clickbait": "Avoid clickbait hooks and sensationalist claims.",
+            "Wrong tone": "Maintain direct, practical, and non-corporate educational tone.",
+            "Too commercial": "Prioritize genuine technical setup value over commercial pitch.",
+            "Already covered": "Do not repeat recently covered video script topics.",
+            "Not my audience": "Align content strictly with beginner developer and AI builder audience."
+        }
+
+        extracted_rule = reason_rule_map.get(reason_category, f"Avoid content matching rejection reason: '{reason_category}'")
+        if notes and notes.strip():
+            extracted_rule += f" Note: {notes.strip()}"
+
+        # Add to learned rules
+        self.add_learned_voice_rule(extracted_rule)
+
+        # Record item feedback entry
+        entry = self.add_item_feedback(item_id=item_id, feedback_type="not_useful", notes=f"Reason: {reason_category}. {notes or ''}")
+        entry["extracted_rule"] = extracted_rule
+        return entry
+
     def get_full_state(self) -> Dict[str, Any]:
         return self.state
 
@@ -157,7 +227,13 @@ class GreenroomMemoryEngine:
         else:
             self.state = {
                 "creator_name": "Alex Rivera",
+                "niche": "Developer Tools & AI Automation",
+                "audience_description": "Software engineers and builders entering local AI setup for the first time.",
                 "brand_voice_attributes": ["Educational", "Technical yet accessible", "Direct"],
+                "preferred_tone": "Conversational, direct and practical",
+                "main_goal": "Grow a high-trust technical developer audience",
+                "long_term_objective": "Build the premier channel for open-source AI agent workflows",
+                "content_wanted": ["Beginner local setup walkthroughs", "Open-source GitHub repos"],
                 "content_performance_history": [],
                 "audience_demographics": {"primary_age": "22-35"},
                 "rejected_topics": ["Crypto trading bots", "Generic AI news clickbait"],
@@ -170,3 +246,4 @@ class GreenroomMemoryEngine:
         return self.state
 
 memory_tool = GreenroomMemoryEngine()
+

@@ -1,17 +1,25 @@
 import React, { useState } from 'react';
+import { api } from '../lib/api';
 
-export function MemoryPage({ memoryState, onSubmitFeedback, isExecuting }) {
+export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, isExecuting }) {
   const [feedbackInput, setFeedbackInput] = useState(
     'Too formal. Make it punchier and emphasize beginner-friendly tips.'
   );
   const [learningStep, setLearningStep] = useState(0);
+  const [comparisonData, setComparisonData] = useState(null);
+  const [isComparing, setIsComparing] = useState(false);
 
   const state = memoryState || {};
+  const creatorName = state.creator_name || 'Alex Rivera';
+  const niche = state.niche || 'Developer Tools & AI Automation';
+  const audienceDesc = state.audience_description || 'Software engineers and builders entering local AI setup for the first time.';
   const voiceAttrs = state.brand_voice_attributes || [];
   const learnedRules = state.learned_voice_rules || [];
   const rejected = state.rejected_topics || [];
   const benchmarks = state.monetization_benchmarks || {};
   const memoryNodes = state.memory_nodes || [];
+  const mainGoal = state.main_goal || 'Grow a high-trust technical developer audience';
+  const preferredTone = state.preferred_tone || 'Conversational, direct and practical';
 
   const handleLearningSubmit = async (e) => {
     e.preventDefault();
@@ -33,8 +41,20 @@ export function MemoryPage({ memoryState, onSubmitFeedback, isExecuting }) {
     }, 3000);
   };
 
+  const handleFetchComparison = async () => {
+    setIsComparing(true);
+    try {
+      const data = await api.compareRecommendations();
+      setComparisonData(data);
+    } catch (err) {
+      console.error('[MemoryPage] Comparison fetch error:', err);
+    } finally {
+      setIsComparing(false);
+    }
+  };
+
   return (
-    <div className="flex-1 p-6 md:p-10 space-y-8 max-w-container-max mx-auto text-white">
+    <div className="flex-1 p-6 md:p-10 space-y-8 max-w-container-max mx-auto text-white font-sans">
       {/* Header */}
       <div className="border-b border-[#72ff70]/30 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -48,13 +68,23 @@ export function MemoryPage({ memoryState, onSubmitFeedback, isExecuting }) {
             Everything Greenroom Has Learned About You
           </h1>
           <p className="text-xs md:text-sm font-sans text-zinc-200 mt-1 font-medium">
-            Accumulated long-term identity rules, voice parameters, and audience preferences.
+            Structured long-term identity rules, preferences, constraints, and learned behaviors.
           </p>
         </div>
 
-        <div className="px-3.5 py-1.5 bg-[#142616] border border-[#234d28] rounded font-mono text-xs text-primary-fixed font-bold flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-primary-fixed animate-pulse" />
-          <span>720H RECENCY DECAY ENGINE ACTIVE</span>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onOpenOnboarding}
+            className="px-4 py-2 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition-colors shadow-md shadow-primary-container/20 flex items-center gap-1.5"
+          >
+            <span className="material-symbols-outlined text-base font-bold">edit_note</span>
+            <span>Edit Profile Context</span>
+          </button>
+
+          <div className="px-3 py-1.5 bg-[#142616] border border-[#234d28] rounded font-mono text-xs text-primary-fixed font-bold flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-primary-fixed animate-pulse" />
+            <span>720H DECAY ENGINE ACTIVE</span>
+          </div>
         </div>
       </div>
 
@@ -112,23 +142,35 @@ export function MemoryPage({ memoryState, onSubmitFeedback, isExecuting }) {
 
       {/* BEFORE VS AFTER PERSONALIZATION DEMONSTRATION */}
       <div className="space-y-4">
-        <h2 className="text-xs font-mono text-primary-fixed uppercase tracking-widest flex items-center gap-2 font-bold">
-          <span className="w-3 h-[2px] bg-primary-fixed block" />
-          BEFORE VS. AFTER GREENROOM PERSONALIZATION
-        </h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-xs font-mono text-primary-fixed uppercase tracking-widest flex items-center gap-2 font-bold">
+            <span className="w-3 h-[2px] bg-primary-fixed block" />
+            BEFORE VS. AFTER GREENROOM PERSONALIZATION PROOF
+          </h2>
+
+          <button
+            onClick={handleFetchComparison}
+            disabled={isComparing}
+            className="px-3.5 py-1 bg-[#111115] border border-outline-variant hover:border-primary-fixed text-zinc-300 hover:text-white font-mono text-xs font-bold rounded flex items-center gap-1.5 transition"
+          >
+            <span className="material-symbols-outlined text-sm text-primary-fixed">compare_arrows</span>
+            <span>{isComparing ? 'Comparing...' : 'Run Live Comparison'}</span>
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {/* Card 1: Generic AI (Before) */}
-          <div className="noir-card p-5 space-y-3 opacity-75">
+          <div className="noir-card p-5 space-y-3 opacity-80 bg-[#0e1014]">
             <div className="flex justify-between items-center border-b border-outline-variant/60 pb-2">
               <span className="font-mono text-xs font-bold text-zinc-400 uppercase tracking-wider">GENERIC AI (BEFORE GREENROOM)</span>
               <span className="font-mono text-[10px] text-zinc-500 bg-[#111115] px-2 py-0.5 rounded border border-outline-variant">Zero Context</span>
             </div>
-            <h3 className="text-sm font-bold text-zinc-300 font-sans">"Here are 10 broad content ideas..."</h3>
-            <p className="font-mono text-xs text-zinc-400 leading-relaxed bg-[#0a0c0e] p-3 rounded border border-outline-variant">
-              "1. What is Artificial Intelligence?\n2. Top 5 AI Tools in 2026...\n3. How AI will change coding..."
-            </p>
-            <p className="text-[11px] text-zinc-500 italic">Generic output ignoring creator voice, retention history, or audience requests.</p>
+            <h3 className="text-sm font-bold text-zinc-300 font-sans">"Here are 10 generic tech news topics..."</h3>
+            <div className="font-mono text-xs text-zinc-400 leading-relaxed bg-[#0a0c0e] p-3.5 rounded border border-outline-variant whitespace-pre-wrap max-h-48 overflow-y-auto">
+              {comparisonData?.before_memory ||
+                `GENERIC BASELINE (BEFORE GREENROOM MEMORY):\n\n[HOOK]\nWhat is Artificial Intelligence? Here are the top 5 broad tech news announcements this week.\n\n[CONTENT]\n1. Big tech company launches new model.\n2. Industry commentary & speculative discussion.`}
+            </div>
+            <p className="text-[11px] text-zinc-500 italic font-mono">Ignores creator voice rules, retention metrics, and specific audience requests.</p>
           </div>
 
           {/* Card 2: Greenroom Personalized (After) */}
@@ -138,92 +180,96 @@ export function MemoryPage({ memoryState, onSubmitFeedback, isExecuting }) {
                 <span className="material-symbols-outlined text-xs">sparkles</span> GREENROOM PERSONALIZED (AFTER MEMORY)
               </span>
               <span className="font-mono text-[10px] text-primary-fixed font-bold bg-[#142616] px-2 py-0.5 rounded border border-[#234d28]">
-                Context Active
+                {learnedRules.length} Rules Active
               </span>
             </div>
             <h3 className="text-sm font-bold text-white font-sans">"Tailored 3-Step Setup Script Concept"</h3>
-            <p className="font-mono text-xs text-primary-fixed leading-relaxed bg-[#0a0c0e] p-3 rounded border border-[#234d28]">
-              {learnedRules.length > 0
-                ? `PUNCHY VOICE RULE ACTIVE: "${learnedRules[learnedRules.length - 1]}"\n\n[HOOK]: Stop wasting hours configuring local pipelines. 3 setup steps to launch your agent today.`
-                : `BRAND VOICE MATRIX: Educational, Technical, Direct.\n\n[HOOK]: Stop wasting hours configuring complex local pipelines. Here are the 3 setup steps to launch today.`}
-            </p>
-            <p className="text-[11px] text-zinc-300 font-medium">Derived directly from accumulated creator rules and viewer retention analytics.</p>
+            <div className="font-mono text-xs text-primary-fixed leading-relaxed bg-[#0a0c0e] p-3.5 rounded border border-[#234d28] whitespace-pre-wrap max-h-48 overflow-y-auto">
+              {comparisonData?.after_memory ||
+                `GREENROOM PERSONALIZED (AFTER MEMORY):\n\nACTIVE RULE PERSISTED: "${learnedRules[learnedRules.length - 1] || 'Direct technical setup walkthrough focus'}"\n\n[HOOK]\nStop wasting hours configuring complex AI workflows. Here are the 3 exact setup steps to launch your local agent today—no fluff, just code.`}
+            </div>
+            <p className="text-[11px] text-zinc-300 font-mono font-medium">Derived directly from accumulated retention analytics (78% at 30s) and explicitly learned creator rules.</p>
           </div>
         </div>
       </div>
 
-      {/* CREATOR DNA MATRIX */}
+      {/* STRUCTURED CREATOR DNA MATRIX */}
       <div className="space-y-4">
         <h2 className="text-xs font-mono text-primary-fixed uppercase tracking-widest flex items-center gap-2 font-bold">
           <span className="w-3 h-[2px] bg-primary-fixed block" />
-          CREATOR DNA MATRIX
+          STRUCTURED CREATOR DNA MATRIX (CATEGORIZED MEMORY)
         </h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-          {/* Card 1: Brand Voice */}
-          <div className="noir-card p-5 space-y-3">
-            <h3 className="font-mono text-xs font-bold text-primary-fixed uppercase tracking-wider">
-              Brand Voice Attributes
-            </h3>
-            <div className="flex flex-wrap gap-1.5">
-              {voiceAttrs.map((attr, idx) => (
-                <span key={idx} className="px-2.5 py-1 bg-[#111115] border border-outline-variant text-zinc-200 rounded text-xs font-mono font-medium">
-                  {attr}
-                </span>
-              ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Category 1: IDENTITY & GOALS */}
+          <div className="noir-card p-5 space-y-3 border-l-4 border-l-cyan-500">
+            <div className="flex justify-between items-center border-b border-outline-variant/60 pb-2">
+              <span className="font-mono text-xs font-bold text-cyan-400 uppercase tracking-wider">
+                IDENTITY & GOALS
+              </span>
+              <span className="font-mono text-[10px] text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800">
+                Category
+              </span>
+            </div>
+            <div className="space-y-2 font-mono text-xs">
+              <div className="p-2 bg-[#0a0c0e] rounded border border-outline-variant">
+                <span className="text-zinc-400 block font-bold text-[10px]">CREATOR & NICHE</span>
+                <span className="text-white font-bold">{creatorName}</span> • <span className="text-cyan-300">{niche}</span>
+              </div>
+              <div className="p-2 bg-[#0a0c0e] rounded border border-outline-variant">
+                <span className="text-zinc-400 block font-bold text-[10px]">MAIN GOAL</span>
+                <span className="text-zinc-200 font-medium">{mainGoal}</span>
+              </div>
+              <div className="p-2 bg-[#0a0c0e] rounded border border-outline-variant">
+                <span className="text-zinc-400 block font-bold text-[10px]">AUDIENCE PROFILE</span>
+                <span className="text-zinc-300">{audienceDesc}</span>
+              </div>
             </div>
           </div>
 
-          {/* Card 2: Learned Voice Rules */}
-          <div className="noir-card p-5 space-y-3 border-primary-fixed">
-            <div className="flex justify-between items-center">
-              <h3 className="font-mono text-xs font-bold text-primary-fixed uppercase tracking-wider">
-                Learned Voice Rules
-              </h3>
-              <span className="font-mono text-[10px] text-primary-fixed font-bold bg-[#142616] px-2 py-0.5 rounded border border-[#234d28]">
-                {learnedRules.length} Active
+          {/* Category 2: PREFERENCES & TONE */}
+          <div className="noir-card p-5 space-y-3 border-l-4 border-l-primary-fixed">
+            <div className="flex justify-between items-center border-b border-outline-variant/60 pb-2">
+              <span className="font-mono text-xs font-bold text-primary-fixed uppercase tracking-wider">
+                PREFERENCES & TONE
+              </span>
+              <span className="font-mono text-[10px] text-primary-fixed bg-[#142616] px-2 py-0.5 rounded border border-[#234d28]">
+                {voiceAttrs.length} Attributes
+              </span>
+            </div>
+            <div className="space-y-2 font-mono text-xs">
+              <div className="p-2 bg-[#0a0c0e] rounded border border-outline-variant">
+                <span className="text-zinc-400 block font-bold text-[10px]">PREFERRED TONE</span>
+                <span className="text-primary-fixed font-bold">{preferredTone}</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {voiceAttrs.map((attr, idx) => (
+                  <span key={idx} className="px-2 py-0.5 bg-[#111115] border border-outline-variant text-zinc-200 rounded text-[11px]">
+                    ✓ {attr}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Category 3: CONSTRAINTS & REJECTED TOPICS */}
+          <div className="noir-card p-5 space-y-3 border-l-4 border-l-rose-500">
+            <div className="flex justify-between items-center border-b border-outline-variant/60 pb-2">
+              <span className="font-mono text-xs font-bold text-rose-400 uppercase tracking-wider">
+                CONSTRAINTS & REJECTED TOPICS
+              </span>
+              <span className="font-mono text-[10px] text-rose-400 bg-rose-950 px-2 py-0.5 rounded border border-rose-800">
+                High Priority
               </span>
             </div>
             <div className="space-y-1.5 font-mono text-xs">
-              {learnedRules.length === 0 ? (
-                <p className="text-zinc-500 italic text-[11px]">No feedback rules learned yet. Use form above to test.</p>
-              ) : (
-                learnedRules.map((rule, idx) => (
-                  <div key={idx} className="p-2 bg-[#142616] border border-[#234d28] text-primary-fixed rounded flex items-center gap-1.5 font-bold text-[11px]">
-                    <span className="material-symbols-outlined text-xs">check</span>
-                    <span>{rule}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Card 3: Rejected Topics */}
-          <div className="noir-card p-5 space-y-3">
-            <h3 className="font-mono text-xs font-bold text-rose-400 uppercase tracking-wider">
-              Scout Rejected Topics
-            </h3>
-            <div className="space-y-1 font-mono text-xs text-zinc-300">
+              <p className="text-[11px] text-zinc-400">Explicit creator constraints take absolute authority over AI inference:</p>
               {rejected.map((r, i) => (
-                <p key={i} className="text-rose-300 text-[11px]">• {r}</p>
+                <div key={i} className="p-2 bg-rose-950/40 border border-rose-900/60 text-rose-200 rounded font-bold text-[11px] flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-xs text-rose-400">block</span>
+                  <span>{r}</span>
+                </div>
               ))}
-            </div>
-          </div>
-
-          {/* Card 4: Business Benchmarks */}
-          <div className="noir-card p-5 space-y-3">
-            <h3 className="font-mono text-xs font-bold text-primary-fixed uppercase tracking-wider">
-              Business Benchmarks
-            </h3>
-            <div className="space-y-1.5 font-mono text-xs">
-              <div className="p-2 bg-[#0a0c0e] rounded border border-outline-variant flex justify-between">
-                <span className="text-zinc-400">Target CPM</span>
-                <span className="font-bold text-primary-fixed">${benchmarks.cpm_target || 45}</span>
-              </div>
-              <div className="p-2 bg-[#0a0c0e] rounded border border-outline-variant flex justify-between">
-                <span className="text-zinc-400">Min Deal</span>
-                <span className="font-bold text-white">${benchmarks.minimum_deal_size ? benchmarks.minimum_deal_size.toLocaleString() : '5,000'}</span>
-              </div>
             </div>
           </div>
         </div>

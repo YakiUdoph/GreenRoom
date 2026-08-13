@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { api } from '../lib/api';
+import { soundFx } from '../lib/sound';
 
 export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) {
   const pitchData = activeCards?.pitch;
@@ -6,20 +8,37 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
 
   const [approvedActions, setApprovedActions] = useState(new Set());
   const [rejectedActions, setRejectedActions] = useState(new Set());
+  const [rejectionModalItem, setRejectionModalItem] = useState(null);
+  const [selectedReason, setSelectedReason] = useState('Too clickbait');
+  const [rejectionNotes, setRejectionNotes] = useState('');
+  const [isSubmittingRejection, setIsSubmittingRejection] = useState(false);
 
   const handleApprovePitch = async (actionId, sponsorName) => {
+    soundFx.playSuccessChime();
     if (onApproveSponsorship) {
       await onApproveSponsorship(sponsorName);
     }
     setApprovedActions((prev) => new Set(prev).add(actionId));
   };
 
-  const handleRejectAction = (actionId) => {
-    setRejectedActions((prev) => new Set(prev).add(actionId));
+  const handleConfirmRejection = async () => {
+    if (!rejectionModalItem) return;
+    setIsSubmittingRejection(true);
+    try {
+      soundFx.playSynapsePulse();
+      await api.rejectAction(rejectionModalItem, selectedReason, rejectionNotes);
+      setRejectedActions((prev) => new Set(prev).add(rejectionModalItem));
+      setRejectionModalItem(null);
+      setRejectionNotes('');
+    } catch (err) {
+      console.error('[ActionsPage] Rejection submit error:', err);
+    } finally {
+      setIsSubmittingRejection(false);
+    }
   };
 
   return (
-    <div className="flex-1 p-6 md:p-10 space-y-8 max-w-container-max mx-auto text-white">
+    <div className="flex-1 p-6 md:p-10 space-y-8 max-w-container-max mx-auto text-white font-sans">
       {/* Header */}
       <div className="border-b border-[#72ff70]/30 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -33,7 +52,7 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
             Pending Recommendations & Proposals
           </h1>
           <p className="text-xs md:text-sm font-sans text-zinc-200 mt-1 font-medium">
-            Greenroom operates autonomously, surfacing high-confidence actions for executive signoff.
+            Greenroom operates autonomously, surfacing high-confidence actions for executive signoff and learning from your feedback.
           </p>
         </div>
 
@@ -83,11 +102,11 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
 
           {approvedActions.has('pitch') ? (
             <div className="p-3 bg-[#142616] border border-[#234d28] text-primary-fixed font-mono text-xs font-bold rounded text-center shadow-lg">
-              APPROVED & EXECUTED
+              ✓ APPROVED & EXECUTED
             </div>
           ) : rejectedActions.has('pitch') ? (
             <div className="p-3 bg-rose-950/80 border border-rose-800 text-rose-300 font-mono text-xs font-bold rounded text-center shadow-lg">
-              ACTION REJECTED
+              ✕ REJECTED — CONSTRAINT RULE PERSISTED
             </div>
           ) : (
             <div className="flex gap-3 pt-2">
@@ -99,11 +118,11 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
                 Approve & Execute Pitch
               </button>
               <button
-                onClick={() => handleRejectAction('pitch')}
+                onClick={() => setRejectionModalItem('pitch')}
                 disabled={isExecuting}
                 className="px-4 py-3 bg-[#111115] border border-outline-variant text-zinc-400 font-mono text-xs font-bold uppercase rounded hover:text-white transition disabled:opacity-50"
               >
-                Reject
+                Reject & Teach
               </button>
             </div>
           )}
@@ -144,21 +163,113 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
 
           {approvedActions.has('script') ? (
             <div className="p-3 bg-[#142616] border border-[#234d28] text-primary-fixed font-mono text-xs font-bold rounded text-center shadow-lg">
-              APPROVED FOR PRODUCTION
+              ✓ APPROVED FOR PRODUCTION
+            </div>
+          ) : rejectedActions.has('script') ? (
+            <div className="p-3 bg-rose-950/80 border border-rose-800 text-rose-300 font-mono text-xs font-bold rounded text-center shadow-lg">
+              ✕ REJECTED — CONSTRAINT RULE PERSISTED
             </div>
           ) : (
             <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setApprovedActions((prev) => new Set(prev).add('script'))}
                 disabled={isExecuting}
-                className="w-full py-3 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition-colors disabled:opacity-50 shadow-lg shadow-primary-container/20"
+                className="flex-1 py-3 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition-colors disabled:opacity-50 shadow-lg shadow-primary-container/20"
               >
                 Approve Script Concept
+              </button>
+              <button
+                onClick={() => setRejectionModalItem('script')}
+                disabled={isExecuting}
+                className="px-4 py-3 bg-[#111115] border border-outline-variant text-zinc-400 font-mono text-xs font-bold uppercase rounded hover:text-white transition disabled:opacity-50"
+              >
+                Reject & Teach
               </button>
             </div>
           )}
         </div>
       </div>
+
+      {/* Rejection Feedback Dialog Modal */}
+      {rejectionModalItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="noir-card p-6 w-full max-w-lg bg-[#0e1014] border border-rose-500/40 shadow-2xl space-y-5">
+            <div className="flex justify-between items-center border-b border-outline-variant/60 pb-3">
+              <div className="flex items-center gap-2 text-rose-400">
+                <span className="material-symbols-outlined text-xl">block</span>
+                <h3 className="font-display text-lg font-bold text-white uppercase">
+                  Why are you rejecting this recommendation?
+                </h3>
+              </div>
+              <button onClick={() => setRejectionModalItem(null)} className="text-zinc-400 hover:text-white">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-300 font-medium">
+              Greenroom will extract a persistent constraint rule from your rejection reason so future recommendations automatically adapt.
+            </p>
+
+            <div className="space-y-3 font-mono text-xs">
+              <label className="text-zinc-300 font-bold uppercase block">Rejection Reason</label>
+              <div className="space-y-1.5">
+                {[
+                  'Too clickbait',
+                  'Wrong tone',
+                  'Too commercial',
+                  'Already covered',
+                  'Not my audience',
+                ].map((reason) => (
+                  <label
+                    key={reason}
+                    className={`flex items-center gap-2 p-2.5 rounded border cursor-pointer transition ${
+                      selectedReason === reason
+                        ? 'bg-rose-950/60 border-rose-500 text-rose-200 font-bold'
+                        : 'bg-[#0a0c0e] border-outline-variant text-zinc-300 hover:border-zinc-500'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="rejection_reason"
+                      checked={selectedReason === reason}
+                      onChange={() => setSelectedReason(reason)}
+                      className="accent-rose-500"
+                    />
+                    <span>{reason}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="space-y-1 pt-1">
+                <label className="text-zinc-400 uppercase text-[10px] block font-bold">Additional Specific Feedback (Optional)</label>
+                <input
+                  type="text"
+                  value={rejectionNotes}
+                  onChange={(e) => setRejectionNotes(e.target.value)}
+                  placeholder="e.g. Focus purely on technical setup steps..."
+                  className="w-full bg-[#0a0c0e] border border-outline-variant rounded p-2.5 text-white focus:border-rose-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-outline-variant/60 flex justify-end gap-3">
+              <button
+                onClick={() => setRejectionModalItem(null)}
+                className="px-4 py-2 bg-[#111115] border border-outline-variant text-zinc-400 font-mono text-xs font-bold uppercase rounded hover:text-white transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmRejection}
+                disabled={isSubmittingRejection}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-mono text-xs font-bold uppercase rounded transition shadow-lg shadow-rose-600/30 flex items-center gap-1.5"
+              >
+                <span>{isSubmittingRejection ? 'Extracting Rule...' : 'Confirm Rejection & Teach'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

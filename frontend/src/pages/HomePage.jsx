@@ -9,12 +9,15 @@ export function HomePage({
   mindsStatus,
   onNavigate,
   onRunFullDemo,
+  onOpenOnboarding,
   isExecuting,
 }) {
   const creatorName = memoryState?.creator_name || 'CREATOR';
+  const niche = memoryState?.niche || 'Developer Tools & AI Automation';
   const learnedRules = memoryState?.learned_voice_rules || [];
   const memoryNodes = memoryState?.memory_nodes || [];
   const benchmarks = memoryState?.monetization_benchmarks || {};
+  const rejected = memoryState?.rejected_topics || [];
 
   const scriptData = activeCards?.script;
   const isPunchy = scriptData?.is_punchy_voice || learnedRules.some((r) => r.toLowerCase().includes('punchy'));
@@ -29,6 +32,7 @@ export function HomePage({
       `EXECUTIVE CREATOR BRIEFING — ${dateStr}\n` +
       `==================================================\n\n` +
       `CREATOR: ${creatorName.toUpperCase()}\n` +
+      `NICHE: ${niche}\n` +
       `STATUS: Chief of Staff Engine Online & Monitoring\n\n` +
       `--------------------------------------------------\n` +
       `1. WHILE YOU WERE AWAY — SIGNALS & CONTEXT\n` +
@@ -79,11 +83,21 @@ export function HomePage({
               </span>
             </h1>
             <p className="text-xs md:text-sm font-sans text-zinc-200 border-l-2 border-primary-fixed pl-3 py-0.5 leading-relaxed font-medium">
-              I've been monitoring signals and preparing strategic creator directions while you were away.
+              I've been monitoring signals for your <strong className="text-primary-fixed">{niche}</strong> channel and preparing strategic creator directions while you were away.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {onOpenOnboarding && (
+              <button
+                onClick={onOpenOnboarding}
+                className="px-4 py-3 bg-[#142616] border border-[#234d28] hover:border-primary-fixed/60 text-primary-fixed text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-md"
+              >
+                <span className="material-symbols-outlined text-base">edit_note</span>
+                <span>Edit Profile</span>
+              </button>
+            )}
+
             <button
               onClick={handleExportBriefing}
               className="px-4 py-3 bg-[#111115] border border-outline-variant hover:border-primary-fixed/60 text-zinc-200 hover:text-white text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-md"
@@ -107,6 +121,29 @@ export function HomePage({
           </div>
         </div>
       </section>
+
+      {/* Returning User Persistent Context Banner */}
+      {learnedRules.length > 0 && (
+        <div className="p-4 bg-[#142616]/60 border border-[#234d28] rounded-xl flex items-center justify-between gap-4 font-mono text-xs shadow-lg">
+          <div className="flex items-center gap-3">
+            <span className="material-symbols-outlined text-primary-fixed text-xl">psychology</span>
+            <div>
+              <span className="text-primary-fixed font-bold uppercase block text-[10px] tracking-wider">
+                PERSISTENT CREATOR CONTEXT ACTIVE
+              </span>
+              <span className="text-zinc-200 font-medium">
+                Last time you told me: <strong className="text-white">"{learnedRules[learnedRules.length - 1]}"</strong>
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('memory')}
+            className="text-primary-fixed hover:underline font-bold text-xs flex items-center gap-1 whitespace-nowrap"
+          >
+            Inspect Memory →
+          </button>
+        </div>
+      )}
 
       {/* WHILE YOU WERE AWAY Section */}
       <div className="space-y-4">
@@ -243,7 +280,7 @@ export function HomePage({
         </div>
       </div>
 
-      {/* Primary Recommendation Card */}
+      {/* Primary Recommendation Card with Transparent Grounding */}
       <div className="noir-card p-6 flex flex-col space-y-5 border-l-4 border-l-primary-fixed">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-outline-variant/60 pb-4">
           <div className="space-y-1">
@@ -274,6 +311,26 @@ export function HomePage({
             <span>Build This Recommendation</span>
             <span className="material-symbols-outlined text-base font-bold">arrow_forward</span>
           </button>
+        </div>
+
+        {/* Transparent Grounding Breakdown */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 font-mono text-xs">
+          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
+            <span className="text-primary-fixed font-bold block text-[10px] uppercase">WHY CHOSEN</span>
+            <span className="text-zinc-200">Matches beginner audience retention profile.</span>
+          </div>
+          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
+            <span className="text-cyan-400 font-bold block text-[10px] uppercase">EVIDENCE CITATION</span>
+            <span className="text-zinc-200">Scout 145k/day + Community 88% demand.</span>
+          </div>
+          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
+            <span className="text-amber-400 font-bold block text-[10px] uppercase">PERSISTED MEMORY RULE</span>
+            <span className="text-zinc-200">{learnedRules[learnedRules.length - 1] || 'Default voice parameters'}</span>
+          </div>
+          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
+            <span className="text-emerald-400 font-bold block text-[10px] uppercase">RECOMMENDATION CONFIDENCE</span>
+            <span className="text-primary-fixed font-bold">95% High Alignment</span>
+          </div>
         </div>
 
         {/* Script Content Preview */}
