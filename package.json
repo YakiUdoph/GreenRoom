@@ -4,7 +4,10 @@
   "description": "> Built on Google Antigravity & the **Official Animoca Brands Minds Builder API** ([build.hellominds.ai](https://build.hellominds.ai)).",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "test": "python3 test_greenroom.py",
+    "start": "python3 server.py"
   },
   "repository": {
     "type": "git",
