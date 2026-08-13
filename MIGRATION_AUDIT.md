@@ -10,7 +10,7 @@
 - **Header:** Title, status badge (`#connection-status`), 5-Minute hackathon control runner buttons (Min 1-5, Run 5-Min Demo, Reset).
 - **Progress Banner:** `#demo-banner` (Step title, spinner, progress dots for Min 1-5).
 - **3-Column Dashboard Layout:**
-  - **Left Column (5 cols):** `#activity-stream` — Inter-Mind Message Log (IMP stream) showing color-coded agent messages, confidence badges, action badges, and a JSON payload inspector trigger (`🔍`).
+  - **Left Column (5 cols):** `#activity-stream` — Inter-Mind Message Log (IMP stream) showing color-coded agent messages, confidence badges, action badges, and a JSON payload inspector trigger (`[Inspect]`).
   - **Center Column (4 cols):** Executive Action Queue:
     - `#card-sponsorship`: Sponsorship outreach pitch draft card (match score, title, description, pitch draft box, "Approve & Send", "Modify Pitch").
     - `#card-script`: Strategy & Script Concept card (creative direction body, `#punchy-tag` badge).

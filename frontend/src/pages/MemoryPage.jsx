@@ -244,8 +244,9 @@ export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, is
               </div>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {voiceAttrs.map((attr, idx) => (
-                  <span key={idx} className="px-2 py-0.5 bg-[#111115] border border-outline-variant text-zinc-200 rounded text-[11px]">
-                    ✓ {attr}
+                  <span key={idx} className="px-2 py-0.5 bg-[#111115] border border-outline-variant text-zinc-200 rounded text-[11px] flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[10px] text-primary-fixed">check</span>
+                    <span>{attr}</span>
                   </span>
                 ))}
               </div>

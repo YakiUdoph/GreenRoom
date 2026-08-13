@@ -152,8 +152,9 @@ export function CreatorOnboardingModal({ isOpen, onClose, onSave, initialData })
 
             {/* Content Wanted */}
             <div className="space-y-1.5">
-              <label className="text-primary-fixed font-bold uppercase block">
-                ✓ Content Formats You Want (Comma Separated)
+              <label className="text-primary-fixed font-bold uppercase block flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">check_circle</span>
+                <span>Content Formats You Want (Comma Separated)</span>
               </label>
               <input
                 type="text"
@@ -165,8 +166,9 @@ export function CreatorOnboardingModal({ isOpen, onClose, onSave, initialData })
 
             {/* Content NOT Wanted (Constraints) */}
             <div className="space-y-1.5">
-              <label className="text-rose-400 font-bold uppercase block">
-                ✕ Content You Rejection/Avoid (Constraints)
+              <label className="text-rose-400 font-bold uppercase block flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">block</span>
+                <span>Content You Avoid / Constraints (Comma Separated)</span>
               </label>
               <input
                 type="text"

@@ -101,12 +101,14 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
           </div>
 
           {approvedActions.has('pitch') ? (
-            <div className="p-3 bg-[#142616] border border-[#234d28] text-primary-fixed font-mono text-xs font-bold rounded text-center shadow-lg">
-              ✓ APPROVED & EXECUTED
+            <div className="p-3 bg-[#142616] border border-[#234d28] text-primary-fixed font-mono text-xs font-bold rounded text-center shadow-lg flex items-center justify-center gap-1.5">
+              <span className="material-symbols-outlined text-sm">check_circle</span>
+              <span>APPROVED & EXECUTED</span>
             </div>
           ) : rejectedActions.has('pitch') ? (
-            <div className="p-3 bg-rose-950/80 border border-rose-800 text-rose-300 font-mono text-xs font-bold rounded text-center shadow-lg">
-              ✕ REJECTED — CONSTRAINT RULE PERSISTED
+            <div className="p-3 bg-rose-950/80 border border-rose-800 text-rose-300 font-mono text-xs font-bold rounded text-center shadow-lg flex items-center justify-center gap-1.5">
+              <span className="material-symbols-outlined text-sm">block</span>
+              <span>REJECTED — CONSTRAINT RULE PERSISTED</span>
             </div>
           ) : (
             <div className="flex gap-3 pt-2">
@@ -162,12 +164,14 @@ export function ActionsPage({ activeCards, onApproveSponsorship, isExecuting }) 
           </div>
 
           {approvedActions.has('script') ? (
-            <div className="p-3 bg-[#142616] border border-[#234d28] text-primary-fixed font-mono text-xs font-bold rounded text-center shadow-lg">
-              ✓ APPROVED FOR PRODUCTION
+            <div className="p-3 bg-[#142616] border border-[#234d28] text-primary-fixed font-mono text-xs font-bold rounded text-center shadow-lg flex items-center justify-center gap-1.5">
+              <span className="material-symbols-outlined text-sm">check_circle</span>
+              <span>APPROVED FOR PRODUCTION</span>
             </div>
           ) : rejectedActions.has('script') ? (
-            <div className="p-3 bg-rose-950/80 border border-rose-800 text-rose-300 font-mono text-xs font-bold rounded text-center shadow-lg">
-              ✕ REJECTED — CONSTRAINT RULE PERSISTED
+            <div className="p-3 bg-rose-950/80 border border-rose-800 text-rose-300 font-mono text-xs font-bold rounded text-center shadow-lg flex items-center justify-center gap-1.5">
+              <span className="material-symbols-outlined text-sm">block</span>
+              <span>REJECTED — CONSTRAINT RULE PERSISTED</span>
             </div>
           ) : (
             <div className="flex gap-3 pt-2">

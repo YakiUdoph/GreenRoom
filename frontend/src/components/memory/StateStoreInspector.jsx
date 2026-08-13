@@ -62,9 +62,10 @@ export function StateStoreInspector({ memoryState }) {
             {voiceAttrs.map((v, i) => (
               <span
                 key={i}
-                className="px-2 py-0.5 bg-[#111115] text-primary-fixed rounded text-[10px] border border-[#234d28] font-bold"
+                className="px-2 py-0.5 bg-[#111115] text-primary-fixed rounded text-[10px] border border-[#234d28] font-bold flex items-center gap-1"
               >
-                ✓ {v}
+                <span className="material-symbols-outlined text-xs">check</span>
+                <span>{v}</span>
               </span>
             ))}
           </div>
