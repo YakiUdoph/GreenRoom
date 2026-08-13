@@ -18,7 +18,6 @@ export function HomePage({
   const learnedRules = memoryState?.learned_voice_rules || [];
   const memoryNodes = memoryState?.memory_nodes || [];
   const benchmarks = memoryState?.monetization_benchmarks || {};
-  const rejected = memoryState?.rejected_topics || [];
 
   const scriptData = activeCards?.script;
   const isPunchy = scriptData?.is_punchy_voice || learnedRules.some((r) => r.toLowerCase().includes('punchy'));
@@ -102,64 +101,79 @@ export function HomePage({
 
   return (
     <div className="flex-1 flex flex-col min-w-0 pb-16 text-white font-sans space-y-8 max-w-container-max mx-auto px-6 md:px-10 pt-4">
-      {/* Hero Header Area */}
-      <section className="relative w-full border-b border-outline-variant/60 pb-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="space-y-2 max-w-3xl">
-            <div className="flex items-center gap-2.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-primary-fixed animate-pulse shadow-[0_0_10px_#72ff70]" />
-              <span className="font-mono text-primary-fixed uppercase tracking-widest text-xs font-bold bg-[#142616] px-3 py-0.5 rounded border border-[#234d28]">
-                System Active • AI Chief of Staff
-              </span>
+      
+      {/* 1. HERO SECTION: THE LIVING MIND CORE PROMINENTLY FIRST */}
+      <section className="noir-card p-6 md:p-8 bg-[#0e1014]/90 border border-primary-fixed/30 shadow-2xl overflow-hidden relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          
+          {/* Left Column: Greeting, Channel Context & Action Buttons (7 Cols) */}
+          <div className="lg:col-span-7 space-y-5 z-10">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-primary-fixed animate-pulse shadow-[0_0_10px_#72ff70]" />
+                <span className="font-mono text-primary-fixed uppercase tracking-widest text-xs font-bold bg-[#142616] px-3 py-0.5 rounded border border-[#234d28]">
+                  SYSTEM ONLINE • GREENROOM CORE MIND
+                </span>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-white tracking-tight leading-tight">
+                GOOD MORNING, {creatorName.toUpperCase()}.{' '}
+                <span className="text-primary-fixed block md:inline drop-shadow-[0_0_15px_rgba(114,255,112,0.3)]">
+                  Greenroom is active.
+                </span>
+              </h1>
+
+              <p className="text-xs md:text-sm font-sans text-zinc-200 border-l-2 border-primary-fixed pl-3 py-1 leading-relaxed font-medium">
+                Autonomous AI Chief of Staff monitoring signals for your <strong className="text-primary-fixed">{niche}</strong> channel and synthesizing strategic creator directions while you work.
+              </p>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-white tracking-tight">
-              GOOD MORNING, {creatorName.toUpperCase()}.{' '}
-              <span className="text-primary-fixed drop-shadow-[0_0_15px_rgba(114,255,112,0.3)]">
-                Greenroom is online.
-              </span>
-            </h1>
-            <p className="text-xs md:text-sm font-sans text-zinc-200 border-l-2 border-primary-fixed pl-3 py-0.5 leading-relaxed font-medium">
-              I've been monitoring signals for your <strong className="text-primary-fixed">{niche}</strong> channel and preparing strategic creator directions while you were away.
-            </p>
+            {/* Quick Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3 pt-2">
+              {onOpenOnboarding && (
+                <button
+                  onClick={onOpenOnboarding}
+                  className="px-4 py-2.5 bg-[#142616] border border-[#234d28] hover:border-primary-fixed/60 text-primary-fixed text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-md"
+                >
+                  <span className="material-symbols-outlined text-base">edit_note</span>
+                  <span>Edit Profile</span>
+                </button>
+              )}
+
+              <button
+                onClick={handleExportBriefing}
+                className="px-4 py-2.5 bg-[#111115] border border-outline-variant hover:border-primary-fixed/60 text-zinc-200 hover:text-white text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-md"
+                title="Download Executive Briefing Document"
+              >
+                <span className="material-symbols-outlined text-base text-primary-fixed">download</span>
+                <span>Export Briefing</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  soundFx.playSynapsePulse();
+                  onRunFullDemo();
+                }}
+                disabled={isExecuting}
+                className="px-5 py-2.5 bg-primary-container text-on-primary-container text-xs font-sans font-bold hover:bg-primary-fixed-dim transition-colors flex items-center gap-2 rounded disabled:opacity-50 shadow-lg shadow-primary-container/20 whitespace-nowrap"
+              >
+                <span className="material-symbols-outlined text-base font-bold">play_arrow</span>
+                <span>Run Agent Briefing</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            {onOpenOnboarding && (
-              <button
-                onClick={onOpenOnboarding}
-                className="px-4 py-3 bg-[#142616] border border-[#234d28] hover:border-primary-fixed/60 text-primary-fixed text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-md"
-              >
-                <span className="material-symbols-outlined text-base">edit_note</span>
-                <span>Edit Profile</span>
-              </button>
-            )}
-
-            <button
-              onClick={handleExportBriefing}
-              className="px-4 py-3 bg-[#111115] border border-outline-variant hover:border-primary-fixed/60 text-zinc-200 hover:text-white text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-md"
-              title="Download Executive Summary Text File"
-            >
-              <span className="material-symbols-outlined text-base text-primary-fixed">download</span>
-              <span>Export Briefing</span>
-            </button>
-
-            <button
-              onClick={() => {
-                soundFx.playSynapsePulse();
-                onRunFullDemo();
-              }}
-              disabled={isExecuting}
-              className="px-5 py-3 bg-primary-container text-on-primary-container text-xs font-sans font-bold hover:bg-primary-fixed-dim transition-colors flex items-center gap-2 rounded disabled:opacity-50 shadow-lg shadow-primary-container/20 whitespace-nowrap"
-            >
-              <span className="material-symbols-outlined text-base font-bold">play_arrow</span>
-              <span>Run Agent Pipeline Briefing</span>
-            </button>
+          {/* Right Column: LIVING MIND CORE VISUALIZER (5 Cols) */}
+          <div className="lg:col-span-5 flex justify-center z-10">
+            <GreenroomCore
+              stateName={isExecuting ? 'COLLABORATING' : 'IDLE'}
+              subtitle="Autonomous Chief of Staff Engine managing persistent creator intelligence."
+            />
           </div>
         </div>
       </section>
 
-      {/* Returning User Persistent Context Banner */}
+      {/* Returning Creator Context Banner */}
       {learnedRules.length > 0 && (
         <div className="p-4 bg-[#142616]/60 border border-[#234d28] rounded-xl flex items-center justify-between gap-4 font-mono text-xs shadow-lg">
           <div className="flex items-center gap-3">
@@ -182,7 +196,74 @@ export function HomePage({
         </div>
       )}
 
-      {/* WHILE YOU WERE AWAY Section */}
+      {/* 2. PRIMARY RECOMMENDED CREATIVE DIRECTION (EXECUTIVE ACTION CARD) */}
+      <div className="noir-card p-6 flex flex-col space-y-5 border-l-4 border-l-primary-fixed">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-outline-variant/60 pb-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary-fixed text-base">priority_high</span>
+              <span className="font-mono text-primary-fixed text-xs uppercase tracking-wider font-bold">
+                RECOMMENDED CREATIVE DIRECTION
+              </span>
+              {isPunchy && (
+                <span className="font-mono text-[10px] font-bold text-amber-300 bg-amber-950 border border-amber-800 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                  Punchy Voice Active
+                </span>
+              )}
+            </div>
+
+            <h2 className="text-xl md:text-2xl font-display font-bold text-white">
+              Script Concept: Beginner AI Workflows & Automation
+            </h2>
+          </div>
+
+          <button
+            onClick={() => {
+              soundFx.playSynapsePulse();
+              onNavigate('actions');
+            }}
+            className="bg-primary-container text-on-primary-container text-xs font-sans font-bold py-3 px-5 hover:bg-primary-fixed-dim transition-colors flex justify-center items-center gap-2 rounded disabled:opacity-50 shadow-lg shadow-primary-container/20 whitespace-nowrap"
+          >
+            <span>Build This Recommendation</span>
+            <span className="material-symbols-outlined text-base font-bold">arrow_forward</span>
+          </button>
+        </div>
+
+        {/* Transparent Grounding Breakdown */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 font-mono text-xs">
+          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
+            <span className="text-primary-fixed font-bold block text-[10px] uppercase">WHY CHOSEN</span>
+            <span className="text-zinc-200">Matches beginner audience retention profile.</span>
+          </div>
+          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
+            <span className="text-cyan-400 font-bold block text-[10px] uppercase">EVIDENCE CITATION</span>
+            <span className="text-zinc-200">Scout 145k/day + Community 88% demand.</span>
+          </div>
+          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
+            <span className="text-amber-400 font-bold block text-[10px] uppercase">PERSISTED MEMORY RULE</span>
+            <span className="text-zinc-200">{learnedRules[learnedRules.length - 1] || 'Default voice parameters'}</span>
+          </div>
+          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
+            <span className="text-emerald-400 font-bold block text-[10px] uppercase">CONFIDENCE SCORE</span>
+            <span className="text-primary-fixed font-bold">95% High Alignment</span>
+          </div>
+        </div>
+
+        {/* Script Content Preview */}
+        <div className="p-4 bg-[#0e0e11] rounded border border-outline-variant font-mono text-xs text-zinc-200 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto shadow-inner">
+          {scriptData?.script_concept || (
+            `RECOMMENDED SCRIPT CONCEPT: Beginner AI Workflows & Automation\n\n` +
+            `[HOOK - 0:00-0:15]\n` +
+            `Stop wasting hours configuring complex local pipelines. Here are the 3 setup steps to launch your custom agent today.\n\n` +
+            `[EXECUTION WALKTHROUGH - 0:15-2:30]\n` +
+            `Step 1: Clone repository. Step 2: Set .env API key. Step 3: Execute python workflow script.\n\n` +
+            `[CTA & SPONSOR INTEGRATION]\n` +
+            `Check out the repo link below and TechBrand Inc. for native dev keys.`
+          )}
+        </div>
+      </div>
+
+      {/* 3. WHILE YOU WERE AWAY — LIVE SIGNALS STREAM */}
       <div className="space-y-4">
         <h2 className="text-xs font-mono text-primary-fixed uppercase tracking-widest flex items-center gap-2 font-bold">
           <span className="w-3 h-[2px] bg-primary-fixed block" />
@@ -221,116 +302,39 @@ export function HomePage({
         </div>
       </div>
 
-      {/* GREENROOM'S TAKE & Living Core Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        {/* Editorial Analysis (7 cols) */}
-        <div className="lg:col-span-7 noir-card p-6 flex flex-col justify-between space-y-5">
-          <div className="space-y-3">
-            <h2 className="text-xs font-mono text-primary-fixed uppercase tracking-widest flex items-center gap-2 font-bold">
-              <span className="w-3 h-[2px] bg-primary-fixed block" />
-              GREENROOM'S TAKE
-            </h2>
+      {/* 4. GREENROOM'S STRATEGIC SYNTHESIS TAKE */}
+      <div className="noir-card p-6 space-y-4">
+        <div className="space-y-2">
+          <h2 className="text-xs font-mono text-primary-fixed uppercase tracking-widest flex items-center gap-2 font-bold">
+            <span className="w-3 h-[2px] bg-primary-fixed block" />
+            GREENROOM'S STRATEGIC TAKE
+          </h2>
 
-            <div className="text-xl md:text-2xl font-display font-bold text-white leading-snug">
-              Audience engagement is shifting toward practical setup tutorials and direct open-source repositories.
-            </div>
-
-            <p className="text-xs md:text-sm font-sans text-zinc-200 leading-relaxed font-medium">
-              Based on retention metrics ({memoryNodes.length > 0 ? '78% retention at 30s' : '88% positive sentiment'}) and recent comment stream analysis, your audience responds strongest to no-fluff technical execution tutorials rather than broad news recaps.
-            </p>
+          <div className="text-lg md:text-xl font-display font-bold text-white leading-snug">
+            Audience engagement is shifting toward practical setup tutorials and direct open-source repositories.
           </div>
 
-          <div className="pt-4 border-t border-outline-variant/60 flex items-center justify-between font-mono text-xs">
-            <span className="text-zinc-300 font-bold">
-              {learnedRules.length} learned rules active in memory
-            </span>
-            <button
-              onClick={() => {
-                soundFx.playSynapsePulse();
-                onNavigate('memory');
-              }}
-              className="text-primary-fixed hover:underline font-bold text-xs flex items-center gap-1"
-            >
-              Inspect Memory DNA →
-            </button>
-          </div>
+          <p className="text-xs md:text-sm font-sans text-zinc-200 leading-relaxed font-medium">
+            Based on retention metrics ({memoryNodes.length > 0 ? '78% retention at 30s' : '88% positive sentiment'}) and recent comment stream analysis, your audience responds strongest to no-fluff technical execution tutorials rather than broad news recaps.
+          </p>
         </div>
 
-        {/* Living Core Visualizer (5 cols) */}
-        <div className="lg:col-span-5">
-          <GreenroomCore
-            stateName={isExecuting ? 'COLLABORATING' : 'IDLE'}
-            subtitle="Autonomous Chief of Staff Engine managing persistent creator intelligence."
-          />
-        </div>
-      </div>
-
-      {/* Primary Recommendation Card with Transparent Grounding */}
-      <div className="noir-card p-6 flex flex-col space-y-5 border-l-4 border-l-primary-fixed">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-outline-variant/60 pb-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary-fixed text-base">priority_high</span>
-              <span className="font-mono text-primary-fixed text-xs uppercase tracking-wider font-bold">
-                RECOMMENDED CREATIVE DIRECTION
-              </span>
-              {isPunchy && (
-                <span className="font-mono text-[10px] font-bold text-amber-300 bg-amber-950 border border-amber-800 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
-                  Punchy Voice Active
-                </span>
-              )}
-            </div>
-
-            <h3 className="text-xl md:text-2xl font-display font-bold text-white">
-              Script Concept: Beginner AI Workflows & Automation
-            </h3>
-          </div>
-
+        <div className="pt-3 border-t border-outline-variant/60 flex items-center justify-between font-mono text-xs">
+          <span className="text-zinc-300 font-bold">
+            {learnedRules.length} learned rules active in creator memory
+          </span>
           <button
             onClick={() => {
               soundFx.playSynapsePulse();
-              onNavigate('actions');
+              onNavigate('memory');
             }}
-            className="bg-primary-container text-on-primary-container text-xs font-sans font-bold py-3 px-5 hover:bg-primary-fixed-dim transition-colors flex justify-center items-center gap-2 rounded disabled:opacity-50 shadow-lg shadow-primary-container/20 whitespace-nowrap"
+            className="text-primary-fixed hover:underline font-bold text-xs flex items-center gap-1"
           >
-            <span>Build This Recommendation</span>
-            <span className="material-symbols-outlined text-base font-bold">arrow_forward</span>
+            Inspect Memory DNA →
           </button>
         </div>
-
-        {/* Transparent Grounding Breakdown */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 font-mono text-xs">
-          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
-            <span className="text-primary-fixed font-bold block text-[10px] uppercase">WHY CHOSEN</span>
-            <span className="text-zinc-200">Matches beginner audience retention profile.</span>
-          </div>
-          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
-            <span className="text-cyan-400 font-bold block text-[10px] uppercase">EVIDENCE CITATION</span>
-            <span className="text-zinc-200">Scout 145k/day + Community 88% demand.</span>
-          </div>
-          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
-            <span className="text-amber-400 font-bold block text-[10px] uppercase">PERSISTED MEMORY RULE</span>
-            <span className="text-zinc-200">{learnedRules[learnedRules.length - 1] || 'Default voice parameters'}</span>
-          </div>
-          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
-            <span className="text-emerald-400 font-bold block text-[10px] uppercase">RECOMMENDATION CONFIDENCE</span>
-            <span className="text-primary-fixed font-bold">95% High Alignment</span>
-          </div>
-        </div>
-
-        {/* Script Content Preview */}
-        <div className="p-4 bg-[#0e0e11] rounded border border-outline-variant font-mono text-xs text-zinc-200 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto shadow-inner">
-          {scriptData?.script_concept || (
-            `RECOMMENDED SCRIPT CONCEPT: Beginner AI Workflows & Automation\n\n` +
-            `[HOOK - 0:00-0:15]\n` +
-            `Stop wasting hours configuring complex local pipelines. Here are the 3 setup steps to launch your custom agent today.\n\n` +
-            `[EXECUTION WALKTHROUGH - 0:15-2:30]\n` +
-            `Step 1: Clone repository. Step 2: Set .env API key. Step 3: Execute python workflow script.\n\n` +
-            `[CTA & SPONSOR INTEGRATION]\n` +
-            `Check out the repo link below and TechBrand Inc. for native dev keys.`
-          )}
-        </div>
       </div>
+
     </div>
   );
 }
