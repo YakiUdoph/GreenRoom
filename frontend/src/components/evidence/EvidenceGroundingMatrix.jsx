@@ -6,7 +6,8 @@ export function EvidenceGroundingMatrix({ memoryState, scriptData, pitchData }) 
   const memoryNodes = memoryState?.memory_nodes || [];
   const benchmarks = memoryState?.monetization_benchmarks || {};
 
-  const activeRule = learnedRules.length > 0 ? learnedRules[learnedRules.length - 1] : 'Avoid clickbait hooks; keep setup guides punchy & practical.';
+  const activeRule = learnedRules.length > 0 ? learnedRules[learnedRules.length - 1] : null;
+  const retentionTarget = benchmarks.retention_target_30s || benchmarks.retention_target || null;
 
   return (
     <div className="noir-card p-6 border-l-4 border-l-primary-fixed space-y-6 bg-[#0e1014]/90 shadow-2xl">
@@ -45,7 +46,7 @@ export function EvidenceGroundingMatrix({ memoryState, scriptData, pitchData }) 
             </div>
             <span className="text-[10px] text-zinc-400 block font-bold uppercase">RECENT QUESTIONS</span>
             <p className="text-zinc-200 text-[11px] leading-relaxed font-medium">
-              "{memoryState?.audience_description || 'Viewers requesting beginner local agent setup guides & repo links.'}"
+              "{memoryState?.audience_description || 'No audience evidence loaded yet.'}"
             </p>
           </div>
           <span className="text-[9px] text-zinc-500 block uppercase font-bold pt-1 border-t border-outline-variant/40">
@@ -66,7 +67,7 @@ export function EvidenceGroundingMatrix({ memoryState, scriptData, pitchData }) 
             </div>
             <span className="text-[10px] text-zinc-400 block font-bold uppercase">PERFORMANCE BENCHMARK</span>
             <p className="text-zinc-200 text-[11px] leading-relaxed font-medium">
-              Targeting 78% viewer retention at 30s benchmark derived from technical setup walkthroughs.
+              {retentionTarget ? `Targeting ${retentionTarget}% viewer retention at the recorded benchmark.` : 'No performance benchmark loaded yet.'}
             </p>
           </div>
           <span className="text-[9px] text-zinc-500 block uppercase font-bold pt-1 border-t border-outline-variant/40">
@@ -87,7 +88,7 @@ export function EvidenceGroundingMatrix({ memoryState, scriptData, pitchData }) 
             </div>
             <span className="text-[10px] text-zinc-400 block font-bold uppercase">DISCOVERED SIGNAL</span>
             <p className="text-zinc-200 text-[11px] leading-relaxed font-medium">
-              Scout Mind surfaced "{scriptData?.trend_name || 'Beginner AI Workflows & Automation'}" signal stream.
+              {scriptData?.trend_name ? `Scout Mind surfaced "${scriptData.trend_name}".` : 'No completed Scout result loaded yet.'}
             </p>
           </div>
           <span className="text-[9px] text-zinc-500 block uppercase font-bold pt-1 border-t border-outline-variant/40">
@@ -108,7 +109,7 @@ export function EvidenceGroundingMatrix({ memoryState, scriptData, pitchData }) 
             </div>
             <span className="text-[10px] text-zinc-400 block font-bold uppercase">CREATOR PREFERENCE</span>
             <p className="text-zinc-200 text-[11px] leading-relaxed font-medium">
-              "{activeRule}"
+              "{activeRule || 'No explicit creator preference learned yet.'}"
             </p>
           </div>
           <span className="text-[9px] text-zinc-500 block uppercase font-bold pt-1 border-t border-outline-variant/40">
@@ -129,7 +130,7 @@ export function EvidenceGroundingMatrix({ memoryState, scriptData, pitchData }) 
             </div>
             <span className="text-[10px] text-zinc-400 block font-bold uppercase">AUDIENCE EVIDENCE</span>
             <p className="text-zinc-200 text-[11px] leading-relaxed font-medium">
-              Community Mind sentiment analysis confirmed demand for practical hands-on setup steps.
+              {memoryState?.community_evidence || 'No completed Community result loaded yet.'}
             </p>
           </div>
           <span className="text-[9px] text-zinc-500 block uppercase font-bold pt-1 border-t border-outline-variant/40">
@@ -148,11 +149,13 @@ export function EvidenceGroundingMatrix({ memoryState, scriptData, pitchData }) 
             </span>
           </div>
           <span className="font-mono text-[10px] text-emerald-400 font-bold bg-[#111115] px-2 py-0.5 rounded border border-[#234d28]">
-            DERIVED FROM 5 CONTEXT PILLARS
+            {scriptData || pitchData ? 'DERIVED FROM AVAILABLE CONTEXT' : 'WAITING FOR COMPLETED RUN'}
           </span>
         </div>
         <p className="text-white font-sans text-sm font-bold leading-relaxed">
-          Produce a 3-step setup guide for beginner AI workflows. Integrate {pitchData?.sponsor_name || 'TechBrand Inc.'} ($${benchmarks.cpm_target || 45} CPM benchmark) and enforce creator voice constraint: "{activeRule}".
+          {scriptData?.script_concept || (pitchData
+            ? `Review the completed opportunity for ${pitchData.sponsor_name || 'the matched sponsor'} against the recorded creator constraints.`
+            : 'A grounded directive will appear only after Greenroom completes a real background run.')}
         </p>
       </div>
     </div>

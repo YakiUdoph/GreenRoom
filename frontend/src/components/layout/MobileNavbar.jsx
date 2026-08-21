@@ -26,7 +26,7 @@ export function MobileNavbar({ activeTab, onTabChange, onInitialize }) {
   return (
     <>
       {/* Top Mobile Bar */}
-      <header className="md:hidden sticky top-0 z-40 bg-[#0e1014]/95 backdrop-blur-xl border-b border-[#72ff70]/20 px-4 py-3 flex items-center justify-between shadow-lg">
+      <header className="lg:hidden sticky top-0 z-40 bg-[#0e1014]/95 backdrop-blur-xl border-b border-[#72ff70]/20 px-4 py-3 flex items-center justify-between shadow-lg">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded border border-[#72ff70]/40 flex items-center justify-center bg-[#142616]">
             <span className="material-symbols-outlined text-primary-fixed text-xl animate-pulse">all_inclusive</span>
@@ -42,19 +42,20 @@ export function MobileNavbar({ activeTab, onTabChange, onInitialize }) {
 
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="p-2 bg-[#142616] border border-[#234d28] text-primary-fixed rounded-lg focus:outline-none flex items-center justify-center shadow-md active:scale-95 transition"
+          className="px-3 py-2 bg-[#142616] border border-[#234d28] text-primary-fixed rounded-lg focus:outline-none flex items-center justify-center gap-2 shadow-md active:scale-95 transition"
           aria-label="Toggle Navigation Drawer"
         >
           <span className="material-symbols-outlined text-xl">
             {isOpen ? 'close' : 'menu'}
           </span>
+          <span className="font-mono text-[10px] font-bold tracking-wider">{isOpen ? 'CLOSE' : 'MENU'}</span>
         </button>
       </header>
 
       {/* Slide-out Mobile Navigation Drawer */}
       <AnimatePresence>
         {isOpen && (
-          <div className="md:hidden fixed inset-0 z-50 flex">
+          <div className="lg:hidden fixed inset-0 z-50 flex">
             {/* Backdrop Blur Overlay */}
             <motion.div
               initial={{ opacity: 0 }}

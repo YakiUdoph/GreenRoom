@@ -1,388 +1,187 @@
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { GreenroomCore } from '../components/mind/GreenroomCore';
 import { soundFx } from '../lib/sound';
-import { EvidenceGroundingMatrix } from '../components/evidence/EvidenceGroundingMatrix';
-import { ActiveObjectiveCard } from '../components/objective/ActiveObjectiveCard';
-import { WhileYouWereAwaySurface } from '../components/activity/WhileYouWereAwaySurface';
+
+const reveal = {
+  initial: { opacity: 0, y: 12 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, amount: 0.2 },
+  transition: { duration: 0.58, ease: [0.16, 1, 0.3, 1] },
+};
+
+const humanizeHomeCopy = (value = '') => String(value)
+  .replace(/ScoutMind detected/i, 'Greenroom found')
+  .replace(/Grounding:\s*Persisted rule applied\s*[—-]\s*/i, 'Based on your preference for ')
+  .replace(/Creator prefers opportunities matching item ['"]?[^'"]+['"]?/i, 'Prefers opportunities that match previous approvals')
+  .replace(/Creator rejected opportunity format in item ['"]?[^'"]+['"]?/i, 'Avoid formats the creator has rejected');
+
+const humanizeSource = (value = '') => {
+  const source = String(value);
+  if (/profile|memory|retention|node|brand_voice/i.test(source)) return 'Creator memory and saved performance preferences';
+  return humanizeHomeCopy(source).replaceAll('_', ' ');
+};
 
 export function HomePage({
   memoryState,
-  activeCards,
   mindsStatus,
-  signals = [],
   onNavigate,
   onRunFullDemo,
-  onOpenOnboarding,
   onOpenOfflineModal,
-  onOpenMemoryProofModal,
-  onOpenNinetySecProof,
   onCreateObjective,
   onRunObjective,
   isExecuting,
 }) {
-  const creatorName = memoryState?.creator_name || 'CREATOR';
-  const niche = memoryState?.niche || 'Developer Tools & AI Automation';
-  const learnedRules = memoryState?.learned_voice_rules || [];
-  const memoryNodes = memoryState?.memory_nodes || [];
-  const benchmarks = memoryState?.monetization_benchmarks || {};
-  const currentObjective = memoryState?.creator_objectives?.[0] || null;
+  const [isEditingObjective, setIsEditingObjective] = useState(false);
+  const [objectiveTitle, setObjectiveTitle] = useState('');
+  const [objectiveDetails, setObjectiveDetails] = useState('');
 
-  const scriptData = activeCards?.script;
-  const isPunchy = scriptData?.is_punchy_voice || learnedRules.some((r) => r.toLowerCase().includes('punchy'));
+  const creatorName = memoryState?.creator_name || 'Creator';
+  const objective = memoryState?.creator_objectives?.[0] || null;
+  const objectiveStatus = objective?.status || 'CREATED';
+  const briefing = memoryState?.latest_briefing || null;
+  const rankedItems = Array.isArray(briefing?.items) ? briefing.items.slice(0, 3) : [];
+  const provenance = briefing?.provenance || {};
+  const mindState = objectiveStatus === 'RUNNING' ? 'COLLABORATING' : (rankedItems.length > 0 ? 'RETURNED' : 'IDLE');
 
-  // Export Executive Briefing Document
-  const handleExportBriefing = () => {
-    soundFx.playSuccessChime();
-    const dateStr = new Date().toISOString().split('T')[0];
-    const content =
-      `==================================================\n` +
-      `GREENROOM PERSISTENT AI CHIEF OF STAFF\n` +
-      `EXECUTIVE CREATOR BRIEFING — ${dateStr}\n` +
-      `==================================================\n\n` +
-      `CREATOR: ${creatorName.toUpperCase()}\n` +
-      `NICHE: ${niche}\n` +
-      `STATUS: Chief of Staff Engine Online & Monitoring\n\n` +
-      `--------------------------------------------------\n` +
-      `1. WHILE YOU WERE AWAY — SIGNALS & CONTEXT\n` +
-      `--------------------------------------------------\n` +
-      `• Audience Signal: Demand Spike (88% Positive Sentiment for beginner local code setup walkthroughs).\n` +
-      `• Scout Trend: "Beginner AI Workflows & Automation" (Fit Score: 0.92, Volume: 145k/day).\n` +
-      `• Business Match: TechBrand Inc. ($5,400 Pitch Brief, $45 CPM Target Benchmark).\n\n` +
-      `--------------------------------------------------\n` +
-      `2. GREENROOM'S STRATEGIC TAKE\n` +
-      `--------------------------------------------------\n` +
-      `Audience engagement is shifting heavily toward practical setup guides and direct open-source repositories.\n` +
-      `Recommending a high-retention 3-step setup walkthrough to maximize viewer completion.\n\n` +
-      `--------------------------------------------------\n` +
-      `3. LEARNED CREATOR CONSTRAINTS (PERSISTENT MEMORY)\n` +
-      `--------------------------------------------------\n` +
-      (learnedRules.length > 0 ? learnedRules.map((r, i) => `${i + 1}. ${r}`).join('\n') : '• Default creator brand voice parameters active') +
-      `\n\n==================================================\n`;
+  const memories = useMemo(() => {
+    const rules = Array.isArray(memoryState?.learned_voice_rules) ? memoryState.learned_voice_rules : [];
+    const nodes = Array.isArray(memoryState?.memory_nodes) ? memoryState.memory_nodes : [];
+    const nodeText = nodes.map((node) => node?.content || node?.memory || node?.text || node?.summary).filter(Boolean);
+    return [...new Set([...rules, ...nodeText].map(humanizeHomeCopy))].slice(0, 5);
+  }, [memoryState]);
 
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Greenroom_Executive_Briefing_${dateStr}.txt`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const runBackgroundWork = () => {
+    soundFx.playSynapsePulse();
+    if (onOpenOfflineModal) onOpenOfflineModal();
   };
 
-  const defaultSignals = [
-    {
-      id: 'sig_1',
-      icon: 'trending_up',
-      badge: 'FIT: 0.92 [SCOUT]',
-      title: 'Beginner AI Workflows & Automation',
-      category: 'SCOUT NICHE AGGREGATOR',
-      description: 'High signal velocity around developer onboarding and direct setup tutorials.',
-    },
-    {
-      id: 'sig_2',
-      icon: 'groups',
-      badge: 'HIGH DEMAND [COMMUNITY]',
-      title: 'Viewer Requests: Setup Guides',
-      category: 'COMMUNITY SENTIMENT STREAM',
-      description: 'Audience comments requesting direct step-by-step code walkthroughs without fluff.',
-    },
-    {
-      id: 'sig_3',
-      icon: 'monetization_on',
-      badge: 'MATCH: 89% [BUSINESS]',
-      title: 'TechBrand Developer Infra Pitch',
-      category: 'BUSINESS SPONSOR EVALUATOR',
-      description: 'Inbound sponsorship matching your developer audience at $45 CPM target benchmark.',
-    },
+  const saveObjective = async (event) => {
+    event.preventDefault();
+    if (!objectiveTitle.trim() || !onCreateObjective) return;
+    await onCreateObjective(objectiveTitle.trim(), objectiveDetails.trim());
+    setObjectiveTitle('');
+    setObjectiveDetails('');
+    setIsEditingObjective(false);
+  };
+
+  const runObjectiveAgain = () => {
+    soundFx.playSynapsePulse();
+    if (objective && onRunObjective) onRunObjective(objective.id);
+    else if (onRunFullDemo) onRunFullDemo();
+  };
+
+  const editObjective = () => {
+    setIsEditingObjective(true);
+    window.requestAnimationFrame(() => {
+      document.querySelector('#home-hero .home-objective')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  };
+
+  const proofRows = [
+    ['Mind identity', provenance.mind_id || mindsStatus?.mind_id || 'Not verified by a completed run'],
+    ['Lifecycle', provenance.status || objectiveStatus],
+    ['Background execution', provenance.execution_mode || 'QStash status appears after a run'],
+    ['Persistence', provenance.persistence_mode || briefing?.persistence_mode || 'Not reported'],
+    ['Provenance', provenance.run_id || briefing?.run_id || 'No completed run'],
+    ['Signal mode', provenance.signal_mode || briefing?.signal_source_label || 'Not reported'],
+    ['Verification', provenance.mind_verified === true ? 'Verified' : 'Not verified'],
   ];
 
-  const activeSignals = signals && signals.length > 0 ? signals.map((s) => ({
-    id: s.id,
-    icon: s.type === 'trend' ? 'trending_up' : s.type === 'deal' ? 'monetization_on' : 'radar',
-    badge: s.fit_score ? `Fit: ${s.fit_score}` : s.sentiment ? `${(s.sentiment * 100).toFixed(0)}% Sentiment` : 'VERIFIED',
-    title: s.title || s.trend_name || 'Audience Signal Item',
-    description: s.summary || s.description || 'Live audience signal ingested from creator stream.',
-  })) : defaultSignals;
-
   return (
-    <div className="flex-1 flex flex-col min-w-0 pb-16 text-white font-sans space-y-5 max-w-container-max mx-auto px-4 sm:px-6 md:px-10 pt-4">
+    <div className="home-calm flex-1 min-w-0 max-w-container-max mx-auto px-4 sm:px-6 md:px-10 pb-20 pt-4 text-white">
+      <motion.section {...reveal} id="home-hero" className="home-calm__hero">
+        <div className="home-calm__hero-copy">
+          <span className="oryzo-label">GREENROOM · {creatorName}</span>
+          <h1>Greenroom remembers.<br />It keeps working.<br />It returns ranked opportunities.</h1>
+          <p className="home-calm__statement">It learns how you work, keeps watch between sessions, and brings back what matters.</p>
 
-      {/* 1. CREATOR OBJECTIVE: the job Greenroom is accountable for */}
-      <ActiveObjectiveCard
-        memoryState={memoryState}
-        onCreateObjective={onCreateObjective}
-        onRunObjective={onRunObjective || onRunFullDemo}
-        isExecuting={isExecuting}
-      />
-
-      {/* 2. ASYNC STORY: one signature visual, one primary action */}
-      <section className="noir-card p-5 md:p-7 bg-[#0e1014]/90 border border-primary-fixed/25 shadow-xl overflow-hidden relative">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
-          
-          {/* Left Column: Greeting, Channel Context & Action Buttons (7 Cols) */}
-          <div className="lg:col-span-8 space-y-4 z-10">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-primary-fixed animate-pulse shadow-[0_0_10px_#72ff70]" />
-                <span className="font-mono text-primary-fixed uppercase tracking-widest text-xs font-bold bg-[#142616] px-3 py-0.5 rounded border border-[#234d28]">
-                  SYSTEM ONLINE • GREENROOM CORE MIND
-                </span>
+          <div className="home-objective">
+            <span className="oryzo-label">CURRENT OBJECTIVE</span>
+            {!isEditingObjective ? (
+              <div className="home-objective__read">
+                <strong>{objective?.title || 'Set the outcome Greenroom should work toward.'}</strong>
+                <button type="button" onClick={editObjective}>{objective ? 'Edit' : 'Set objective'}</button>
               </div>
-
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-white tracking-tight leading-[1.05]">
-                Step away.{' '}
-                <span className="text-primary-fixed drop-shadow-[0_0_15px_rgba(114,255,112,0.25)]">
-                  Greenroom keeps watch.
-                </span>
-              </h1>
-
-              <p className="text-sm md:text-base font-sans text-zinc-300 border-l-2 border-primary-fixed pl-4 py-1 leading-relaxed max-w-2xl">
-                It remembers your creator boundaries, evaluates opportunities while you work, and returns with the strongest next moves ranked against <strong className="text-white">{currentObjective?.title || 'the objective you set'}</strong>.
-              </p>
-
-              {/* Core Product Thesis Banner */}
-              <div className="p-3.5 bg-[#142616] border border-[#234d28] rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono text-xs shadow-lg mt-3">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary-fixed text-lg">auto_awesome</span>
-                  <span className="text-white font-bold tracking-tight">PRODUCT THESIS:</span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-bold">
-                  <span className="text-primary-fixed bg-[#0a0c0e] px-2.5 py-1 rounded border border-emerald-800/80 shadow-[0_0_8px_rgba(114,255,112,0.15)]">
-                    GREENROOM WORKS WHILE YOU WORK.
-                  </span>
-                  <span className="text-zinc-500 hidden sm:inline">•</span>
-                  <span className="text-emerald-300 bg-[#0a0c0e] px-2.5 py-1 rounded border border-emerald-800/80 shadow-[0_0_8px_rgba(114,255,112,0.15)]">
-                    GREENROOM REMEMBERS WHY.
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* One primary action; setup and proof stay in secondary navigation. */}
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <button
-                onClick={() => {
-                  soundFx.playSynapsePulse();
-                  if (onOpenOfflineModal) onOpenOfflineModal();
-                }}
-                disabled={isExecuting}
-                className="px-5 py-2.5 bg-primary-container text-on-primary-container text-xs font-sans font-bold hover:bg-primary-fixed-dim transition-colors flex items-center gap-2 rounded disabled:opacity-50 shadow-lg shadow-primary-container/20 whitespace-nowrap"
-              >
-                <span className="material-symbols-outlined text-base font-bold">play_arrow</span>
-                <span>Work while I’m away</span>
-              </button>
-              <span className="font-mono text-[10px] text-zinc-500">Memory → async analysis → ranked briefing</span>
-            </div>
-          </div>
-
-          {/* Right Column: LIVING MIND CORE VISUALIZER (5 Cols) */}
-          <div className="lg:col-span-4 flex justify-center z-10">
-            <GreenroomCore
-              stateName={isExecuting ? 'COLLABORATING' : 'IDLE'}
-              subtitle="Autonomous Chief of Staff Engine managing persistent creator intelligence."
-            />
-          </div>
-        </div>
-      </section>
-
-      {/* 3. PERMANENT SURFACE: WHILE YOU WERE AWAY */}
-      <WhileYouWereAwaySurface
-        briefingData={memoryState?.latest_briefing}
-        memoryState={memoryState}
-        onNavigate={onNavigate}
-      />
-
-      {/* 1. WHAT DID GREENROOM LEARN? (PERSISTED CREATOR CONTEXT) */}
-      {learnedRules.length > 0 && (
-        <div className="p-4 bg-[#142616]/60 border border-[#234d28] rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 font-mono text-xs shadow-lg">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary-fixed text-2xl">psychology</span>
-            <div>
-              <span className="text-primary-fixed font-bold uppercase block text-[10px] tracking-wider">
-                1. WHAT DID GREENROOM LEARN? (PERSISTED VOICE RULES)
-              </span>
-              <span className="text-zinc-200 font-medium">
-                Active Creator Constraint: <strong className="text-white">"{learnedRules[learnedRules.length - 1]}"</strong>
-              </span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {onOpenMemoryProofModal && (
-              <button
-                onClick={() => {
-                  soundFx.playSynapsePulse();
-                  onOpenMemoryProofModal();
-                }}
-                className="px-3 py-1.5 bg-emerald-950/80 border border-emerald-500/60 hover:border-primary-fixed text-emerald-300 hover:text-white font-bold text-xs rounded flex items-center gap-1 transition shadow-sm"
-              >
-                <span className="material-symbols-outlined text-sm text-primary-fixed">psychology</span>
-                <span>Prove Memory Adaptation</span>
-              </button>
+            ) : (
+              <form onSubmit={saveObjective} className="home-objective__form">
+                <label>
+                  <span>Objective</span>
+                  <input value={objectiveTitle} onChange={(event) => setObjectiveTitle(event.target.value)} placeholder="What should Greenroom accomplish?" autoFocus required />
+                </label>
+                <label>
+                  <span>Useful context</span>
+                  <input value={objectiveDetails} onChange={(event) => setObjectiveDetails(event.target.value)} placeholder="Constraints, timing, or target" />
+                </label>
+                <div><button type="button" onClick={() => setIsEditingObjective(false)}>Cancel</button><button type="submit" disabled={isExecuting}>Save objective</button></div>
+              </form>
             )}
-            <button
-              onClick={() => onNavigate('memory')}
-              className="text-primary-fixed hover:underline font-bold text-xs flex items-center gap-1 whitespace-nowrap"
-            >
-              Inspect DNA ({learnedRules.length} Rules) →
-            </button>
+          </div>
+
+          <div className="home-calm__actions">
+            <button type="button" className="home-primary-action" onClick={runBackgroundWork} disabled={isExecuting}>Work while I’m away</button>
+            <button type="button" className="home-text-action" onClick={() => onNavigate('memory')}>View memory</button>
           </div>
         </div>
-      )}
+        <GreenroomCore stateName={mindState} subtitle={rankedItems.length > 0 ? 'Completed work is ranked and ready.' : 'Remembering your objective while watching for useful changes.'} />
+      </motion.section>
 
-      {/* 2. WHAT DID GREENROOM DISCOVER? (SIGNALS STREAM) */}
-      <div className="space-y-4">
-        <h2 className="text-xs font-mono text-primary-fixed uppercase tracking-widest flex items-center gap-2 font-bold">
-          <span className="w-3 h-[2px] bg-primary-fixed block" />
-          2. WHAT DID GREENROOM DISCOVER? (SCOUT + COMMUNITY + BUSINESS SIGNALS)
-        </h2>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {activeSignals.map((sig, index) => (
-            <motion.div
-              key={sig.id || index}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.05 }}
-              onClick={() => soundFx.playSynapsePulse()}
-              className="noir-card p-5 flex flex-col justify-between space-y-4 cursor-pointer group"
-            >
-              <div className="flex justify-between items-start">
-                <span className="material-symbols-outlined text-primary-fixed group-hover:scale-110 transition-transform text-2xl">
-                  {sig.icon}
-                </span>
-                <span className="font-mono text-xs text-primary-fixed font-bold bg-[#142616] px-2.5 py-0.5 rounded border border-[#234d28]">
-                  {sig.badge}
-                </span>
+      <motion.section {...reveal} id="home-results" className="home-calm__section">
+        <header className="home-calm__section-heading"><span>01</span><div><p>While You Were Away</p><h2>{rankedItems.length > 0 ? 'The strongest opportunities, in order.' : 'Your ranked briefing will land here.'}</h2></div></header>
+        {rankedItems.length > 0 ? (
+          <div className="ranked-briefing">
+            <article className="ranked-feature">
+              <div className="ranked-number">#1</div>
+              <div>
+                <span className="oryzo-label">{rankedItems[0].category || rankedItems[0].priority || 'TOP OPPORTUNITY'}</span>
+                <h3>{rankedItems[0].title}</h3>
+                <dl>
+                  <div><dt>What happened</dt><dd>{humanizeHomeCopy(rankedItems[0].what_changed || 'No change summary supplied.')}</dd></div>
+                  <div><dt>Why it matters</dt><dd>{humanizeHomeCopy(rankedItems[0].why_it_matters || 'No relevance summary supplied.')}</dd></div>
+                  <div><dt>Recommended action</dt><dd>{rankedItems[0].recommended_action || 'Review this opportunity.'}</dd></div>
+                  <div><dt>Source</dt><dd>{humanizeSource(rankedItems[0].memory_context_used || provenance.signal_source || 'Completed Greenroom run')}</dd></div>
+                </dl>
               </div>
-              <div className="space-y-1">
-                <span className="font-mono text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">{sig.category}</span>
-                <h3 className="text-base font-sans font-bold text-white group-hover:text-primary-fixed transition-colors">
-                  {sig.title}
-                </h3>
-                <p className="text-xs font-sans text-zinc-300 leading-relaxed font-medium">
-                  {sig.description}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-
-      {/* FIRST-CLASS EVIDENCE MATRIX */}
-      <EvidenceGroundingMatrix
-        memoryState={memoryState}
-        scriptData={scriptData}
-        pitchData={activeCards?.pitch}
-      />
-
-      {/* 3 & 4. WHY DOES GREENROOM RECOMMEND THIS? & WHAT CAN GREENROOM DO? */}
-      <div className="noir-card p-6 flex flex-col space-y-6 border-l-4 border-l-primary-fixed">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-outline-variant/60 pb-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary-fixed text-base">priority_high</span>
-              <span className="font-mono text-primary-fixed text-xs uppercase tracking-wider font-bold">
-                3. WHY DOES GREENROOM RECOMMEND THIS? • STRATEGIC DIRECTIVE
-              </span>
-              {isPunchy && (
-                <span className="font-mono text-[10px] font-bold text-amber-300 bg-amber-950 border border-amber-800 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
-                  Punchy Voice Active
-                </span>
-              )}
+            </article>
+            <div className="ranked-secondary">
+              {rankedItems.slice(1).map((item, index) => (
+                <article key={item.id || item.title}>
+                  <span>#{index + 2}</span><div><p>{item.category || item.priority}</p><h3>{item.title}</h3><button type="button" onClick={() => onNavigate('actions')}>Review action</button></div>
+                </article>
+              ))}
             </div>
-
-            <h2 className="text-xl md:text-2xl font-display font-bold text-white">
-              Script Concept: Beginner AI Workflows & Automation
-            </h2>
           </div>
+        ) : (
+          <div className="home-empty"><p>No completed briefing yet.</p><span>Set an objective, then let Greenroom run in the background. Results appear only after persistence completes.</span></div>
+        )}
+        {rankedItems.length > 0 && <button type="button" className="home-text-action self-start" onClick={() => onNavigate('actions')}>Open all actions</button>}
+      </motion.section>
 
-          {/* 4. WHAT CAN GREENROOM DO? (ACTION TRIGGER) */}
-          <div className="space-y-1">
-            <span className="font-mono text-[10px] text-zinc-400 font-bold uppercase block text-right">
-              4. WHAT CAN GREENROOM DO?
-            </span>
-            <button
-              onClick={() => {
-                soundFx.playSynapsePulse();
-                onNavigate('actions');
-              }}
-              className="bg-primary-container text-on-primary-container text-xs font-sans font-bold py-3 px-5 hover:bg-primary-fixed-dim transition-colors flex justify-center items-center gap-2 rounded disabled:opacity-50 shadow-lg shadow-primary-container/20 whitespace-nowrap"
-            >
-              <span>Execute Actions & Pitch Brief</span>
-              <span className="material-symbols-outlined text-base font-bold">arrow_forward</span>
-            </button>
+      <motion.section {...reveal} id="home-memory" className="home-calm__section home-memory-summary">
+        <header className="home-calm__section-heading"><span>02</span><div><p>Greenroom remembers</p><h2>The few rules shaping every result.</h2></div></header>
+        {memories.length > 0 ? <ol>{memories.map((memory, index) => <li key={`${memory}-${index}`}><span>0{index + 1}</span><p>{memory}</p></li>)}</ol> : <div className="home-empty"><p>No learned rules yet.</p><span>Feedback and decisions will become durable creator memory.</span></div>}
+        <button type="button" className="home-text-action self-start" onClick={() => onNavigate('memory')}>View full memory</button>
+      </motion.section>
+
+      <motion.section {...reveal} id="home-proof" className="home-calm__section">
+        <details className="home-proof">
+          <summary><span><small>03</small><span><b>How Greenroom worked</b><em>Technical proof and provenance</em></span></span><strong>Inspect</strong></summary>
+          <div className="home-proof__content">
+            <dl>{proofRows.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{String(value)}</dd></div>)}</dl>
+            <nav aria-label="Technical detail routes">
+              <button type="button" onClick={() => onNavigate('mind')}>Mind identity</button>
+              <button type="button" onClick={() => onNavigate('intelligence')}>Signals</button>
+              <button type="button" onClick={() => onNavigate('system')}>System proof</button>
+              <button type="button" onClick={() => onNavigate('docs')}>Architecture</button>
+            </nav>
           </div>
-        </div>
+        </details>
+      </motion.section>
 
-        {/* Transparent Grounding Breakdown */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 font-mono text-xs">
-          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
-            <span className="text-primary-fixed font-bold block text-[10px] uppercase">WHY CHOSEN</span>
-            <span className="text-zinc-200">Matches beginner audience retention profile.</span>
-          </div>
-          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
-            <span className="text-cyan-400 font-bold block text-[10px] uppercase">EVIDENCE CITATION</span>
-            <span className="text-zinc-200">Scout Market Volume + Community Viewer Demand.</span>
-          </div>
-          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
-            <span className="text-amber-400 font-bold block text-[10px] uppercase">PERSISTED MEMORY RULE</span>
-            <span className="text-zinc-200">{learnedRules[learnedRules.length - 1] || 'Default voice parameters'}</span>
-          </div>
-          <div className="p-2.5 bg-[#0a0c0e] rounded border border-outline-variant space-y-1">
-            <span className="text-emerald-400 font-bold block text-[10px] uppercase">CONFIDENCE SCORE</span>
-            <span className="text-primary-fixed font-bold">95% Alignment (Multi-Mind Verified)</span>
-          </div>
-        </div>
-
-        {/* Script Content Preview */}
-        <div className="p-4 bg-[#0e0e11] rounded border border-outline-variant font-mono text-xs text-zinc-200 leading-relaxed whitespace-pre-wrap max-h-48 overflow-y-auto shadow-inner">
-          {scriptData?.script_concept || (
-            `RECOMMENDED SCRIPT CONCEPT: Beginner AI Workflows & Automation\n\n` +
-            `[HOOK - 0:00-0:15]\n` +
-            `Stop wasting hours configuring complex local pipelines. Here are the 3 setup steps to launch your custom agent today.\n\n` +
-            `[EXECUTION WALKTHROUGH - 0:15-2:30]\n` +
-            `Step 1: Clone repository. Step 2: Set .env API key. Step 3: Execute python workflow script.\n\n` +
-            `[CTA & SPONSOR INTEGRATION]\n` +
-            `Check out the repo link below and TechBrand Inc. for native dev keys.`
-          )}
-        </div>
-      </div>
-
-      {/* 5. WHAT DID IT LEARN FROM MY DECISION? (LEARNING LOOP) */}
-      <div className="noir-card p-6 space-y-4">
-        <div className="space-y-2">
-          <h2 className="text-xs font-mono text-primary-fixed uppercase tracking-widest flex items-center gap-2 font-bold">
-            <span className="w-3 h-[2px] bg-primary-fixed block" />
-            5. WHAT DID IT LEARN FROM MY DECISION? (CONTINUOUS FEEDBACK LOOP)
-          </h2>
-
-          <div className="text-lg md:text-xl font-display font-bold text-white leading-snug">
-            Every rejection or approval extracts rules that persist across browser reloads.
-          </div>
-
-          <p className="text-xs md:text-sm font-sans text-zinc-200 leading-relaxed font-medium">
-            When you approve a pitch or reject a clickbait concept on the Actions page, Greenroom extracts constraint rules and persists them into <strong className="text-primary-fixed">creator_profile.json</strong> to ensure future recommendations adapt to your preference.
-          </p>
-        </div>
-
-        <div className="pt-3 border-t border-outline-variant/60 flex items-center justify-between font-mono text-xs">
-          <span className="text-zinc-300 font-bold">
-            {learnedRules.length} learned rules active in creator memory matrix
-          </span>
-          <button
-            onClick={() => {
-              soundFx.playSynapsePulse();
-              onNavigate('actions');
-            }}
-            className="text-primary-fixed hover:underline font-bold text-xs flex items-center gap-1"
-          >
-            Go to Actions & Teach Greenroom →
-          </button>
-        </div>
-      </div>
-
+      <motion.section {...reveal} id="home-next-action" className="home-final-action">
+        <div><span className="oryzo-label">NEXT</span><h2>{objective ? 'Run the objective again with everything Greenroom now remembers.' : 'Give Greenroom its first objective.'}</h2></div>
+        <div>{objective && <button type="button" className="home-primary-action" onClick={runObjectiveAgain} disabled={isExecuting}>{isExecuting ? 'Working…' : 'Run again'}</button>}<button type="button" className="home-text-action" onClick={editObjective}>{objective ? 'Change objective' : 'Set objective'}</button></div>
+      </motion.section>
     </div>
   );
 }
