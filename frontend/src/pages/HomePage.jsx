@@ -26,6 +26,7 @@ export function HomePage({
   const learnedRules = memoryState?.learned_voice_rules || [];
   const memoryNodes = memoryState?.memory_nodes || [];
   const benchmarks = memoryState?.monetization_benchmarks || {};
+  const currentObjective = memoryState?.creator_objectives?.[0] || null;
 
   const scriptData = activeCards?.script;
   const isPunchy = scriptData?.is_punchy_voice || learnedRules.some((r) => r.toLowerCase().includes('punchy'));
@@ -106,14 +107,22 @@ export function HomePage({
   })) : defaultSignals;
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 pb-16 text-white font-sans space-y-8 max-w-container-max mx-auto px-6 md:px-10 pt-4">
-      
-      {/* 1. HERO SECTION: THE LIVING MIND CORE PROMINENTLY FIRST */}
-      <section className="noir-card p-6 md:p-8 bg-[#0e1014]/90 border border-primary-fixed/30 shadow-2xl overflow-hidden relative">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+    <div className="flex-1 flex flex-col min-w-0 pb-16 text-white font-sans space-y-5 max-w-container-max mx-auto px-4 sm:px-6 md:px-10 pt-4">
+
+      {/* 1. CREATOR OBJECTIVE: the job Greenroom is accountable for */}
+      <ActiveObjectiveCard
+        memoryState={memoryState}
+        onCreateObjective={onCreateObjective}
+        onRunObjective={onRunObjective || onRunFullDemo}
+        isExecuting={isExecuting}
+      />
+
+      {/* 2. ASYNC STORY: one signature visual, one primary action */}
+      <section className="noir-card p-5 md:p-7 bg-[#0e1014]/90 border border-primary-fixed/25 shadow-xl overflow-hidden relative">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-center">
           
           {/* Left Column: Greeting, Channel Context & Action Buttons (7 Cols) */}
-          <div className="lg:col-span-7 space-y-5 z-10">
+          <div className="lg:col-span-8 space-y-4 z-10">
             <div className="space-y-2">
               <div className="flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-primary-fixed animate-pulse shadow-[0_0_10px_#72ff70]" />
@@ -122,15 +131,15 @@ export function HomePage({
                 </span>
               </div>
 
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-white tracking-tight leading-tight">
-                GOOD MORNING, {creatorName.toUpperCase()}.{' '}
-                <span className="text-primary-fixed block md:inline drop-shadow-[0_0_15px_rgba(114,255,112,0.3)]">
-                  Greenroom is active.
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-white tracking-tight leading-[1.05]">
+                Step away.{' '}
+                <span className="text-primary-fixed drop-shadow-[0_0_15px_rgba(114,255,112,0.25)]">
+                  Greenroom keeps watch.
                 </span>
               </h1>
 
-              <p className="text-xs md:text-sm font-sans text-zinc-200 border-l-2 border-primary-fixed pl-3 py-1 leading-relaxed font-medium">
-                Autonomous AI Chief of Staff monitoring signals for your <strong className="text-primary-fixed">{niche}</strong> channel and synthesizing strategic creator directions.
+              <p className="text-sm md:text-base font-sans text-zinc-300 border-l-2 border-primary-fixed pl-4 py-1 leading-relaxed max-w-2xl">
+                It remembers your creator boundaries, evaluates opportunities while you work, and returns with the strongest next moves ranked against <strong className="text-white">{currentObjective?.title || 'the objective you set'}</strong>.
               </p>
 
               {/* Core Product Thesis Banner */}
@@ -151,27 +160,8 @@ export function HomePage({
               </div>
             </div>
 
-            {/* Quick Action Buttons */}
+            {/* One primary action; setup and proof stay in secondary navigation. */}
             <div className="flex flex-wrap items-center gap-3 pt-2">
-              {onOpenOnboarding && (
-                <button
-                  onClick={onOpenOnboarding}
-                  className="px-4 py-2.5 bg-[#142616] border border-[#234d28] hover:border-primary-fixed/60 text-primary-fixed text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-md"
-                >
-                  <span className="material-symbols-outlined text-base">edit_note</span>
-                  <span>Onboard Profile</span>
-                </button>
-              )}
-
-              <button
-                onClick={handleExportBriefing}
-                className="px-4 py-2.5 bg-[#111115] border border-outline-variant hover:border-primary-fixed/60 text-zinc-200 hover:text-white text-xs font-mono font-bold transition flex items-center gap-2 rounded shadow-md"
-                title="Download Executive Briefing Document"
-              >
-                <span className="material-symbols-outlined text-base text-primary-fixed">download</span>
-                <span>Export Briefing</span>
-              </button>
-
               <button
                 onClick={() => {
                   soundFx.playSynapsePulse();
@@ -181,13 +171,14 @@ export function HomePage({
                 className="px-5 py-2.5 bg-primary-container text-on-primary-container text-xs font-sans font-bold hover:bg-primary-fixed-dim transition-colors flex items-center gap-2 rounded disabled:opacity-50 shadow-lg shadow-primary-container/20 whitespace-nowrap"
               >
                 <span className="material-symbols-outlined text-base font-bold">play_arrow</span>
-                <span>Run Background Work</span>
+                <span>Work while I’m away</span>
               </button>
+              <span className="font-mono text-[10px] text-zinc-500">Memory → async analysis → ranked briefing</span>
             </div>
           </div>
 
           {/* Right Column: LIVING MIND CORE VISUALIZER (5 Cols) */}
-          <div className="lg:col-span-5 flex justify-center z-10">
+          <div className="lg:col-span-4 flex justify-center z-10">
             <GreenroomCore
               stateName={isExecuting ? 'COLLABORATING' : 'IDLE'}
               subtitle="Autonomous Chief of Staff Engine managing persistent creator intelligence."
@@ -196,17 +187,9 @@ export function HomePage({
         </div>
       </section>
 
-      {/* 2. PRIMARY ORGANIZING UNIT: ACTIVE CREATOR OBJECTIVE */}
-      <ActiveObjectiveCard
-        memoryState={memoryState}
-        onCreateObjective={onCreateObjective}
-        onRunObjective={onRunObjective || onRunFullDemo}
-        isExecuting={isExecuting}
-      />
-
       {/* 3. PERMANENT SURFACE: WHILE YOU WERE AWAY */}
       <WhileYouWereAwaySurface
-        briefingData={activeCards}
+        briefingData={memoryState?.latest_briefing}
         memoryState={memoryState}
         onNavigate={onNavigate}
       />

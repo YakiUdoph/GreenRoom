@@ -27,6 +27,21 @@ export function requireVerifiedMindReply(outcome) {
   return String(text).trim();
 }
 
+export function verifyMindIdentity(mind, expected) {
+  const data = mind?.mind || mind?.data || mind;
+  const actualId = data?.mindId || data?.id;
+  const verified = Boolean(
+    actualId === expected.mindId &&
+    data?.email === expected.email &&
+    data?.walletAddress === expected.walletAddress &&
+    data?.isEnabled === true
+  );
+  if (!verified) {
+    throw new Error("Animoca Mind identity response did not match the configured Greenroom Mind");
+  }
+  return data;
+}
+
 export function parseMindBriefing(replyText) {
   const fenced = replyText.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const candidate = (fenced ? fenced[1] : replyText).trim();

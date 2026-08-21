@@ -822,6 +822,33 @@ def test_fastapi_app_import():
     print("[OK] [TEST 31 PASSED]\n")
 
 
+async def test_python_worker_disabled_in_production():
+    print("--- [TEST 32] Testing Production Worker Route Isolation ---")
+    original_key = os.environ.get("MINDS_BUILDER_API_KEY")
+    original_demo = os.environ.get("DEMO_MODE")
+    os.environ["MINDS_BUILDER_API_KEY"] = "route-isolation-test"
+    os.environ["DEMO_MODE"] = "false"
+    try:
+        import server
+        from fastapi import HTTPException
+        try:
+            await server.briefing_worker(None)
+            assert False, "Expected the Python demo worker to reject production execution"
+        except HTTPException as exc:
+            assert exc.status_code == 404
+    finally:
+        if original_key is None:
+            os.environ.pop("MINDS_BUILDER_API_KEY", None)
+        else:
+            os.environ["MINDS_BUILDER_API_KEY"] = original_key
+        if original_demo is None:
+            os.environ.pop("DEMO_MODE", None)
+        else:
+            os.environ["DEMO_MODE"] = original_demo
+    print("[OK] Production execution is isolated to the signed Node worker route.")
+    print("[OK] [TEST 32 PASSED]\n")
+
+
 async def main():
     test_loud_failure_when_unconfigured()
     await test_production_mode_execution_error_without_fallback()
@@ -854,7 +881,8 @@ async def main():
     await test_rejection_feedback_constraint_extraction()
     await test_recommendation_grounding_breakdown()
     test_fastapi_app_import()
-    print("SUCCESS: ALL 31 GREENROOM INTEGRATION & REAL PERSISTENT INTELLIGENCE TESTS PASSED CLEANLY!")
+    await test_python_worker_disabled_in_production()
+    print("SUCCESS: ALL 32 GREENROOM INTEGRATION & REAL PERSISTENT INTELLIGENCE TESTS PASSED CLEANLY!")
 
 if __name__ == "__main__":
     asyncio.run(main())

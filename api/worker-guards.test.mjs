@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseMindBriefing, requireVerifiedMindReply, validateWorkerConfiguration } from "./worker-guards.mjs";
+import { parseMindBriefing, requireVerifiedMindReply, validateWorkerConfiguration, verifyMindIdentity } from "./worker-guards.mjs";
 
 test("production worker reports missing security, persistence, and Minds configuration", () => {
   assert.deepEqual(validateWorkerConfiguration({}), [
@@ -23,4 +23,10 @@ test("a timed-out Mind call cannot be reported as completed", () => {
 test("structured Mind output supplies the ranked briefing", () => {
   const result = parseMindBriefing('```json\n{"items":[{"title":"A","category":"Content","what_changed":"Demand rose","why_it_matters":"Matches memory","recommended_action":"Publish"}]}\n```');
   assert.equal(result.items[0].title, "A");
+});
+
+test("Mind identity must match every configured platform field", () => {
+  const expected = { mindId: "mind-1", email: "creator@example.com", walletAddress: "0xabc" };
+  assert.equal(verifyMindIdentity({ ...expected, isEnabled: true }, expected).mindId, "mind-1");
+  assert.throws(() => verifyMindIdentity({ ...expected, isEnabled: false }, expected), /did not match/);
 });

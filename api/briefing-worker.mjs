@@ -1,7 +1,7 @@
 import { createMindsClient } from "@animocabrands/minds-client-lib";
 import { Receiver } from "@upstash/qstash";
 import { Redis } from "@upstash/redis";
-import { parseMindBriefing, requireVerifiedMindReply, validateWorkerConfiguration } from "./worker-guards.mjs";
+import { parseMindBriefing, requireVerifiedMindReply, validateWorkerConfiguration, verifyMindIdentity } from "./worker-guards.mjs";
 
 export const maxDuration = 60;
 
@@ -150,6 +150,11 @@ export default async function handler(req, res) {
 
     const mindsClient = createMindsClient({ builderApiKey: apiKey });
     const mindId = "8208493e-f36b-1410-8466-00039ce7df11";
+    verifyMindIdentity(await mindsClient.getMind(mindId), {
+      mindId,
+      email: "udophia@hellominds.ai",
+      walletAddress: "0xB675Ec9857776678aE540cF3248d898f015987Cb",
+    });
     const alias = `greenroom-${runId}`;
 
     await mindsClient.ensureConversation(alias, mindId);

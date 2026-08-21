@@ -194,10 +194,16 @@ async def trigger_briefing(request: Request, req: Optional[TriggerBriefingReques
 async def briefing_worker(request: Request):
     """
     QStash Webhook Worker Endpoint.
-    Executed independently by QStash or background queue.
-    Verifies QStash signature security when configured.
+    Local demo worker only. Production QStash delivery uses the independently
+    deployed, signature-verifying Node endpoint at /api/briefing-worker.
     """
     minds_manager.validate_configuration()
+
+    if os.getenv("DEMO_MODE", "").lower() not in ("true", "1"):
+        raise HTTPException(
+            status_code=404,
+            detail="Production worker is available at /api/briefing-worker",
+        )
     
     # Security: Verify QStash signing key if set
     current_key = os.getenv("QSTASH_CURRENT_SIGNING_KEY")
