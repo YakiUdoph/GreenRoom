@@ -814,6 +814,14 @@ async def test_recommendation_grounding_breakdown():
     print("[OK] [TEST 30 PASSED]\n")
 
 
+def test_fastapi_app_import():
+    print("--- [TEST 31] Testing FastAPI Application Import ---")
+    import server
+    assert server.app is not None
+    print("[OK] FastAPI application imports without startup exceptions.")
+    print("[OK] [TEST 31 PASSED]\n")
+
+
 async def main():
     test_loud_failure_when_unconfigured()
     await test_production_mode_execution_error_without_fallback()
@@ -845,7 +853,8 @@ async def main():
     await test_creator_onboarding_persistence()
     await test_rejection_feedback_constraint_extraction()
     await test_recommendation_grounding_breakdown()
-    print("SUCCESS: ALL 30 GREENROOM INTEGRATION & REAL PERSISTENT INTELLIGENCE TESTS PASSED CLEANLY!")
+    test_fastapi_app_import()
+    print("SUCCESS: ALL 31 GREENROOM INTEGRATION & REAL PERSISTENT INTELLIGENCE TESTS PASSED CLEANLY!")
 
 if __name__ == "__main__":
     asyncio.run(main())

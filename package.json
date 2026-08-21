@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "npm --prefix frontend run dev",
-    "build": "npm --prefix frontend run build",
-    "test": "python3 test_greenroom.py",
+    "build": "npm --prefix frontend install && npm --prefix frontend run build",
+    "test": "python3 test_greenroom.py && node --test api/worker-guards.test.mjs",
     "start": "python3 server.py"
   },
   "repository": {

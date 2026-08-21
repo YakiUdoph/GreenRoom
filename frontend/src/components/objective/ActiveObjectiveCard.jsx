@@ -9,15 +9,7 @@ export function ActiveObjectiveCard({
   isExecuting,
 }) {
   const objectives = memoryState?.creator_objectives || [];
-  const currentObjective = objectives.length > 0
-    ? objectives[0]
-    : {
-        id: 'obj_default',
-        title: 'Find a content opportunity for my beginner developer audience this week',
-        details: 'Evaluate trending workflows, validate audience demand, and check monetization fit.',
-        status: 'COMPLETED',
-        created_at: Date.now(),
-      };
+  const currentObjective = objectives.length > 0 ? objectives[0] : null;
 
   const [isEditing, setIsEditing] = useState(false);
   const [newTitle, setNewTitle] = useState('');
@@ -26,7 +18,7 @@ export function ActiveObjectiveCard({
   const learnedRules = memoryState?.learned_voice_rules || [];
   const activeConstraint = learnedRules.length > 0
     ? learnedRules[learnedRules.length - 1]
-    : 'Avoid clickbait hooks; prioritize hands-on setup steps.';
+    : null;
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -80,7 +72,7 @@ export function ActiveObjectiveCard({
     }
   };
 
-  const statusInfo = getStatusBadge(isExecuting ? 'RUNNING' : currentObjective.status);
+  const statusInfo = getStatusBadge(isExecuting ? 'RUNNING' : currentObjective?.status);
 
   return (
     <div className="noir-card p-6 md:p-8 bg-[#0e1014]/95 border-2 border-primary-fixed/40 shadow-2xl space-y-6">
@@ -157,9 +149,9 @@ export function ActiveObjectiveCard({
                 ACTIVE OBJECTIVE
               </span>
               <h3 className="text-lg font-sans font-bold text-white leading-snug">
-                "{currentObjective.title}"
+                "{currentObjective?.title || 'No creator objective has been created yet'}"
               </h3>
-              {currentObjective.details && (
+              {currentObjective?.details && (
                 <p className="font-mono text-xs text-zinc-300 leading-relaxed font-medium">
                   {currentObjective.details}
                 </p>
@@ -176,9 +168,9 @@ export function ActiveObjectiveCard({
               <button
                 onClick={() => {
                   soundFx.playSynapsePulse();
-                  if (onRunObjective) onRunObjective(currentObjective.id);
+                  if (onRunObjective && currentObjective) onRunObjective(currentObjective.id);
                 }}
-                disabled={isExecuting}
+                disabled={isExecuting || !currentObjective}
                 className="px-4 py-2 bg-primary-container text-on-primary-container text-xs font-mono font-bold uppercase rounded hover:bg-primary-fixed-dim transition flex items-center gap-1.5 shadow-lg shadow-primary-container/20 disabled:opacity-50"
               >
                 <span className="material-symbols-outlined text-sm">play_arrow</span>
@@ -201,7 +193,7 @@ export function ActiveObjectiveCard({
               </span>
               <span className="text-zinc-500">•</span>
               <span className="text-zinc-200">
-                Constraint: <strong className="text-emerald-300">"{activeConstraint}"</strong>
+                Constraint: <strong className="text-emerald-300">{activeConstraint ? `"${activeConstraint}"` : 'None learned yet'}</strong>
               </span>
             </div>
           </div>

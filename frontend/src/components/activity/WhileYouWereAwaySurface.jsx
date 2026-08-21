@@ -95,9 +95,9 @@ export function WhileYouWereAwaySurface({
       ) : (
         <div className="p-8 bg-[#0a0c0e] border border-outline-variant/60 rounded-xl text-center space-y-2 font-mono text-xs">
           <span className="material-symbols-outlined text-3xl text-zinc-500">cloud_done</span>
-          <h4 className="font-bold text-white uppercase">Nothing New Needed Your Attention</h4>
+          <h4 className="font-bold text-white uppercase">No Completed Briefing Yet</h4>
           <p className="text-zinc-400 max-w-md mx-auto font-sans text-xs">
-            Greenroom monitored background signal streams and found no urgent items requiring your immediate executive review.
+            Run background work to enqueue a verified job. Completed results will appear here after durable persistence.
           </p>
         </div>
       )}
