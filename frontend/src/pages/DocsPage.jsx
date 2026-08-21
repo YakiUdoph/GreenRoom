@@ -27,7 +27,7 @@ export function DocsPage() {
   ];
 
   return (
-    <div className="flex-1 p-6 md:p-10 space-y-8 max-w-container-max mx-auto text-white font-sans relative z-10">
+    <div className="manus-route manus-route--docs flex-1 p-6 md:p-10 space-y-8 max-w-container-max mx-auto text-white font-sans relative z-10">
       {/* Header */}
       <div className="border-b border-[#72ff70]/30 pb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>

@@ -17,7 +17,7 @@ export function Sidebar({ activeTab, onTabChange, onInitialize }) {
   ];
 
   return (
-    <nav className="hidden md:flex flex-col fixed inset-y-0 left-0 w-64 h-screen py-6 bg-[#0e1014]/95 backdrop-blur-xl border-r border-[#72ff70]/20 z-40 shrink-0 select-none shadow-2xl justify-between">
+    <nav className="hidden lg:flex flex-col fixed inset-y-0 left-0 w-64 h-screen py-6 bg-[#0e1014]/95 backdrop-blur-xl border-r border-[#72ff70]/20 z-40 shrink-0 select-none shadow-2xl justify-between">
       {/* Header & Brand */}
       <div className="px-6 pb-4 border-b border-outline-variant/60">
         <div className="flex items-center gap-3">

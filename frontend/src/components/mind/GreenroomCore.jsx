@@ -1,109 +1,72 @@
 import React from 'react';
-import { Cpu, Brain, Sparkles, Zap, CheckCircle2 } from 'lucide-react';
+import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from 'framer-motion';
 
-export function GreenroomCore({
-  stateName = 'IDLE',
-  subtitle = 'Chief of Staff Core Active',
-  compact = false,
-}) {
-  const getStateInfo = () => {
-    switch (stateName.toUpperCase()) {
-      case 'THINKING':
-        return {
-          label: 'THINKING',
-          badgeClass: 'bg-cyan-950 text-cyan-400 border-cyan-800',
-          glowClass: 'from-cyan-500 to-emerald-500 animate-thinking',
-          icon: Cpu,
-        };
-      case 'RECEIVING':
-        return {
-          label: 'RECEIVING SIGNAL',
-          badgeClass: 'bg-emerald-950 text-emerald-400 border-emerald-800',
-          glowClass: 'from-emerald-400 to-teal-400 animate-pulse',
-          icon: Zap,
-        };
-      case 'COLLABORATING':
-        return {
-          label: 'MULTI-MIND COLLABORATION',
-          badgeClass: 'bg-purple-950 text-purple-300 border-purple-800',
-          glowClass: 'from-purple-500 to-emerald-400 animate-pulse',
-          icon: Sparkles,
-        };
-      case 'LEARNING':
-        return {
-          label: 'LEARNING & PERSISTING',
-          badgeClass: 'bg-amber-950 text-amber-300 border-amber-800',
-          glowClass: 'from-amber-400 to-emerald-400 animate-breath',
-          icon: Brain,
-        };
-      case 'ACTING':
-        return {
-          label: 'EXECUTING ACTION',
-          badgeClass: 'bg-teal-950 text-teal-300 border-teal-800',
-          glowClass: 'from-teal-400 to-emerald-500 animate-pulse',
-          icon: CheckCircle2,
-        };
-      case 'IDLE':
-      default:
-        return {
-          label: 'CREATOR STAFF ONLINE',
-          badgeClass: 'bg-emerald-950/80 text-emerald-400 border-emerald-800',
-          glowClass: 'from-emerald-500 to-teal-600 animate-breath',
-          icon: Cpu,
-        };
-    }
+const STATE_MAP = {
+  IDLE: { label: 'WATCHING', phase: 1, note: 'Quietly monitoring the objective and its surrounding signals.' },
+  RECEIVING: { label: 'REMEMBERING', phase: 0, note: 'Bringing creator history and boundaries into view.' },
+  LEARNING: { label: 'REMEMBERING', phase: 0, note: 'Persisting the reason behind each decision.' },
+  THINKING: { label: 'WORKING', phase: 2, note: 'Comparing live evidence with remembered context.' },
+  COLLABORATING: { label: 'WORKING', phase: 2, note: 'Specialist minds are resolving the strongest next move.' },
+  ACTING: { label: 'RANKING', phase: 3, note: 'Ordering completed work by fit, evidence, and value.' },
+  RETURNED: { label: 'RETURNED', phase: 4, note: 'The ranked briefing is ready for a decision.' },
+};
+
+export function GreenroomCore({ stateName = 'IDLE', subtitle, compact = false }) {
+  const reducedMotion = useReducedMotion();
+  const state = STATE_MAP[stateName.toUpperCase()] || STATE_MAP.IDLE;
+  const pointerX = useMotionValue(0);
+  const pointerY = useMotionValue(0);
+  const springX = useSpring(pointerX, { stiffness: 80, damping: 24, mass: 0.8 });
+  const springY = useSpring(pointerY, { stiffness: 80, damping: 24, mass: 0.8 });
+  const rotateX = useTransform(springY, [-1, 1], [1.5, -1.5]);
+  const rotateY = useTransform(springX, [-1, 1], [-1.5, 1.5]);
+  const translateX = useTransform(springX, [-1, 1], [-3, 3]);
+  const translateY = useTransform(springY, [-1, 1], [-3, 3]);
+
+  const handlePointerMove = (event) => {
+    if (reducedMotion || event.pointerType === 'touch' || !window.matchMedia('(pointer: fine)').matches) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    pointerX.set(((event.clientX - rect.left) / rect.width) * 2 - 1);
+    pointerY.set(((event.clientY - rect.top) / rect.height) * 2 - 1);
   };
 
-  const stateInfo = getStateInfo();
-  const Icon = stateInfo.icon;
+  const resetPointer = () => {
+    pointerX.set(0);
+    pointerY.set(0);
+  };
 
   if (compact) {
     return (
-      <div className="flex items-center gap-3 p-3 bg-slate-950/80 border border-slate-800 rounded-xl">
-        <div className={`w-8 h-8 rounded-lg bg-gradient-to-tr ${stateInfo.glowClass} flex items-center justify-center text-slate-950 font-bold shadow-md`}>
-          <Icon className="w-4 h-4 text-slate-950" />
-        </div>
-        <div>
-          <span className={`text-[10px] font-mono font-bold uppercase border px-2 py-0.5 rounded ${stateInfo.badgeClass}`}>
-            {stateInfo.label}
-          </span>
-          <p className="text-xs text-slate-300 font-medium mt-0.5">{subtitle}</p>
-        </div>
+      <div className="mind-compact" aria-label={`Greenroom Mind: ${state.label}`}>
+        <span className="mind-compact__mark" aria-hidden="true" />
+        <div><span className="oryzo-label">{state.label}</span><p>{subtitle || state.note}</p></div>
       </div>
     );
   }
 
   return (
-    <div className="relative flex flex-col items-center justify-center p-8 bg-slate-950/90 border border-slate-800/90 rounded-3xl shadow-2xl overflow-hidden group">
-      {/* Background Radial Glow */}
-      <div className="absolute inset-0 bg-gradient-to-b from-emerald-950/20 via-transparent to-transparent pointer-events-none" />
-
-      {/* Living Animated Core Ring */}
-      <div className="relative flex items-center justify-center w-36 h-36 md:w-44 md:h-44">
-        {/* Outer Aura Ring */}
-        <div className={`absolute inset-0 rounded-full bg-gradient-to-tr ${stateInfo.glowClass} opacity-30 blur-xl transition-all duration-700`} />
-        
-        {/* Border Ring */}
-        <div className={`absolute inset-0 rounded-full border-2 border-emerald-500/30 bg-slate-900/80 backdrop-blur-md flex items-center justify-center transition-all duration-500`} />
-        
-        {/* Inner Glowing Orb */}
-        <div className={`w-24 h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-tr ${stateInfo.glowClass} flex items-center justify-center text-slate-950 shadow-2xl transition-all duration-500`}>
-          <Icon className="w-10 h-10 md:w-12 md:h-12 text-slate-950 stroke-[2.2]" />
-        </div>
-      </div>
-
-      {/* Status Label & Title */}
-      <div className="mt-6 text-center z-10 space-y-1.5">
-        <span className={`text-xs font-mono font-extrabold tracking-wider border px-3 py-1 rounded-full ${stateInfo.badgeClass}`}>
-          ● {stateInfo.label}
-        </span>
-        <h3 className="text-lg md:text-xl font-extrabold text-white tracking-tight">
-          Greenroom Core Mind
-        </h3>
-        <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
-          {subtitle}
-        </p>
-      </div>
-    </div>
+    <section className="greenroom-mind" onPointerMove={handlePointerMove} onPointerLeave={resetPointer} aria-label={`Greenroom Mind is ${state.label.toLowerCase()}`}>
+      <div className="greenroom-mind__index" aria-hidden="true">0{state.phase + 1} / 05</div>
+      <motion.div
+        className={`greenroom-mind__object greenroom-mind__object--${state.phase}`}
+        style={reducedMotion ? undefined : { rotateX, rotateY, x: translateX, y: translateY }}
+        transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+        aria-hidden="true"
+      >
+        <span className="mind-orbit mind-orbit--outer" />
+        <span className="mind-orbit mind-orbit--inner" />
+        <span className="mind-plane mind-plane--one" />
+        <span className="mind-plane mind-plane--two" />
+        <span className="mind-center"><span className="mind-center__memory" /><span className="mind-center__signal" /></span>
+      </motion.div>
+      <div className="greenroom-mind__caption"><span className="oryzo-label">GREENROOM MIND · {state.label}</span><p>{subtitle || state.note}</p></div>
+      <ol className="greenroom-mind__states" aria-label="Greenroom processing states">
+        {['REMEMBERING', 'WATCHING', 'WORKING', 'RANKING', 'RETURNED'].map((label, index) => (
+          <li key={label} className={index === state.phase ? 'is-active' : index < state.phase ? 'is-complete' : ''}><span>0{index + 1}</span>{label}</li>
+        ))}
+      </ol>
+    </section>
   );
 }
+
+export default GreenroomCore;

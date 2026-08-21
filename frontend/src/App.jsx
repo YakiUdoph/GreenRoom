@@ -2,13 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useGreenroomState } from './hooks/useGreenroomState';
 import { useGreenroomSocket } from './hooks/useGreenroomSocket';
-import { useMousePosition } from './hooks/useMousePosition';
 import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
 
 import { Sidebar } from './components/layout/Sidebar';
 import { MobileNavbar } from './components/layout/MobileNavbar';
-import { CursorSpotlight } from './components/motion/CursorSpotlight';
 import { PayloadModal } from './components/ui/PayloadModal';
 import { CreatorOnboardingModal } from './components/onboarding/CreatorOnboardingModal';
 import { OfflineLifecycleModal } from './components/activity/OfflineLifecycleModal';
@@ -39,9 +37,6 @@ export function App() {
   const [isMemoryProofModalOpen, setIsMemoryProofModalOpen] = useState(false);
   const [isSpecialistProofModalOpen, setIsSpecialistProofModalOpen] = useState(false);
   const [isNinetySecProofOpen, setIsNinetySecProofOpen] = useState(false);
-
-  // Enable Mouse Position Physics Hook
-  useMousePosition();
 
   // Initialize Real WebSocket Gateway
   useGreenroomSocket();
@@ -221,6 +216,7 @@ export function App() {
           <HomePage
             key="home"
             memoryState={memoryState}
+            mindsStatus={mindsStatus}
             activeCards={activeCards}
             signals={signals}
             onNavigate={(tab) => setActiveTab(tab)}
@@ -297,6 +293,7 @@ export function App() {
           <HomePage
             key="home"
             memoryState={memoryState}
+            mindsStatus={mindsStatus}
             activeCards={activeCards}
             signals={signals}
             onNavigate={(tab) => setActiveTab(tab)}
@@ -331,14 +328,11 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#131313] text-[#e5e2e1] font-sans selection:bg-[#72ff70] selection:text-[#002203] relative overflow-hidden">
+    <div className="min-h-screen flex bg-[#070a08] text-[#edf3ee] font-sans selection:bg-[#193924] selection:text-[#edf3ee] relative overflow-hidden">
       {/* Dynamic Thematic Motion Background based on Active Domain */}
       <AnimatePresence mode="wait">
         {renderBackground()}
       </AnimatePresence>
-
-      {/* Cursor Spotlight Physics */}
-      <CursorSpotlight />
 
       {/* Desktop Side Navigation (Fixed Full-Height Sidebar) */}
       <Sidebar
@@ -348,7 +342,7 @@ export function App() {
       />
 
       {/* Main Content View Container */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto z-10 min-w-0 md:ml-64">
+      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto z-10 min-w-0 lg:ml-64">
         {/* Mobile Navigation Bar & Drawer */}
         <MobileNavbar
           activeTab={activeTab}
