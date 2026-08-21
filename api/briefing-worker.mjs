@@ -1,6 +1,7 @@
 import { createMindsClient } from "@animocabrands/minds-client-lib";
 import { Receiver } from "@upstash/qstash";
 import { Redis } from "@upstash/redis";
+import { parseMindBriefing, requireVerifiedMindReply, validateWorkerConfiguration } from "./worker-guards.mjs";
 
 export const maxDuration = 60;
 
@@ -29,11 +30,24 @@ export default async function handler(req, res) {
   // 1. Read Raw Body Stream for Exact Signature Verification
   const rawBody = await getRawBody(req);
 
+  const missingConfiguration = validateWorkerConfiguration(process.env);
+  if (missingConfiguration.length) {
+    return res.status(503).json({
+      error: `Production worker configuration missing: ${missingConfiguration.join(", ")}`,
+    });
+  }
+
   // QStash Signature Verification Security
   const currentSigningKey = process.env.QSTASH_CURRENT_SIGNING_KEY;
   const nextSigningKey = process.env.QSTASH_NEXT_SIGNING_KEY;
 
-  if (currentSigningKey && nextSigningKey) {
+  if (!currentSigningKey || !nextSigningKey) {
+    return res.status(503).json({
+      error: "QStash signature verification is not configured",
+    });
+  }
+
+  {
     const receiver = new Receiver({
       currentSigningKey,
       nextSigningKey,
@@ -81,24 +95,31 @@ export default async function handler(req, res) {
   // 3. Upstash Redis Connection (DURABLE Persistence)
   const redisUrl = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
   const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
-  const redis = (redisUrl && redisToken) ? new Redis({ url: redisUrl, token: redisToken }) : null;
+  if (!redisUrl || !redisToken) {
+    return res.status(503).json({
+      error: "Durable Upstash Redis persistence is not configured",
+    });
+  }
+  const redis = new Redis({ url: redisUrl, token: redisToken });
 
   const startedAt = new Date().toISOString();
 
   // Mark status = RUNNING in Redis
-  if (redis) {
-    try {
-      const existingStatus = (await redis.get(`greenroom:run_status:${runId}`)) || {};
-      const statusObj = typeof existingStatus === "string" ? JSON.parse(existingStatus) : existingStatus;
-      await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
-        ...statusObj,
-        run_id: runId,
-        status: "RUNNING",
-        started_at: startedAt
-      }));
-    } catch (e) {
-      console.error("[NodeWorker] Redis RUNNING status update error:", e);
-    }
+  try {
+    const existingStatus = (await redis.get(`greenroom:run_status:${runId}`)) || {};
+    const statusObj = typeof existingStatus === "string" ? JSON.parse(existingStatus) : existingStatus;
+    await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
+      ...statusObj,
+      run_id: runId,
+      status: "RUNNING",
+      started_at: startedAt
+    }));
+  } catch (e) {
+    return res.status(503).json({
+      status: "failed",
+      run_id: runId,
+      error: `Durable Redis status update failed: ${e.message || String(e)}`,
+    });
   }
 
   try {
@@ -112,15 +133,13 @@ export default async function handler(req, res) {
       memory_nodes: []
     };
 
-    if (redis) {
-      try {
-        const storedProfile = await redis.get("greenroom:creator_profile");
-        if (storedProfile) {
-          creatorProfile = typeof storedProfile === "string" ? JSON.parse(storedProfile) : storedProfile;
-        }
-      } catch (e) {
-        console.error("[NodeWorker] Redis profile load error:", e);
+    try {
+      const storedProfile = await redis.get("greenroom:creator_profile");
+      if (storedProfile) {
+        creatorProfile = typeof storedProfile === "string" ? JSON.parse(storedProfile) : storedProfile;
       }
+    } catch (e) {
+      throw new Error(`Durable creator memory load failed: ${e.message || String(e)}`);
     }
 
     // 5. Execute Official Animoca Minds Builder API Call
@@ -137,9 +156,12 @@ export default async function handler(req, res) {
     const beforeFingerprint = await mindsClient.getLatestHistoryFingerprint(alias);
 
     const learnedRules = creatorProfile.learned_voice_rules || [];
-    const terminalFocus = learnedRules.some(r => r.toLowerCase().includes("terminal") || r.toLowerCase().includes("open-source"));
-
-    const prompt = `Synthesize While You Were Away briefing from filtered trends, comment insights, and deal scores. Rules: ${JSON.stringify(learnedRules)}`;
+    const demoSignals = [
+      { id: "sig_001", source: "Demo Dataset (Simulated)", signal: "Beginner local AI setup discussions increased; viewers request terminal-first walkthroughs." },
+      { id: "sig_002", source: "Demo Dataset (Simulated)", signal: "A fictional developer-infrastructure sponsor matches the creator's CPM benchmark." },
+      { id: "sig_003", source: "Demo Dataset (Simulated)", signal: "Generic crypto and clickbait topics conflict with stored creator boundaries." },
+    ];
+    const prompt = `You are Greenroom's ranking Mind. Analyze the supplied simulated signals against durable creator memory. Return JSON only with an "items" array ranked best-first. Each item must contain: id, priority, title, category, what_changed, why_it_matters, recommended_action, memory_context_used, status. Do not claim the signals are live or real.\nCreator memory: ${JSON.stringify(creatorProfile)}\nSignals: ${JSON.stringify(demoSignals)}\nLearned rules: ${JSON.stringify(learnedRules)}`;
     await mindsClient.sendMessage({ alias, messageText: prompt });
 
     const timeoutMs = parseInt(process.env.MINDS_REPLY_TIMEOUT_MS || "25000", 10);
@@ -150,15 +172,8 @@ export default async function handler(req, res) {
       sentMessageText: prompt
     });
 
-    let mindReplyText = "";
-    if (outcome.reply) {
-      mindReplyText = outcome.reply.messageText || outcome.reply.text || JSON.stringify(outcome.reply);
-    } else if (outcome.timedOut) {
-      // If waitForReply timed out, fallback to checking conversation reply
-      mindReplyText = `Animoca Mind ${mindId} processed opportunity synthesis for run ${runId}.`;
-    } else {
-      throw new Error("Animoca Mind interaction returned empty response.");
-    }
+    const mindReplyText = requireVerifiedMindReply(outcome);
+    const mindBriefing = parseMindBriefing(mindReplyText);
 
 
     // 6. Build & Persist Completed Briefing to Redis
@@ -168,41 +183,12 @@ export default async function handler(req, res) {
       continuityNote = `Adjusted using your previous feedback: '${learnedRules[learnedRules.length - 1]}'.`;
     }
 
-    const items = [
-      {
-        id: "opp_001",
-        priority: "HIGH PRIORITY",
-        title: "Beginner Local AI Agent Walkthrough Video",
-        category: "Content Strategy",
-        what_changed: "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
-        why_it_matters: "Matches saved goal: 78% viewer retention on setup walkthroughs. " + (terminalFocus ? "Grounding: Persisted rule applied — terminal open-source focus." : "Grounding: Direct developer retention driver."),
-        recommended_action: "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
-        memory_context_used: "profile.brand_voice + retention_node_78%",
-        status: "NEW"
-      },
-      {
-        id: "opp_002",
-        priority: "MEDIUM PRIORITY",
-        title: "TechBrand Inc. Sponsorship Pitch ($5,400 Target)",
-        category: "Monetization",
-        what_changed: "BusinessMind scored 89% brand fit for developer infrastructure sponsor TechBrand Inc.",
-        why_it_matters: `Grounding: Alignment with your $${creatorProfile.monetization_benchmarks?.cpm_target || 45} CPM benchmark and technical audience profile.`,
-        recommended_action: "Approve and send 1-click sponsor integration pitch brief for upcoming workflow video.",
-        memory_context_used: "profile.monetization_benchmarks.cpm_target=45",
-        status: "NEW"
-      },
-      {
-        id: "opp_003",
-        priority: "WATCH",
-        title: "Topic Filter Active: Crypto & Clickbait Suppressed",
-        category: "Signal Filtering",
-        what_changed: "ScoutMind automatically suppressed high-volume crypto trading & generic news clickbait signals.",
-        why_it_matters: "Grounding: Filtered based on creator rejection rules: 'Crypto trading bots', 'Generic AI news clickbait'.",
-        recommended_action: "No action needed — low-signal clickbait kept out of your workflow.",
-        memory_context_used: "profile.rejected_topics",
-        status: "NEW"
-      }
-    ];
+    const items = mindBriefing.items.map((item, index) => ({
+      id: item.id || `opp_${String(index + 1).padStart(3, "0")}`,
+      priority: item.priority || (index === 0 ? "HIGH PRIORITY" : "WATCH"),
+      status: item.status || "NEW",
+      ...item,
+    }));
 
     const provenance = {
       run_id: runId,
@@ -215,7 +201,7 @@ export default async function handler(req, res) {
       mind_id: mindId,
       mind_verified: true,
       demo_mode: false,
-      persistence_mode: redis ? "DURABLE" : "EPHEMERAL",
+      persistence_mode: "DURABLE",
       execution_mode: "QSTASH_BACKGROUND_JOB",
       opportunity_count: items.length
     };
@@ -232,7 +218,7 @@ export default async function handler(req, res) {
       minds_source: "Animoca_Minds_Builder_API",
       minds_status: "COMPLETED",
       minds_verified: true,
-      persistence_mode: redis ? "DURABLE" : "EPHEMERAL",
+      persistence_mode: "DURABLE",
       execution_mode: "QSTASH_BACKGROUND_JOB",
       continuity_note: continuityNote,
       provenance,
@@ -242,18 +228,16 @@ export default async function handler(req, res) {
     };
 
     // Save briefing and COMPLETED run status to Redis
-    if (redis) {
-      await redis.set("greenroom:latest_briefing", JSON.stringify(briefing));
-      await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
-        run_id: runId,
-        status: "COMPLETED",
-        queued_at: startedAt,
-        started_at: startedAt,
-        completed_at: completedAt,
-        briefing_id: runId,
-        provenance
-      }));
-    }
+    await redis.set("greenroom:latest_briefing", JSON.stringify(briefing));
+    await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
+      run_id: runId,
+      status: "COMPLETED",
+      queued_at: startedAt,
+      started_at: startedAt,
+      completed_at: completedAt,
+      briefing_id: runId,
+      provenance
+    }));
 
     return res.status(200).json({ status: "success", run_id: runId, briefing });
 
@@ -261,16 +245,16 @@ export default async function handler(req, res) {
     const failedAt = new Date().toISOString();
     console.error(`[NodeWorker] Background execution error for ${runId}:`, err);
 
-    if (redis) {
-      try {
-        await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
-          run_id: runId,
-          status: "FAILED",
-          started_at: startedAt,
-          completed_at: failedAt,
-          error: err.message || String(err)
-        }));
-      } catch (e) {}
+    try {
+      await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
+        run_id: runId,
+        status: "FAILED",
+        started_at: startedAt,
+        completed_at: failedAt,
+        error: err.message || String(err)
+      }));
+    } catch (e) {
+      console.error(`[NodeWorker] Failed to persist FAILED status for ${runId}:`, e);
     }
 
     return res.status(500).json({

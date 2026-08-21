@@ -100,6 +100,11 @@ class BriefingItemFeedbackRequest(BaseModel):
     feedback_type: str  # useful, not_useful, done, dismiss
     notes: Optional[str] = None
 
+class RejectionRequest(BaseModel):
+    item_id: str
+    reason_category: str
+    notes: Optional[str] = None
+
 class TriggerBriefingRequest(BaseModel):
     accelerated: bool = True
 
@@ -139,6 +144,27 @@ async def trigger_briefing(request: Request, req: Optional[TriggerBriefingReques
     Enqueues job with status QUEUED and returns IMMEDIATELY without waiting for Minds completion.
     """
     minds_manager.validate_configuration()
+
+    is_demo_mode = os.getenv("DEMO_MODE", "").lower() in ("true", "1")
+    if not is_demo_mode:
+        missing = [
+            name for name in (
+                "QSTASH_TOKEN",
+                "QSTASH_CURRENT_SIGNING_KEY",
+                "QSTASH_NEXT_SIGNING_KEY",
+            )
+            if not os.getenv(name)
+        ]
+        if qstash_runner.store.mode_label != "DURABLE":
+            missing.append("UPSTASH_REDIS_REST_URL/TOKEN")
+        if missing:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Production background execution is not fully configured. "
+                    f"Missing: {', '.join(missing)}"
+                ),
+            )
     
     # Construct QStash worker webhook target URL pointing to native Node serverless function
     host = request.headers.get("host", "localhost:8000")

@@ -175,7 +175,7 @@ export function HomePage({
               <button
                 onClick={() => {
                   soundFx.playSynapsePulse();
-                  if (onRunFullDemo) onRunFullDemo();
+                  if (onOpenOfflineModal) onOpenOfflineModal();
                 }}
                 disabled={isExecuting}
                 className="px-5 py-2.5 bg-primary-container text-on-primary-container text-xs font-sans font-bold hover:bg-primary-fixed-dim transition-colors flex items-center gap-2 rounded disabled:opacity-50 shadow-lg shadow-primary-container/20 whitespace-nowrap"
