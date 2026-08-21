@@ -125,7 +125,7 @@ pip install -r requirements.txt
 cd frontend && npm install && cd ..
 ```
 
-### 3. Run Verification Test Suite (30 Tests)
+### 3. Run Verification Test Suite (32 Python + 5 Node Tests)
 ```bash
 python test_greenroom.py
 ```

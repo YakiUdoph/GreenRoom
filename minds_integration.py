@@ -401,24 +401,12 @@ class GreenroomMindsIntegrationManager:
         self.real_mind_data: Dict[str, Any] = {}
 
         if self.builder_api_key:
-            try:
-                self.builder_client = AnimocaMindsBuilderClient(
-                    builder_api_key=self.builder_api_key,
-                    base_url=self.base_url
-                )
-                mind_info = self.verify_real_mind()
-                if mind_info.get("verified") is True:
-                    self.is_connected = True
-                    self.real_mind_data = mind_info
-                    print(f"[AnimocaMindsBuilder] Successfully verified real Mind ID {REAL_PLATFORM_MIND_ID} via Builder API.")
-                else:
-                    self.is_connected = False
-                    self.real_mind_data = mind_info
-                    print(f"[AnimocaMindsBuilder] Real Mind verification failed: {mind_info}")
-            except Exception as e:
-                self.is_connected = False
-                if not self.demo_mode:
-                    print(f"[AnimocaMindsBuilder] Failed to verify real Mind ID {REAL_PLATFORM_MIND_ID}: {e}")
+            # Avoid external network I/O during serverless module import. The
+            # worker proves connectivity by requiring a verified Mind reply.
+            self.builder_client = AnimocaMindsBuilderClient(
+                builder_api_key=self.builder_api_key,
+                base_url=self.base_url
+            )
 
         # Initialize Registered Skills
         self.skills = self._init_skills()
@@ -699,12 +687,13 @@ class GreenroomMindsIntegrationManager:
     def get_status(self) -> Dict[str, Any]:
         from persistence import get_persistence_store
         has_config_error = not self.builder_api_key and not self.demo_mode
-        mode_label = "production" if self.is_connected else ("demo" if self.demo_mode else "production")
+        mode_label = "production" if self.builder_api_key else ("demo" if self.demo_mode else "unconfigured")
         store = get_persistence_store()
 
         return {
             "mode": mode_label,
-            "connected": True,
+            "connected": self.is_connected,
+            "verification_state": "VERIFIED" if self.is_connected else ("DEFERRED_TO_EXECUTION" if self.builder_api_key else "NOT_CONFIGURED"),
             "is_mock": self.demo_mode,
             "builder_api_configured": bool(self.builder_api_key),
             "builder_api_url": self.base_url,
@@ -712,9 +701,9 @@ class GreenroomMindsIntegrationManager:
             "persistence_mode": store.mode_label,
             "real_platform_mind": {
                 "mindId": REAL_PLATFORM_MIND_ID,
-                "email": self.real_mind_data.get("email") or "antigravity@greenroom.ai",
-                "walletAddress": self.real_mind_data.get("walletAddress") or "0x72ff70...002203",
-                "isEnabled": True
+                "email": self.real_mind_data.get("email"),
+                "walletAddress": self.real_mind_data.get("walletAddress"),
+                "isEnabled": self.real_mind_data.get("isEnabled")
             },
             "official_api_methods_used": [
                 "client.getMind(mindId)",

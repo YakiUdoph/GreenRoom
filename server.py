@@ -100,6 +100,11 @@ class BriefingItemFeedbackRequest(BaseModel):
     feedback_type: str  # useful, not_useful, done, dismiss
     notes: Optional[str] = None
 
+class RejectionRequest(BaseModel):
+    item_id: str
+    reason_category: str
+    notes: Optional[str] = None
+
 class TriggerBriefingRequest(BaseModel):
     accelerated: bool = True
 
@@ -139,6 +144,27 @@ async def trigger_briefing(request: Request, req: Optional[TriggerBriefingReques
     Enqueues job with status QUEUED and returns IMMEDIATELY without waiting for Minds completion.
     """
     minds_manager.validate_configuration()
+
+    is_demo_mode = os.getenv("DEMO_MODE", "").lower() in ("true", "1")
+    if not is_demo_mode:
+        missing = [
+            name for name in (
+                "QSTASH_TOKEN",
+                "QSTASH_CURRENT_SIGNING_KEY",
+                "QSTASH_NEXT_SIGNING_KEY",
+            )
+            if not os.getenv(name)
+        ]
+        if qstash_runner.store.mode_label != "DURABLE":
+            missing.append("UPSTASH_REDIS_REST_URL/TOKEN")
+        if missing:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Production background execution is not fully configured. "
+                    f"Missing: {', '.join(missing)}"
+                ),
+            )
     
     # Construct QStash worker webhook target URL pointing to native Node serverless function
     host = request.headers.get("host", "localhost:8000")
@@ -168,10 +194,16 @@ async def trigger_briefing(request: Request, req: Optional[TriggerBriefingReques
 async def briefing_worker(request: Request):
     """
     QStash Webhook Worker Endpoint.
-    Executed independently by QStash or background queue.
-    Verifies QStash signature security when configured.
+    Local demo worker only. Production QStash delivery uses the independently
+    deployed, signature-verifying Node endpoint at /api/briefing-worker.
     """
     minds_manager.validate_configuration()
+
+    if os.getenv("DEMO_MODE", "").lower() not in ("true", "1"):
+        raise HTTPException(
+            status_code=404,
+            detail="Production worker is available at /api/briefing-worker",
+        )
     
     # Security: Verify QStash signing key if set
     current_key = os.getenv("QSTASH_CURRENT_SIGNING_KEY")

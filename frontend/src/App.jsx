@@ -60,15 +60,29 @@ export function App() {
   // Load Real Data from REST API
   const loadInitialData = async () => {
     try {
-      const [mState, mStatus, impHist, sigs] = await Promise.all([
+      const [mState, mStatus, impHist, sigs, latestBriefing] = await Promise.all([
         api.getMemoryState().catch(() => null),
         api.getMindsStatus().catch(() => null),
         api.getImpHistory().catch(() => null),
         api.getSignals().catch(() => null),
+        api.getLatestBriefing().catch(() => null),
       ]);
 
-      if (mState) greenroomStore.setMemoryState(mState);
-      if (mStatus) greenroomStore.setMindsStatus(mStatus);
+      if (mState) {
+        greenroomStore.setMemoryState({
+          ...mState,
+          latest_briefing: latestBriefing?.briefing || mState.latest_briefing || null,
+        });
+      }
+      if (mStatus) {
+        const executionVerified = latestBriefing?.briefing?.minds_verified === true
+          && latestBriefing?.briefing?.provenance?.mind_verified === true;
+        greenroomStore.setMindsStatus(executionVerified ? {
+          ...mStatus,
+          connected: true,
+          verification_state: 'VERIFIED_BY_COMPLETED_RUN',
+        } : mStatus);
+      }
       if (impHist) greenroomStore.setImpHistory(impHist);
       if (sigs && sigs.signals) greenroomStore.setSignals(sigs.signals);
     } catch (err) {

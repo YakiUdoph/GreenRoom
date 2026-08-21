@@ -68,9 +68,17 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
           if (latestStatus === 'COMPLETED') {
             completed = true;
           }
+          if (latestStatus === 'FAILED') {
+            throw new Error(statusRes.error || 'Background run failed.');
+          }
         } catch (pollErr) {
+          if (latestStatus === 'FAILED') throw pollErr;
           console.warn('[OfflineModal] Polling error:', pollErr);
         }
+      }
+
+      if (!completed) {
+        throw new Error('Background run did not complete before the polling window ended.');
       }
 
       setStep(6); // Step 6: Result Persisted
@@ -244,7 +252,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
                   {step === 1 && `Creator "${creatorName}" identity rules & $45 CPM benchmark verified in memory store.`}
                   {step === 2 && `POST /api/briefing/trigger called. Background job enqueued with status QUEUED.`}
                   {step === 3 && `Simulating creator closing browser tab to record content. Greenroom operates autonomously.`}
-                  {step === 4 && `QStash worker endpoint /api/briefing/worker triggered via webhook.`}
+                  {step === 4 && `QStash worker endpoint /api/briefing-worker triggered via signed webhook.`}
                   {step === 5 && `Greenroom Core Mind + Scout, Community, and Business Minds querying Animoca Minds Builder API.`}
                   {step === 6 && `Executive Briefing and provenance metadata durably saved to latest_briefing.json / Upstash Redis.`}
                   {step === 7 && `Creator re-opens dashboard. Polling confirms job completion.`}
@@ -283,7 +291,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
                         WHILE YOU WERE AWAY... BRIEFING
                       </span>
                       <h3 className="text-lg font-display font-bold text-white mt-1">
-                        Script Concept: {briefingData?.script_concept?.title || 'Beginner AI Workflows & Automation'}
+                        {briefingData?.items?.[0]?.title || briefingData?.script_concept?.title || 'Ranked briefing ready'}
                       </h3>
                     </div>
 
@@ -293,8 +301,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
                   </div>
 
                   <p className="font-mono text-xs text-zinc-300 leading-relaxed bg-[#0a0c0e] p-3.5 rounded border border-outline-variant whitespace-pre-wrap">
-                    {briefingData?.script_concept?.concept ||
-                      `WHILE YOU WERE AWAY BRIEFING:\n\n[SCOUT MIND]\nFlagged high-volume niche trend while filtering out clickbait noise.\n\n[COMMUNITY MIND]\nHigh positive viewer demand for beginner setup walkthroughs.\n\n[BUSINESS MIND]\nMatched TechBrand Inc. pitch brief against creator $45 CPM target benchmark.`}
+                    {briefingData?.items?.[0]?.recommended_action || briefingData?.script_concept?.concept || 'The completed briefing is available on the main dashboard.'}
                   </p>
 
                   <div className="flex justify-between items-center pt-2 font-mono text-xs">
