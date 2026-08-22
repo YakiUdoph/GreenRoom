@@ -168,32 +168,122 @@ export function validateObjectiveSnapshot(snapshot) {
   });
 }
 
-export function buildObjectiveAwareSignals(objective) {
-  const target = `${objective.title} ${objective.constraints}`.toLowerCase();
-  const monetization = ["paid", "sponsor", "partnership", "monetary", "revenue", "collaboration"]
-    .some((term) => target.includes(term));
-  const terminal = ["terminal", "local ai", "command line", "cli"]
-    .some((term) => target.includes(term));
+const SIGNAL_CLASSIFIER_VERSION = "objective_signal_classifier_v2";
+const EXCLUSION_MARKERS = ["do not", "don't", "avoid", "exclude", "reject", "without", "not"];
+const INTENT_TERMS = {
+  ai_video_tools: ["ai video", "video generation", "video editing", "animation", "creator workflow tools"],
+  monetization: ["paid", "sponsor", "partnership", "monetary", "revenue", "collaboration", "brand deal", "campaign"],
+  terminal_local_ai: ["terminal", "local ai", "command line", "cli"],
+};
 
-  if (monetization) {
-    return [
+function matchingTerms(text, terms) {
+  return terms.filter((term) => text.includes(term));
+}
+
+function splitIntentText(text) {
+  const clauses = String(text || "").toLowerCase().split(/(?<=[.!?;])|\n+/).map((part) => part.trim()).filter(Boolean);
+  const positiveClauses = [];
+  const excludedClauses = [];
+  const exclusionMarkersDetected = [];
+  for (const clause of clauses) {
+    const matches = EXCLUSION_MARKERS.map((marker) => ({
+      marker,
+      match: new RegExp(`\\b${marker.replace("'", "['’]")}\\b`, "i").exec(clause),
+    })).filter((entry) => entry.match).sort((a, b) => a.match.index - b.match.index);
+    if (matches.length) {
+      const exclusionStart = matches[0].match.index;
+      const positivePrefix = clause.slice(0, exclusionStart).replace(/[,;:\s]+$/, "").trim();
+      if (positivePrefix) positiveClauses.push(positivePrefix);
+      excludedClauses.push(clause.slice(exclusionStart));
+      exclusionMarkersDetected.push(matches[0].marker);
+    } else {
+      positiveClauses.push(clause);
+    }
+  }
+  return { positiveClauses, excludedClauses, exclusionMarkersDetected };
+}
+
+export function classifyObjectiveSignals(objective) {
+  const titleParts = splitIntentText(objective.title);
+  const constraintParts = splitIntentText(objective.constraints);
+  const positiveText = [...titleParts.positiveClauses, ...constraintParts.positiveClauses].join(" ");
+  const exclusionText = [...titleParts.excludedClauses, ...constraintParts.excludedClauses].join(" ");
+  const positiveMatches = Object.fromEntries(
+    Object.entries(INTENT_TERMS).map(([category, terms]) => [category, matchingTerms(positiveText, terms)])
+  );
+  const allTerms = [...new Set(Object.values(INTENT_TERMS).flat())];
+  const exclusionTermsDetected = matchingTerms(exclusionText, allTerms);
+
+  // Explicit creator-tool intent has priority over broader commercial terms.
+  const selectedCategory = positiveMatches.ai_video_tools.length
+    ? "ai_video_tools"
+    : positiveMatches.monetization.length
+      ? "monetization"
+      : positiveMatches.terminal_local_ai.length
+        ? "terminal_local_ai"
+        : "generic";
+
+  let signals;
+  if (selectedCategory === "ai_video_tools") {
+    signals = [
+      {
+        id: "sig_001",
+        source: "Demo Dataset (Simulated)",
+        category: "video_generation",
+        candidate: "Simulated AI video generation workspace",
+        signal: "A simulated creator tool turns a written concept and reference frames into draft video sequences, reducing first-cut production time; its practical tradeoff is that visual continuity and fine scene control still require creator review.",
+      },
+      {
+        id: "sig_002",
+        source: "Demo Dataset (Simulated)",
+        category: "video_editing_workflow",
+        candidate: "Simulated AI-assisted editing workflow",
+        signal: "A simulated editing tool combines transcript-based cuts, rough assembly, reframing, and caption preparation in one creator workflow, speeding repetitive post-production; its limitation is that pacing, narrative judgment, and final polish remain manual.",
+      },
+      {
+        id: "sig_003",
+        source: "Demo Dataset (Simulated)",
+        category: "animation_motion",
+        candidate: "Simulated animation and motion workflow",
+        signal: "A simulated motion tool converts approved visual assets into short animated sequences and reusable motion variants, accelerating intros and social cutdowns; its tradeoff is limited precision for complex character motion and brand-specific art direction.",
+      },
+    ];
+  } else if (selectedCategory === "monetization") {
+    signals = [
       { id: "sig_001", source: "Demo Dataset (Simulated)", signal: "A simulated paid AI infrastructure sponsorship matches the creator audience and includes explicit compensation terms." },
       { id: "sig_002", source: "Demo Dataset (Simulated)", signal: "A simulated Web3 ecosystem partnership offers a paid educational collaboration with deliverables and budget disclosed." },
       { id: "sig_003", source: "Demo Dataset (Simulated)", signal: "A simulated exposure-only awareness campaign has no creator compensation and conflicts with the active constraints." },
     ];
-  }
-  if (terminal) {
-    return [
+  } else if (selectedCategory === "terminal_local_ai") {
+    signals = [
       { id: "sig_001", source: "Demo Dataset (Simulated)", signal: "Audience requests for terminal-first local AI walkthroughs increased in the simulated dataset." },
       { id: "sig_002", source: "Demo Dataset (Simulated)", signal: "A simulated developer-tools collaboration supports practical command-line education." },
       { id: "sig_003", source: "Demo Dataset (Simulated)", signal: "Generic awareness content lacks the practical depth required by the active objective." },
     ];
+  } else {
+    signals = [
+      { id: "sig_001", source: "Demo Dataset (Simulated)", signal: `A simulated opportunity directly relevant to the active objective: ${objective.title}` },
+      { id: "sig_002", source: "Demo Dataset (Simulated)", signal: `A simulated alternative must be evaluated against these constraints: ${objective.constraints}` },
+      { id: "sig_003", source: "Demo Dataset (Simulated)", signal: "A simulated generic campaign lacks a clear connection to the active objective." },
+    ];
   }
-  return [
-    { id: "sig_001", source: "Demo Dataset (Simulated)", signal: `A simulated opportunity directly relevant to the active objective: ${objective.title}` },
-    { id: "sig_002", source: "Demo Dataset (Simulated)", signal: `A simulated alternative must be evaluated against these constraints: ${objective.constraints}` },
-    { id: "sig_003", source: "Demo Dataset (Simulated)", signal: "A simulated generic campaign lacks a clear connection to the active objective." },
-  ];
+
+  return {
+    signals,
+    provenance: {
+      selected_signal_category: selectedCategory,
+      positive_intent_terms_matched: positiveMatches[selectedCategory] || [],
+      exclusion_markers_detected: [...new Set([...titleParts.exclusionMarkersDetected, ...constraintParts.exclusionMarkersDetected])],
+      exclusion_terms_detected: exclusionTermsDetected,
+      classification_version: SIGNAL_CLASSIFIER_VERSION,
+      classification_strategy: "positive_clauses_with_explicit_exclusions",
+      evidence_mode: "SIMULATED",
+    },
+  };
+}
+
+export function buildObjectiveAwareSignals(objective) {
+  return classifyObjectiveSignals(objective).signals;
 }
 
 export function buildMindsPrompt(objective, creatorProfile, signals) {

@@ -4,7 +4,7 @@ import { Redis } from "@upstash/redis";
 import {
   buildMindsPrompt,
   buildMindReplyDiagnostics,
-  buildObjectiveAwareSignals,
+  classifyObjectiveSignals,
   parseMindBriefing,
   normalizeMindReply,
   resolveIdempotentBriefing,
@@ -220,7 +220,8 @@ export default async function handler(req, res) {
     const beforeFingerprint = await mindsClient.getLatestHistoryFingerprint(alias);
 
     const learnedRules = creatorProfile.learned_voice_rules || [];
-    const demoSignals = buildObjectiveAwareSignals(objective);
+    const signalClassification = classifyObjectiveSignals(objective);
+    const demoSignals = signalClassification.signals;
     const prompt = buildMindsPrompt(objective, creatorProfile, demoSignals);
     await mindsClient.sendMessage({ alias, messageText: prompt });
 
@@ -260,6 +261,7 @@ export default async function handler(req, res) {
       status: "COMPLETED",
       signal_source: "Demo Dataset (Simulated)",
       signal_mode: "DEMO",
+      signal_classification: signalClassification.provenance,
       analysis_provider: "Animoca Minds",
       mind_id: mindId,
       mind_verified: true,

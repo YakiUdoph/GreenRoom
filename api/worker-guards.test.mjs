@@ -5,6 +5,7 @@ import {
   buildMindReplyDiagnostics,
   buildObjectiveAwareSignals,
   classifyMindReplyText,
+  classifyObjectiveSignals,
   normalizeMindReply,
   parseMindBriefing,
   requireVerifiedMindReply,
@@ -33,6 +34,12 @@ test("a timed-out Mind call cannot be reported as completed", () => {
 });
 
 const VALID = '{"items":[{"id":"sig_1","priority":1,"title":"A","category":"Content","what_changed":"Demand rose","why_it_matters":"Matches memory","recommended_action":"Publish","memory_context_used":"voice","status":"recommended"}]}';
+const OBJECTIVE_B = {
+  objective_id: "obj_video",
+  title: "Research emerging AI video creation tools that could improve a creator's production workflow.",
+  constraints: "Prioritize tools for video generation, editing and animation. Focus on practical workflow improvements. Do not recommend sponsorships, paid campaigns or creator brand deals.",
+  fingerprint: "fingerprint-video",
+};
 
 test("valid Run-A-style raw JSON supplies the ranked briefing", () => {
   const result = parseMindBriefing(VALID);
@@ -100,6 +107,72 @@ test("Objective B is authoritative in the Minds prompt despite stale profile obj
   assert.match(prompt, /Return exactly one JSON object/);
   assert.match(prompt, /No Markdown\. No code fences\. No commentary\. No HTML\/XML/);
   assert.ok(signals.every((signal) => !signal.signal.toLowerCase().includes("terminal-first")));
+});
+
+test("exact Objective B selects simulated AI-video tools and preserves its snapshot", () => {
+  const before = structuredClone(OBJECTIVE_B);
+  const result = classifyObjectiveSignals(OBJECTIVE_B);
+
+  assert.equal(result.provenance.selected_signal_category, "ai_video_tools");
+  assert.deepEqual(OBJECTIVE_B, before);
+  assert.deepEqual(result.provenance.positive_intent_terms_matched, ["ai video", "video generation", "animation"]);
+  assert.ok(result.provenance.exclusion_markers_detected.includes("do not"));
+  assert.ok(result.provenance.exclusion_terms_detected.includes("paid"));
+  assert.ok(result.provenance.exclusion_terms_detected.includes("sponsor"));
+  assert.ok(result.signals.every((signal) => signal.source === "Demo Dataset (Simulated)"));
+  assert.ok(result.signals.every((signal) => !/sponsor|paid campaign|brand deal|partnership/i.test(signal.signal)));
+  assert.deepEqual(result.signals.map((signal) => signal.category), [
+    "video_generation", "video_editing_workflow", "animation_motion",
+  ]);
+});
+
+test("prohibited paid campaigns and sponsorships do not create positive monetization intent", () => {
+  const result = classifyObjectiveSignals({
+    title: "Evaluate creator opportunities",
+    constraints: "Do not recommend paid campaigns or sponsorships.",
+  });
+  assert.equal(result.provenance.selected_signal_category, "generic");
+  assert.deepEqual(result.provenance.positive_intent_terms_matched, []);
+  assert.ok(result.provenance.exclusion_terms_detected.includes("paid"));
+  assert.ok(result.provenance.exclusion_terms_detected.includes("sponsor"));
+});
+
+test("genuinely positive sponsorship objective still selects monetization", () => {
+  const result = classifyObjectiveSignals({
+    title: "Find paid sponsorship opportunities for my creator brand",
+    constraints: "Require clear value.",
+  });
+  assert.equal(result.provenance.selected_signal_category, "monetization");
+  assert.deepEqual(result.provenance.positive_intent_terms_matched, ["paid", "sponsor"]);
+});
+
+test("AI-video intent outranks excluded brand deals", () => {
+  const result = classifyObjectiveSignals({
+    title: "Find AI video generation and editing tools, avoid brand deals",
+    constraints: "Focus on creator workflow improvements.",
+  });
+  assert.equal(result.provenance.selected_signal_category, "ai_video_tools");
+  assert.ok(result.provenance.exclusion_terms_detected.includes("brand deal"));
+});
+
+test("terminal/local-AI and generic objectives retain their bundles", () => {
+  const terminal = classifyObjectiveSignals({ title: "Teach terminal-first local AI", constraints: "Use a CLI" });
+  const generic = classifyObjectiveSignals({ title: "Improve my content planning", constraints: "Keep it practical" });
+  assert.equal(terminal.provenance.selected_signal_category, "terminal_local_ai");
+  assert.match(terminal.signals[0].signal, /terminal-first local AI/);
+  assert.equal(generic.provenance.selected_signal_category, "generic");
+});
+
+test("classification provenance is safe and describes the simulated strategy", () => {
+  const provenance = classifyObjectiveSignals(OBJECTIVE_B).provenance;
+  assert.deepEqual(Object.keys(provenance).sort(), [
+    "classification_strategy", "classification_version", "evidence_mode",
+    "exclusion_markers_detected", "exclusion_terms_detected",
+    "positive_intent_terms_matched", "selected_signal_category",
+  ]);
+  assert.equal(provenance.classification_version, "objective_signal_classifier_v2");
+  assert.equal(provenance.evidence_mode, "SIMULATED");
+  assert.equal(JSON.stringify(provenance).includes(OBJECTIVE_B.constraints), false);
 });
 
 test("completed duplicate QStash delivery returns only its matching run briefing", () => {
