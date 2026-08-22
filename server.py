@@ -310,6 +310,19 @@ def get_briefing_status(run_id: Optional[str] = None):
 
     return qstash_runner.get_status(run_id)
 
+@app.get("/api/briefing/recent")
+def get_recent_briefing_runs():
+    """Returns a capped, sanitized run-status index for production diagnosis."""
+    public_fields = (
+        "run_id", "status", "queued_at", "started_at", "completed_at",
+        "objective_id", "objective_fingerprint",
+    )
+    runs = [
+        {field: item.get(field) for field in public_fields}
+        for item in qstash_runner.store.get_recent_runs()[:20]
+    ]
+    return {"status": "success", "runs": runs}
+
 
 @app.post("/api/briefing/feedback")
 def submit_briefing_feedback(req: BriefingItemFeedbackRequest):

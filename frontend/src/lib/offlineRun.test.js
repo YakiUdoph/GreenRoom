@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { verifyRunBriefing, verifySavedObjective } from './offlineRun.js';
+import { isOlderBriefingAfterFailedRun, verifyRunBriefing, verifySavedObjective } from './offlineRun.js';
 
 test('verifies the exact durable objective before enqueue', () => {
   const objective = { id: 'obj_b', title: 'Objective B', details: 'Constraint B' };
@@ -10,6 +10,15 @@ test('verifies the exact durable objective before enqueue', () => {
     () => verifySavedObjective({ creator_objectives: [{ ...objective, details: 'Changed' }] }, objective),
     /does not match/
   );
+});
+
+test('labels an older successful briefing after a different run fails', () => {
+  assert.equal(isOlderBriefingAfterFailedRun(
+    { run_id: 'run_a' }, { run_id: 'run_b', status: 'FAILED' }
+  ), true);
+  assert.equal(isOlderBriefingAfterFailedRun(
+    { run_id: 'run_a' }, { run_id: 'run_a', status: 'COMPLETED' }
+  ), false);
 });
 
 test('Run B Delivery rejects Run A even when it is presented as latest', () => {

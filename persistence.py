@@ -40,6 +40,12 @@ class PersistenceStore:
     def get_run_status(self, run_id: str) -> Optional[Dict[str, Any]]:
         raise NotImplementedError
 
+    def get_recent_runs(self) -> List[Dict[str, Any]]:
+        raise NotImplementedError
+
+    def save_recent_runs(self, runs: List[Dict[str, Any]]) -> None:
+        raise NotImplementedError
+
 
 class LocalFileStore(PersistenceStore):
     """Local File Persistence Store for local development & testing."""
@@ -49,6 +55,7 @@ class LocalFileStore(PersistenceStore):
         data_dir = os.path.dirname(os.path.abspath(profile_path))
         self.run_status_path = os.path.join(data_dir, "run_statuses.json")
         self.run_briefings_path = os.path.join(data_dir, "run_briefings.json")
+        self.recent_runs_path = os.path.join(data_dir, "recent_runs.json")
 
     @property
     def mode_label(self) -> str:
@@ -126,6 +133,13 @@ class LocalFileStore(PersistenceStore):
     def get_run_status(self, run_id: str) -> Optional[Dict[str, Any]]:
         return self._read_json_map(self.run_status_path).get(run_id)
 
+    def get_recent_runs(self) -> List[Dict[str, Any]]:
+        value = self._read_json_map(self.recent_runs_path)
+        return value if isinstance(value, list) else []
+
+    def save_recent_runs(self, runs: List[Dict[str, Any]]) -> None:
+        self._write_json_map(self.recent_runs_path, runs)
+
     def _default_profile(self) -> Dict[str, Any]:
         return {
             "creator_name": "Alex Rivera",
@@ -150,6 +164,7 @@ class EphemeralTmpStore(PersistenceStore):
         self.briefing_path = "/tmp/latest_briefing.json"
         self.run_status_path = "/tmp/run_statuses.json"
         self.run_briefings_path = "/tmp/run_briefings.json"
+        self.recent_runs_path = "/tmp/recent_runs.json"
 
     @property
     def mode_label(self) -> str:
@@ -250,6 +265,20 @@ class EphemeralTmpStore(PersistenceStore):
                 pass
         return None
 
+    def get_recent_runs(self) -> List[Dict[str, Any]]:
+        if os.path.exists(self.recent_runs_path):
+            try:
+                with open(self.recent_runs_path, "r", encoding="utf-8") as f:
+                    value = json.load(f)
+                    return value if isinstance(value, list) else []
+            except Exception:
+                pass
+        return []
+
+    def save_recent_runs(self, runs: List[Dict[str, Any]]) -> None:
+        with open(self.recent_runs_path, "w", encoding="utf-8") as f:
+            json.dump(runs, f, indent=2)
+
 
 class UpstashRedisStore(PersistenceStore):
     """
@@ -348,6 +377,19 @@ class UpstashRedisStore(PersistenceStore):
             except Exception:
                 pass
         return None
+
+    def get_recent_runs(self) -> List[Dict[str, Any]]:
+        val = self._redis_cmd(["GET", "greenroom:recent_runs"])
+        if val:
+            try:
+                value = json.loads(val)
+                return value if isinstance(value, list) else []
+            except Exception:
+                pass
+        return []
+
+    def save_recent_runs(self, runs: List[Dict[str, Any]]) -> None:
+        self._redis_cmd(["SET", "greenroom:recent_runs", json.dumps(runs)])
 
 
 def get_persistence_store() -> PersistenceStore:

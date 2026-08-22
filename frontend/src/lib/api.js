@@ -82,6 +82,8 @@ export const api = {
 
   getLatestBriefing: () => request('/api/briefing/latest'),
 
+  getRecentBriefingRuns: () => request('/api/briefing/recent'),
+
   getRunBriefing: (runId) => request(`/api/briefing/run/${encodeURIComponent(runId)}`),
 
   getBriefingStatus: (runId) =>

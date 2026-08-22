@@ -16,3 +16,12 @@ export function verifyRunBriefing(briefing, runId, objectiveId) {
   }
   return briefing;
 }
+
+export function isOlderBriefingAfterFailedRun(briefing, latestRun) {
+  return Boolean(
+    latestRun?.status === 'FAILED'
+    && latestRun.run_id
+    && briefing?.run_id
+    && latestRun.run_id !== briefing.run_id
+  );
+}

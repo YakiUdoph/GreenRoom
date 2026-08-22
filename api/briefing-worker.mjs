@@ -3,13 +3,15 @@ import { Receiver } from "@upstash/qstash";
 import { Redis } from "@upstash/redis";
 import {
   buildMindsPrompt,
+  buildMindReplyDiagnostics,
   buildObjectiveAwareSignals,
   parseMindBriefing,
-  requireVerifiedMindReply,
+  normalizeMindReply,
   resolveIdempotentBriefing,
   validateObjectiveSnapshot,
   validateWorkerConfiguration,
   verifyMindIdentity,
+  updateRecentRunIndex,
 } from "./worker-guards.mjs";
 
 export const maxDuration = 60;
@@ -29,6 +31,16 @@ async function getRawBody(req) {
     chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk);
   }
   return Buffer.concat(chunks).toString("utf-8");
+}
+
+async function persistRunStatus(redis, runId, status) {
+  await redis.set(`greenroom:run_status:${runId}`, JSON.stringify(status));
+  const existing = await redis.get("greenroom:recent_runs");
+  let parsed = existing;
+  if (typeof existing === "string") {
+    try { parsed = JSON.parse(existing); } catch { parsed = []; }
+  }
+  await redis.set("greenroom:recent_runs", JSON.stringify(updateRecentRunIndex(parsed, status)));
 }
 
 export default async function handler(req, res) {
@@ -100,6 +112,7 @@ export default async function handler(req, res) {
   }
   const runId = payload.run_id || `run_${Math.random().toString(36).substring(2, 10)}`;
   let objective;
+  let replyDiagnostics = null;
   try {
     objective = validateObjectiveSnapshot(payload.objective);
   } catch (error) {
@@ -144,14 +157,22 @@ export default async function handler(req, res) {
         idempotent_replay: true,
       });
     }
+    if (statusObj.status === "FAILED") {
+      return res.status(500).json({
+        status: "failed",
+        run_id: runId,
+        error: statusObj.error || "Background run previously failed",
+        idempotent_replay: true,
+      });
+    }
 
-    await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
+    await persistRunStatus(redis, runId, {
       ...statusObj,
       run_id: runId,
       status: "RUNNING",
       started_at: startedAt,
       objective_snapshot: objective,
-    }));
+    });
   } catch (e) {
     return res.status(503).json({
       status: "failed",
@@ -211,7 +232,8 @@ export default async function handler(req, res) {
       sentMessageText: prompt
     });
 
-    const mindReplyText = requireVerifiedMindReply(outcome);
+    replyDiagnostics = buildMindReplyDiagnostics(outcome, objective, runId);
+    const { text: mindReplyText } = normalizeMindReply(outcome);
     const mindBriefing = parseMindBriefing(mindReplyText);
 
 
@@ -273,7 +295,7 @@ export default async function handler(req, res) {
     // The per-run record is authoritative; latest is only a convenience pointer.
     await redis.set(`greenroom:briefing:${runId}`, JSON.stringify(briefing));
     await redis.set("greenroom:latest_briefing", JSON.stringify(briefing));
-    await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
+    await persistRunStatus(redis, runId, {
       ...statusObj,
       run_id: runId,
       status: "COMPLETED",
@@ -283,7 +305,7 @@ export default async function handler(req, res) {
       briefing_id: runId,
       objective_snapshot: objective,
       provenance
-    }));
+    });
 
     return res.status(200).json({ status: "success", run_id: runId, briefing });
 
@@ -292,15 +314,16 @@ export default async function handler(req, res) {
     console.error(`[NodeWorker] Background execution error for ${runId}:`, err);
 
     try {
-      await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
+      await persistRunStatus(redis, runId, {
         ...statusObj,
         run_id: runId,
         status: "FAILED",
         started_at: startedAt,
         completed_at: failedAt,
         objective_snapshot: objective,
-        error: err.message || String(err)
-      }));
+        error: err.message || String(err),
+        reply_diagnostics: replyDiagnostics,
+      });
     } catch (e) {
       console.error(`[NodeWorker] Failed to persist FAILED status for ${runId}:`, e);
     }

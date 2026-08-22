@@ -32,6 +32,15 @@ class RecordingCore:
         }
 
 
+class FailingCore:
+    def __init__(self):
+        self.calls = 0
+
+    async def run_autonomous_cycle(self, objective_snapshot=None, run_id=None):
+        self.calls += 1
+        raise ValueError("Animoca Mind briefing response was HTML/XML-like, not JSON")
+
+
 class ObjectiveBoundRunTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -116,6 +125,27 @@ class ObjectiveBoundRunTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn(objective_a["id"], ids)
         self.assertIn(objective_b["id"], ids)
+
+    async def test_failed_run_isolated_from_previous_latest_and_duplicate_failure(self):
+        objective_a = snapshot("obj_a", "Objective A", "Constraint A")
+        objective_b = snapshot("obj_b", "Objective B", "Constraint B")
+        job_a = await self.enqueue_local(objective_a)
+        job_b = await self.enqueue_local(objective_b)
+        await self.runner.execute_worker_job(RecordingCore(), job_a["run_id"])
+        latest_a = self.store.get_latest_briefing()
+        failing = FailingCore()
+
+        first = await self.runner.execute_worker_job(failing, job_b["run_id"])
+        second = await self.runner.execute_worker_job(failing, job_b["run_id"])
+
+        self.assertEqual("FAILED", first["status"])
+        self.assertEqual("FAILED", second["status"])
+        self.assertEqual(1, failing.calls)
+        self.assertTrue(second["idempotent_replay"])
+        self.assertIsNone(self.store.get_run_briefing(job_b["run_id"]))
+        self.assertEqual(latest_a, self.store.get_latest_briefing())
+        self.assertEqual(objective_b, self.runner.get_status(job_b["run_id"])["objective_snapshot"])
+        self.assertEqual("obj_b", self.store.get_recent_runs()[0]["objective_id"])
 
 
 if __name__ == "__main__":

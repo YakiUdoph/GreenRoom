@@ -88,6 +88,19 @@ class QStashJobRunner:
         for k, v in kwargs.items():
             existing[k] = v
         self.store.save_run_status(run_id, existing)
+        recent_entry = {
+            "run_id": run_id,
+            "status": status,
+            "queued_at": existing.get("queued_at"),
+            "started_at": existing.get("started_at"),
+            "completed_at": existing.get("completed_at"),
+            "objective_id": (existing.get("objective_snapshot") or {}).get("objective_id"),
+            "objective_fingerprint": (existing.get("objective_snapshot") or {}).get("fingerprint"),
+            "error": existing.get("error") if status == "FAILED" else None,
+            "reply_diagnostics": existing.get("reply_diagnostics") if status == "FAILED" else None,
+        }
+        recent = [item for item in self.store.get_recent_runs() if item.get("run_id") != run_id]
+        self.store.save_recent_runs([recent_entry, *recent][:20])
         return existing
 
     async def enqueue_run(
@@ -171,6 +184,8 @@ class QStashJobRunner:
             briefing = self.store.get_run_briefing(run_id)
             if briefing and briefing.get("run_id") == run_id:
                 return {**existing, "idempotent_replay": True}
+        if existing.get("status") == "FAILED":
+            return {**existing, "idempotent_replay": True}
 
         objective_snapshot = objective_snapshot or existing.get("objective_snapshot")
         if not objective_snapshot:

@@ -48,18 +48,20 @@ export function App() {
   // Load Real Data from REST API
   const loadInitialData = async () => {
     try {
-      const [mState, mStatus, impHist, sigs, latestBriefing] = await Promise.all([
+      const [mState, mStatus, impHist, sigs, latestBriefing, recentRuns] = await Promise.all([
         api.getMemoryState().catch(() => null),
         api.getMindsStatus().catch(() => null),
         api.getImpHistory().catch(() => null),
         api.getSignals().catch(() => null),
         api.getLatestBriefing().catch(() => null),
+        api.getRecentBriefingRuns().catch(() => null),
       ]);
 
       if (mState) {
         greenroomStore.setMemoryState({
           ...mState,
           latest_briefing: latestBriefing?.briefing || mState.latest_briefing || null,
+          latest_offline_run: recentRuns?.runs?.[0] || null,
         });
       }
       if (mStatus) {
@@ -328,6 +330,10 @@ export function App() {
         onBriefingUpdated={(briefing) => {
           const current = greenroomStore.getState().memoryState;
           greenroomStore.setMemoryState({ ...current, latest_briefing: briefing });
+        }}
+        onRunStatusChanged={(latestOfflineRun) => {
+          const current = greenroomStore.getState().memoryState;
+          greenroomStore.setMemoryState({ ...current, latest_offline_run: latestOfflineRun });
         }}
       />
 

@@ -4,7 +4,7 @@ import { api } from '../../lib/api';
 import { verifyRunBriefing, verifySavedObjective } from '../../lib/offlineRun';
 import { soundFx } from '../../lib/sound';
 
-export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memoryState }) {
+export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRunStatusChanged, memoryState }) {
   const [step, setStep] = useState(0); // 0: Idle/Start, 1: Objective Persisted, 2: Triggering Job, 3: Creator Offline, 4: Worker Executing, 5: Minds Processing, 6: Persisted, 7: Creator Returns, 8: Briefing Ready
   const [runId, setRunId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
@@ -35,6 +35,8 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
     soundFx.playSynapsePulse();
     setErrorMessage(null);
 
+    let activeRunId = null;
+    let activeObjectiveId = null;
     try {
       const durableState = await api.getMemoryState();
       const savedObjective = verifySavedObjective(durableState, currentObjective);
@@ -49,9 +51,12 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
         throw new Error('The queued run is not bound to the selected objective.');
       }
       const rid = res.run_id;
+      activeRunId = rid;
+      activeObjectiveId = savedObjective.id;
       setRunId(rid);
       setJobStatus(res.job_status || 'QUEUED');
       setExecutionMode(res.execution_mode || 'QSTASH_BACKGROUND_JOB');
+      onRunStatusChanged?.({ run_id: rid, objective_id: savedObjective.id, status: res.job_status || 'QUEUED' });
 
       await new Promise((r) => setTimeout(r, 800));
       setStep(3); // Step 3: Creator Offline
@@ -99,6 +104,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
       if (onBriefingUpdated) {
         onBriefingUpdated(briefing);
       }
+      onRunStatusChanged?.({ run_id: rid, objective_id: savedObjective.id, status: 'COMPLETED' });
 
       setStep(7); // Step 7: Creator Returns
       soundFx.playSuccessChime();
@@ -108,6 +114,14 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
     } catch (err) {
       console.error('[OfflineModal] Error in offline chain:', err);
       setErrorMessage(err.message || 'Error executing background job chain.');
+      if (activeRunId) {
+        onRunStatusChanged?.({
+          run_id: activeRunId,
+          objective_id: activeObjectiveId,
+          status: 'FAILED',
+          error: err.message || 'Background run failed.',
+        });
+      }
       setStep(0);
     }
   };

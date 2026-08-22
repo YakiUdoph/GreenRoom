@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
+import { isOlderBriefingAfterFailedRun } from '../../lib/offlineRun';
 
 export function WhileYouWereAwaySurface({ briefingData, memoryState, onNavigate }) {
   const suppliedBriefing = Array.isArray(briefingData?.items) ? briefingData : null;
@@ -17,6 +18,7 @@ export function WhileYouWereAwaySurface({ briefingData, memoryState, onNavigate 
     recommended_action: briefing.script_concept?.concept || briefing.recommended_action,
   } : null;
   const rankedItems = items.length > 0 ? items.slice(0, 3) : (legacyItem ? [legacyItem] : []);
+  const isOlderBriefing = isOlderBriefingAfterFailedRun(briefing, memoryState?.latest_offline_run);
 
   return (
     <section id="while-you-were-away" className="noir-card p-5 md:p-7 bg-[#0e1014]/92 border border-primary-fixed/30 shadow-2xl space-y-5">
@@ -37,6 +39,12 @@ export function WhileYouWereAwaySurface({ briefingData, memoryState, onNavigate 
           {hasCompletedRun ? 'BRIEFING COMPLETE' : 'WAITING FOR FIRST RUN'}
         </span>
       </div>
+
+      {isOlderBriefing && (
+        <div className="p-3 rounded border border-rose-800 bg-rose-950/50 text-xs text-rose-200">
+          The newest offline run failed. The briefing below is an older successful run and is not the failed run's result.
+        </div>
+      )}
 
       {hasCompletedRun ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
