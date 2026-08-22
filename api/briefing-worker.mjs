@@ -47,6 +47,37 @@ async function scheduleCollection(targetUrl, payload, env = process.env, delaySe
   return extractSafeSdkMetadata(parseStored(text));
 }
 function stages(status, values) { return { ...(status.stage_timestamps || {}), ...values }; }
+function safeScheduleError(error) {
+  return String(error?.message || error || "Unknown QStash scheduling error")
+    .slice(0, 240)
+    .replace(/(bearer|authorization|token|api[-_ ]?key)\s*[:=]\s*\S+/gi, "$1=[REDACTED]");
+}
+async function enqueueCollectionWithTelemetry({ redis, runId, status, targetUrl, payload, env, delaySeconds, enqueue }) {
+  const attemptedAt = isoNow();
+  const attemptNumber = (status.collection_schedule_attempt || 0) + 1;
+  const diagnostic = { attempt: attemptNumber, attempted_at: attemptedAt, delay_seconds: delaySeconds, target_host: new URL(targetUrl).host };
+  status = await persistRunStatus(redis, runId, {
+    ...status,
+    collection_schedule_attempt: attemptNumber,
+    last_collection_schedule: { ...diagnostic, outcome: "PUBLISHING" },
+  });
+  try {
+    const metadata = await enqueue(targetUrl, payload, env, delaySeconds);
+    status = await persistRunStatus(redis, runId, {
+      ...status,
+      next_collection_delay_seconds: delaySeconds,
+      collection_schedule_metadata: metadata,
+      last_collection_schedule: { ...diagnostic, outcome: "PUBLISHED", published_at: isoNow() },
+    });
+    return status;
+  } catch (error) {
+    await persistRunStatus(redis, runId, {
+      ...status,
+      last_collection_schedule: { ...diagnostic, outcome: "FAILED", failed_at: isoNow(), error: safeScheduleError(error) },
+    });
+    throw error;
+  }
+}
 
 function buildBriefing({ runId, objective, status, mindBriefing, mindReplyText, completedAt }) {
   const items = mindBriefing.items.map((item, index) => ({ id: item.id || `opp_${String(index + 1).padStart(3, "0")}`, priority: item.priority || (index ? "WATCH" : "HIGH PRIORITY"), status: item.status || "NEW", ...item }));
@@ -66,7 +97,7 @@ async function handleSubmission({ redis, mindsClient, runId, objective, targetUr
   if (["SUBMITTING", "WAITING_FOR_MINDS"].includes(status.status)) {
     if (status.status === "WAITING_FOR_MINDS") {
       const delaySeconds = collectionDelaySeconds(status.submitted_at, now);
-      await enqueue(targetUrl, { run_id: runId, objective }, env, delaySeconds);
+      await enqueueCollectionWithTelemetry({ redis, runId, status, targetUrl, payload: { run_id: runId, objective }, env, delaySeconds, enqueue });
     }
     return { httpStatus: 202, body: { status: status.status, run_id: runId, idempotent_replay: true } };
   }
@@ -94,8 +125,7 @@ async function handleSubmission({ redis, mindsClient, runId, objective, targetUr
   const replyDeadlineAt = new Date(Date.parse(submittedAt) + deadlineMs).toISOString();
   status = await persistRunStatus(redis, runId, { ...status, status: "WAITING_FOR_MINDS", submitted_at: submittedAt, reply_deadline_at: replyDeadlineAt, collection_attempt: 0, message_metadata: extractSafeSdkMetadata(sendResult), stage_timestamps: stages(status, { message_submitted: submittedAt, waiting_began: submittedAt }) });
   const delaySeconds = collectionDelaySeconds(submittedAt, new Date(submittedAt));
-  const scheduleMetadata = await enqueue(targetUrl, { run_id: runId, objective }, env, delaySeconds);
-  await persistRunStatus(redis, runId, { ...status, next_collection_delay_seconds: delaySeconds, collection_schedule_metadata: scheduleMetadata });
+  await enqueueCollectionWithTelemetry({ redis, runId, status, targetUrl, payload: { run_id: runId, objective }, env, delaySeconds, enqueue });
   return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, submitted_at: submittedAt, reply_deadline_at: replyDeadlineAt } };
 }
 
@@ -128,8 +158,7 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
       return { httpStatus: 200, body: { status: "FAILED", run_id: runId, error: failed.error } };
     }
     const delaySeconds = collectionDelaySeconds(status.submitted_at, now);
-    const scheduleMetadata = await enqueue(targetUrl, { run_id: runId, objective }, env, delaySeconds);
-    await persistRunStatus(redis, runId, { ...status, next_collection_delay_seconds: delaySeconds, collection_schedule_metadata: scheduleMetadata });
+    await enqueueCollectionWithTelemetry({ redis, runId, status, targetUrl, payload: { run_id: runId, objective }, env, delaySeconds, enqueue });
     return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, collection_attempt: attempt, next_collection_delay_seconds: delaySeconds } };
   }
   const replyFoundAt = isoNow(now);

@@ -53,9 +53,34 @@ test("submission returns WAITING without synchronously waiting and records safe 
   assert.equal(status.signal_classification.selected_signal_category, "ai_video_tools");
   assert.equal(status.conversation_metadata.conversationId, "conversation-safe");
   assert.equal(status.message_metadata.messageId, "message-safe");
+  assert.equal(status.collection_schedule_attempt, 1);
+  assert.equal(status.last_collection_schedule.outcome, "PUBLISHED");
+  assert.equal(status.last_collection_schedule.delay_seconds, 5);
+  assert.equal(status.last_collection_schedule.target_host, "example.test");
   assert.equal("ignoredSecret" in status.message_metadata, false);
   assert.equal(typeof status.submitted_prompt_hash, "string");
   assert.equal(JSON.stringify(status).includes("Persisted creator memory"), false);
+});
+
+test("failed continuation publication persists safe scheduling diagnostics", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds();
+  await assert.rejects(
+    processWorkerPhase({
+      phase: "submit",
+      ...runArgs(redis, minds, {
+        enqueue: async () => { throw new Error("QStash collection scheduling failed with HTTP 404"); },
+      }),
+    }),
+    /HTTP 404/,
+  );
+  const status = redis.json("greenroom:run_status:run_b");
+  assert.equal(status.status, "WAITING_FOR_MINDS");
+  assert.equal(status.collection_attempt, 0);
+  assert.equal(status.collection_schedule_attempt, 1);
+  assert.equal(status.last_collection_schedule.outcome, "FAILED");
+  assert.match(status.last_collection_schedule.error, /HTTP 404/);
+  assert.equal(status.last_collection_schedule.target_host, "example.test");
 });
 
 test("duplicate submission never resends the Minds prompt", async () => {
