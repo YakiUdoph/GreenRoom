@@ -245,8 +245,7 @@ class UpstashRedisStore(PersistenceStore):
                 data = json.loads(resp.read().decode("utf-8"))
                 return data.get("result")
         except Exception as e:
-            print(f"[UpstashRedisStore] HTTP Error executing {command[0]}: {e}")
-            return None
+            raise RuntimeError(f"Upstash command {command[0]} failed: {e}") from e
 
     def get_creator_profile(self) -> Dict[str, Any]:
         val = self._redis_cmd(["GET", "greenroom:creator_profile"])

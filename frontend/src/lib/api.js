@@ -20,6 +20,12 @@ async function request(endpoint, options = {}) {
 
 export const api = {
   getMemoryState: () => request('/api/state'),
+
+  rememberPreference: (preference) =>
+    request('/api/memory/preferences', {
+      method: 'POST',
+      body: JSON.stringify({ preference }),
+    }),
   
   getMindsStatus: () => request('/api/minds/status'),
   

@@ -31,6 +31,11 @@ class GreenroomMemoryEngine:
     def save_state(self) -> None:
         self.store.save_creator_profile(self.state)
 
+    def reload_state(self) -> Dict[str, Any]:
+        """Refresh this engine instance from the configured persistence store."""
+        self.state = self.store.get_creator_profile()
+        return self.state
+
 
     def retrieve_relevant_context(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         scored_nodes = []
@@ -147,6 +152,45 @@ class GreenroomMemoryEngine:
         except Exception:
             pass
         self.save_state()
+
+    def remember_preference(self, preference: str) -> Dict[str, Any]:
+        """Persist an explicit creator preference and confirm it can be read back."""
+        if not isinstance(preference, str) or not preference.strip():
+            raise ValueError("Preference must not be empty")
+
+        # Serverless instances can outlive one another. Always merge this write into
+        # the latest durable profile instead of an instance's startup snapshot.
+        self.reload_state()
+        rules = self.state.setdefault("learned_voice_rules", [])
+        if preference in rules:
+            return {"preference": preference, "created": False}
+
+        node = {
+            "node_id": f"mem_{int(time.time()*1000)}",
+            "type": "learned_preference",
+            "timestamp": time.time(),
+            "content": preference,
+            "key_takeaways": ["Explicit creator preference", preference]
+        }
+        rules.append(preference)
+        self.state.setdefault("memory_nodes", []).append(node)
+
+        try:
+            self.save_state()
+            persisted = self.store.get_creator_profile()
+            if preference not in persisted.get("learned_voice_rules", []):
+                raise RuntimeError("Preference was not confirmed in the persistence store")
+        except Exception:
+            rules.remove(preference)
+            self.state["memory_nodes"].remove(node)
+            raise
+
+        try:
+            minds_manager.update_learned_preference(preference)
+        except Exception:
+            pass
+
+        return {"preference": preference, "created": True, "memory_node": node}
 
     def add_objective(self, title: str, details: str = "") -> Dict[str, Any]:
         """

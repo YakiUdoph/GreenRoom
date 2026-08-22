@@ -160,11 +160,9 @@ export function App() {
   const handleSubmitFeedback = async (feedbackText) => {
     setIsExecuting(true);
     try {
-      const res = await api.submitActionFeedback(feedbackText);
+      const res = await api.rememberPreference(feedbackText);
       if (res.state) greenroomStore.setMemoryState(res.state);
-      if (res.minds_status) greenroomStore.setMindsStatus(res.minds_status);
-    } catch (err) {
-      console.error('[GreenroomApp] Error submitting feedback:', err);
+      return res;
     } finally {
       setIsExecuting(false);
     }

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { GreenroomCore } from '../components/mind/GreenroomCore';
+import { getDisplayMemories } from '../lib/memoryPresentation';
 
 const clean = (v = '') => String(v).replace(/ScoutMind detected/i, 'Greenroom found').replaceAll('_', ' ');
 const process = [['01','REMEMBER','Holds the creator context that makes the next decision specific.'],['02','WATCH','Keeps the current objective in view while you are away.'],['03','INTERPRET','Reads new signal against persistent creator context.'],['04','RETURN','Ranks what matters and makes the next action clear.']];
@@ -7,7 +8,7 @@ const process = [['01','REMEMBER','Holds the creator context that makes the next
 export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreateObjective, onRunObjective, isExecuting }) {
   const [editing, setEditing] = useState(false); const [title, setTitle] = useState(''); const [details, setDetails] = useState('');
   const objective = memoryState?.creator_objectives?.[0]; const briefing = memoryState?.latest_briefing; const items = Array.isArray(briefing?.items) ? briefing.items.slice(0,3) : [];
-  const memories = useMemo(() => [...new Set([...(memoryState?.learned_voice_rules || []), ...(memoryState?.memory_nodes || []).map(n => n?.content || n?.memory || n?.text || n?.summary).filter(Boolean)])].slice(0,3), [memoryState]);
+  const memories = useMemo(() => getDisplayMemories(memoryState).slice(0,3), [memoryState]);
   const rawState = objective?.status === 'RUNNING' ? 'WORKING' : items.length ? 'RETURNED' : objective ? 'WATCHING' : 'REMEMBERING';
   const save = async e => { e.preventDefault(); if (!title.trim()) return; await onCreateObjective(title.trim(), details.trim()); setEditing(false); setTitle(''); setDetails(''); };
   return <div className="manus-home">

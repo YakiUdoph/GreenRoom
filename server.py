@@ -95,6 +95,9 @@ class ArtifactRequest(BaseModel):
 class RuleRequest(BaseModel):
     rule: str
 
+class PreferenceRequest(BaseModel):
+    preference: str
+
 class BriefingItemFeedbackRequest(BaseModel):
     item_id: str
     feedback_type: str  # useful, not_useful, done, dismiss
@@ -112,7 +115,24 @@ class TriggerBriefingRequest(BaseModel):
 # REST Endpoints
 @app.get("/api/state")
 def get_state():
-    return memory_tool.get_full_state()
+    return memory_tool.reload_state()
+
+@app.post("/api/memory/preferences")
+def remember_preference(req: PreferenceRequest):
+    """Persist creator-authored memory without coupling the write to a Minds run."""
+    try:
+        result = memory_tool.remember_preference(req.preference)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Could not persist preference: {exc}") from exc
+
+    return {
+        "status": "success",
+        **result,
+        "persistence_mode": memory_tool.persistence_mode,
+        "state": memory_tool.get_full_state()
+    }
 
 @app.get("/api/minds/status")
 def get_minds_status():
