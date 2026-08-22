@@ -5,8 +5,7 @@ import { useGreenroomSocket } from './hooks/useGreenroomSocket';
 import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
 
-import { Sidebar } from './components/layout/Sidebar';
-import { MobileNavbar } from './components/layout/MobileNavbar';
+import { ManusHeader } from './components/layout/ManusHeader';
 import { PayloadModal } from './components/ui/PayloadModal';
 import { CreatorOnboardingModal } from './components/onboarding/CreatorOnboardingModal';
 import { OfflineLifecycleModal } from './components/activity/OfflineLifecycleModal';
@@ -14,12 +13,6 @@ import { MemoryBehaviorProofModal } from './components/memory/MemoryBehaviorProo
 import { SpecialistMindsProofModal } from './components/mind/SpecialistMindsProofModal';
 import { NinetySecondProofModal } from './components/memory/NinetySecondProofModal';
 
-import { HomeBackground } from './components/motion/HomeBackground';
-import { MindBackground } from './components/motion/MindBackground';
-import { MemoryBackground } from './components/motion/MemoryBackground';
-import { IntelligenceBackground } from './components/motion/IntelligenceBackground';
-import { ActionsBackground } from './components/motion/ActionsBackground';
-import { SystemBackground } from './components/motion/SystemBackground';
 
 import { HomePage } from './pages/HomePage';
 import { MindPage } from './pages/MindPage';
@@ -256,6 +249,7 @@ export function App() {
           <IntelligencePage
             key="intelligence"
             impMessages={impMessages}
+            memoryState={memoryState}
             onInspectPayload={(msg) => greenroomStore.openPayloadModal(msg)}
             onRunStep={handleRunStep}
             onOpenSpecialistProofModal={() => setIsSpecialistProofModalOpen(true)}
@@ -305,51 +299,10 @@ export function App() {
     }
   };
 
-  // Render Dynamic Thematic Motion Background based on activeTab
-  const renderBackground = () => {
-    switch (activeTab) {
-      case 'home':
-        return <HomeBackground key="bg-home" />;
-      case 'mind':
-        return <MindBackground key="bg-mind" />;
-      case 'memory':
-        return <MemoryBackground key="bg-memory" />;
-      case 'intelligence':
-        return <IntelligenceBackground key="bg-intelligence" />;
-      case 'actions':
-        return <ActionsBackground key="bg-actions" />;
-      case 'system':
-        return <SystemBackground key="bg-system" />;
-      case 'docs':
-        return <SystemBackground key="bg-docs" />;
-      default:
-        return <HomeBackground key="bg-[#default]" />;
-    }
-  };
-
   return (
-    <div className="min-h-screen flex bg-[#070a08] text-[#edf3ee] font-sans selection:bg-[#193924] selection:text-[#edf3ee] relative overflow-hidden">
-      {/* Dynamic Thematic Motion Background based on Active Domain */}
-      <AnimatePresence mode="wait">
-        {renderBackground()}
-      </AnimatePresence>
-
-      {/* Desktop Side Navigation (Fixed Full-Height Sidebar) */}
-      <Sidebar
-        activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab)}
-        onInitialize={loadInitialData}
-      />
-
-      {/* Main Content View Container */}
-      <main className="flex-1 flex flex-col min-h-screen overflow-y-auto z-10 min-w-0 lg:ml-64">
-        {/* Mobile Navigation Bar & Drawer */}
-        <MobileNavbar
-          activeTab={activeTab}
-          onTabChange={(tab) => setActiveTab(tab)}
-          onInitialize={loadInitialData}
-        />
-
+    <div className="app-shell">
+      <ManusHeader activeTab={activeTab} onTabChange={setActiveTab} creatorName={memoryState?.creator_name || 'Creator'} />
+      <main className="app-main">
         <AnimatePresence mode="wait">
           {renderPage()}
         </AnimatePresence>
