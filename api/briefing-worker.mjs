@@ -34,17 +34,38 @@ function assertMatchingRun(status, runId, objective) {
     throw new Error("QStash objective snapshot does not match the queued run snapshot");
   }
 }
-async function scheduleCollection(targetUrl, payload, env = process.env, delaySeconds = 15) {
+const QSTASH_FALLBACK_HOSTS = [
+  "qstash-us-east-1.upstash.io",
+  "qstash-us-west-1.upstash.io",
+  "qstash-eu-west-1.upstash.io",
+  "qstash.upstash.io",
+];
+function qstashPublishHosts(env) {
+  let primary = "qstash.upstash.io";
+  if (env.QSTASH_URL) {
+    try { primary = new URL(env.QSTASH_URL).host || primary; }
+    catch { primary = env.QSTASH_URL.replace(/^https?:\/\//, "").split("/")[0] || primary; }
+  }
+  return [primary, ...QSTASH_FALLBACK_HOSTS.filter((host) => host !== primary)];
+}
+export async function scheduleCollection(targetUrl, payload, env = process.env, delaySeconds = 15, fetchImpl = fetch) {
   if (!env.QSTASH_TOKEN) throw new Error("QSTASH_TOKEN is required to schedule Minds collection");
-  const base = (env.QSTASH_URL || "https://qstash.upstash.io").replace(/\/$/, "");
-  const response = await fetch(`${base}/v2/publish/${targetUrl}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${env.QSTASH_TOKEN}`, "Content-Type": "application/json", "Upstash-Delay": `${Math.max(5, delaySeconds)}s`, "Upstash-Retries": "2" },
-    body: JSON.stringify({ ...payload, phase: "collect" }),
-  });
-  const text = await response.text();
-  if (!response.ok) throw new Error(`QStash collection scheduling failed with HTTP ${response.status}`);
-  return extractSafeSdkMetadata(parseStored(text));
+  let lastRegionMismatch = null;
+  for (const host of qstashPublishHosts(env)) {
+    const response = await fetchImpl(`https://${host}/v2/publish/${targetUrl}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${env.QSTASH_TOKEN}`, "Content-Type": "application/json", "Upstash-Delay": `${Math.max(5, delaySeconds)}s`, "Upstash-Retries": "2" },
+      body: JSON.stringify({ ...payload, phase: "collect" }),
+    });
+    const text = await response.text();
+    if (response.ok) {
+      return { ...extractSafeSdkMetadata(parseStored(text)), host, http_status: response.status };
+    }
+    const regionMismatch = response.status === 404 && text.toLowerCase().includes("not found in this region");
+    if (!regionMismatch) throw new Error(`QStash collection scheduling failed with HTTP ${response.status} on ${host}`);
+    lastRegionMismatch = new Error(`QStash collection scheduling failed with regional HTTP 404 on ${host}`);
+  }
+  throw lastRegionMismatch || new Error("QStash collection scheduling failed without a supported host");
 }
 function stages(status, values) { return { ...(status.stage_timestamps || {}), ...values }; }
 function safeScheduleError(error) {

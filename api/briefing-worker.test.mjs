@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { processWorkerPhase } from "./briefing-worker.mjs";
+import { processWorkerPhase, scheduleCollection } from "./briefing-worker.mjs";
 
 const OBJECTIVE = Object.freeze({ objective_id: "obj_video", title: "Research emerging AI video creation tools", constraints: "Prioritize video generation and editing. Do not recommend paid sponsorships.", fingerprint: "fp_objective" });
 const VALID = JSON.stringify({ items: [{ id: "sig_1", priority: 1, title: "Video workflow", category: "tool", what_changed: "Drafts are faster", why_it_matters: "It serves the objective", recommended_action: "Compare the workflow", memory_context_used: "Concise", status: "recommended" }] });
@@ -39,6 +39,110 @@ function fakeMinds(history = []) {
 const env = { QSTASH_TOKEN: "test", MINDS_REPLY_DEADLINE_MS: "600000" };
 const targetUrl = "https://example.test/api/briefing-worker";
 const runArgs = (redis, mindsClient, extras = {}) => ({ redis, mindsClient, runId: "run_b", objective: OBJECTIVE, targetUrl, env, enqueue: async () => ({ messageId: "qstash-safe" }), ...extras });
+
+function qstashResponse(status, body = {}) {
+  return { ok: status >= 200 && status < 300, status, async text() { return typeof body === "string" ? body : JSON.stringify(body); } };
+}
+
+test("QStash primary host success publishes once without fallback", async () => {
+  const requests = [];
+  const result = await scheduleCollection(targetUrl, { run_id: "run_b", objective: OBJECTIVE }, { QSTASH_TOKEN: "secret", QSTASH_URL: "https://primary.example" }, 5, async (url, options) => {
+    requests.push({ url, options });
+    return qstashResponse(201, { messageId: "message-primary" });
+  });
+  assert.equal(requests.length, 1);
+  assert.match(requests[0].url, /^https:\/\/primary\.example\/v2\/publish\//);
+  assert.equal(result.messageId, "message-primary");
+  assert.equal(result.host, "primary.example");
+});
+
+test("QStash regional 404 falls back with unchanged payload and delay", async () => {
+  const requests = [];
+  const result = await scheduleCollection(targetUrl, { run_id: "run_b", objective: OBJECTIVE }, { QSTASH_TOKEN: "secret", QSTASH_URL: "https://primary.example" }, 5, async (url, options) => {
+    requests.push({ url, options });
+    return requests.length === 1
+      ? qstashResponse(404, "queue was not found in this region")
+      : qstashResponse(200, { messageId: "message-fallback" });
+  });
+  assert.equal(requests.length, 2);
+  assert.match(requests[1].url, /^https:\/\/qstash-us-east-1\.upstash\.io\/v2\/publish\//);
+  assert.equal(requests[1].options.headers["Upstash-Delay"], "5s");
+  assert.deepEqual(JSON.parse(requests[1].options.body), { run_id: "run_b", objective: OBJECTIVE, phase: "collect" });
+  assert.equal(result.messageId, "message-fallback");
+  assert.equal(result.host, "qstash-us-east-1.upstash.io");
+});
+
+test("QStash can succeed on a later supported regional host", async () => {
+  const hosts = [];
+  const result = await scheduleCollection(targetUrl, { run_id: "run_b", objective: OBJECTIVE }, { QSTASH_TOKEN: "secret", QSTASH_URL: "https://primary.example" }, 10, async (url) => {
+    hosts.push(new URL(url).host);
+    return hosts.length < 3 ? qstashResponse(404, "not found in this region") : qstashResponse(201, { messageId: "message-third" });
+  });
+  assert.deepEqual(hosts, ["primary.example", "qstash-us-east-1.upstash.io", "qstash-us-west-1.upstash.io"]);
+  assert.equal(result.messageId, "message-third");
+});
+
+test("all regional mismatches fail safely without a fake published result", async () => {
+  const hosts = [];
+  await assert.rejects(
+    scheduleCollection(targetUrl, { run_id: "run_b", objective: OBJECTIVE }, { QSTASH_TOKEN: "secret", QSTASH_URL: "https://primary.example" }, 15, async (url) => {
+      hosts.push(new URL(url).host);
+      return qstashResponse(404, "not found in this region");
+    }),
+    /regional HTTP 404/,
+  );
+  assert.deepEqual(hosts, ["primary.example", "qstash-us-east-1.upstash.io", "qstash-us-west-1.upstash.io", "qstash-eu-west-1.upstash.io", "qstash.upstash.io"]);
+});
+
+for (const status of [400, 401, 403]) {
+  test(`QStash HTTP ${status} fails immediately without regional fallback`, async () => {
+    let requests = 0;
+    await assert.rejects(
+      scheduleCollection(targetUrl, { run_id: "run_b", objective: OBJECTIVE }, { QSTASH_TOKEN: "secret", QSTASH_URL: "https://primary.example" }, 5, async () => {
+        requests++;
+        return qstashResponse(status, "request rejected");
+      }),
+      new RegExp(`HTTP ${status}`),
+    );
+    assert.equal(requests, 1);
+  });
+}
+
+test("an arbitrary HTTP 404 does not trigger regional fallback", async () => {
+  let requests = 0;
+  await assert.rejects(
+    scheduleCollection(targetUrl, { run_id: "run_b", objective: OBJECTIVE }, { QSTASH_TOKEN: "secret", QSTASH_URL: "https://primary.example" }, 5, async () => {
+      requests++;
+      return qstashResponse(404, "route not found");
+    }),
+    /HTTP 404/,
+  );
+  assert.equal(requests, 1);
+});
+
+test("HTTP 5xx does not trigger regional fallback", async () => {
+  let requests = 0;
+  await assert.rejects(
+    scheduleCollection(targetUrl, { run_id: "run_b", objective: OBJECTIVE }, { QSTASH_TOKEN: "secret", QSTASH_URL: "https://primary.example" }, 5, async () => {
+      requests++;
+      return qstashResponse(503, "temporarily unavailable");
+    }),
+    /HTTP 503/,
+  );
+  assert.equal(requests, 1);
+});
+
+test("network failure does not trigger regional fallback", async () => {
+  let requests = 0;
+  await assert.rejects(
+    scheduleCollection(targetUrl, { run_id: "run_b", objective: OBJECTIVE }, { QSTASH_TOKEN: "secret", QSTASH_URL: "https://primary.example" }, 5, async () => {
+      requests++;
+      throw new Error("network unavailable");
+    }),
+    /network unavailable/,
+  );
+  assert.equal(requests, 1);
+});
 
 test("submission returns WAITING without synchronously waiting and records safe metadata", async () => {
   const redis = initialRedis();
@@ -81,6 +185,25 @@ test("failed continuation publication persists safe scheduling diagnostics", asy
   assert.equal(status.last_collection_schedule.outcome, "FAILED");
   assert.match(status.last_collection_schedule.error, /HTTP 404/);
   assert.equal(status.last_collection_schedule.target_host, "example.test");
+});
+
+test("successful regional fallback persists the real QStash message ID", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds();
+  let requests = 0;
+  const fallbackEnv = { ...env, QSTASH_URL: "https://primary.example" };
+  const enqueue = (url, payload, activeEnv, delay) => scheduleCollection(url, payload, activeEnv, delay, async () => {
+    requests++;
+    return requests === 1
+      ? qstashResponse(404, "not found in this region")
+      : qstashResponse(201, { messageId: "persisted-fallback-message" });
+  });
+  await processWorkerPhase({ phase: "submit", ...runArgs(redis, minds, { env: fallbackEnv, enqueue }) });
+  const status = redis.json("greenroom:run_status:run_b");
+  assert.equal(minds.calls.send, 1);
+  assert.equal(status.last_collection_schedule.outcome, "PUBLISHED");
+  assert.equal(status.collection_schedule_metadata.messageId, "persisted-fallback-message");
+  assert.equal(status.collection_schedule_metadata.host, "qstash-us-east-1.upstash.io");
 });
 
 test("duplicate submission never resends the Minds prompt", async () => {
