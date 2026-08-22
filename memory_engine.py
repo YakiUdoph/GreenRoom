@@ -196,8 +196,14 @@ class GreenroomMemoryEngine:
         """
         Creates and persists a real Creator Objective with lifecycle status 'CREATED'.
         """
+        if not isinstance(title, str) or not title.strip():
+            raise ValueError("Objective title must not be empty")
+
+        # Merge into the newest durable profile so a warm, stale serverless
+        # instance cannot replace objectives written by another instance.
+        self.reload_state()
         objectives = self.state.setdefault("creator_objectives", [])
-        obj_id = f"obj_{int(time.time())}"
+        obj_id = f"obj_{int(time.time() * 1000)}"
         entry = {
             "id": obj_id,
             "title": title,
@@ -209,6 +215,15 @@ class GreenroomMemoryEngine:
         }
         objectives.insert(0, entry)
         self.save_state()
+        persisted = self.store.get_creator_profile()
+        if not any(
+            objective.get("id") == obj_id
+            and objective.get("title") == title
+            and objective.get("details", "") == details
+            for objective in persisted.get("creator_objectives", [])
+        ):
+            objectives.remove(entry)
+            raise RuntimeError("Objective was not confirmed in the persistence store")
         return entry
 
     def update_objective_status(self, objective_id: str, status: str, result: Optional[Dict[str, Any]] = None) -> Optional[Dict[str, Any]]:

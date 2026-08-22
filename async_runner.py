@@ -90,13 +90,22 @@ class QStashJobRunner:
         self.store.save_run_status(run_id, existing)
         return existing
 
-    async def enqueue_run(self, worker_target_url: str, run_id: Optional[str] = None) -> Dict[str, Any]:
+    async def enqueue_run(
+        self,
+        worker_target_url: str,
+        objective_snapshot: Dict[str, Any],
+        run_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Creates run_id, persists status = QUEUED, publishes job to QStash,
         and returns IMMEDIATELY without invoking agent execution in Python process.
         """
         rid = run_id or f"run_{uuid.uuid4().hex[:8]}"
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        required = ("objective_id", "title", "constraints")
+        if not isinstance(objective_snapshot, dict) or any(key not in objective_snapshot for key in required):
+            raise ValueError("A complete objective snapshot is required to enqueue a run")
+        immutable_snapshot = dict(objective_snapshot)
 
         status_data = self.save_status(
             rid,
@@ -104,10 +113,11 @@ class QStashJobRunner:
             queued_at=now_iso,
             started_at=None,
             completed_at=None,
-            error=None
+            error=None,
+            objective_snapshot=immutable_snapshot
         )
 
-        payload = {"run_id": rid, "queued_at": now_iso}
+        payload = {"run_id": rid, "queued_at": now_iso, "objective": immutable_snapshot}
 
         token = os.getenv("QSTASH_TOKEN")
         if token:
@@ -128,6 +138,7 @@ class QStashJobRunner:
                 "run_id": rid,
                 "status": "QUEUED",
                 "queued_at": now_iso,
+                "objective": immutable_snapshot,
                 "execution_mode": "QSTASH_BACKGROUND_JOB",
                 "qstash_published": True,
                 "message": "Autonomous job queued to QStash."
@@ -138,29 +149,52 @@ class QStashJobRunner:
             "run_id": rid,
             "status": "QUEUED",
             "queued_at": now_iso,
+            "objective": immutable_snapshot,
             "execution_mode": "LOCAL_ASYNC_QUEUE",
             "qstash_published": False,
             "message": "Autonomous job queued locally."
         }
 
 
-    async def execute_worker_job(self, core_mind, run_id: str) -> Dict[str, Any]:
+    async def execute_worker_job(
+        self,
+        core_mind,
+        run_id: str,
+        objective_snapshot: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
         """
         Invoked by the worker endpoint (/api/briefing/worker).
         Transitions status: QUEUED -> RUNNING -> COMPLETED or FAILED durably.
         """
+        existing = self.store.get_run_status(run_id) or {}
+        if existing.get("status") == "COMPLETED":
+            briefing = self.store.get_run_briefing(run_id)
+            if briefing and briefing.get("run_id") == run_id:
+                return {**existing, "idempotent_replay": True}
+
+        objective_snapshot = objective_snapshot or existing.get("objective_snapshot")
+        if not objective_snapshot:
+            raise ValueError(f"Run {run_id} has no immutable objective snapshot")
+
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         self.save_status(run_id, status="RUNNING", started_at=now_iso)
 
         try:
-            briefing = await core_mind.run_autonomous_cycle()
+            briefing = await core_mind.run_autonomous_cycle(
+                objective_snapshot=objective_snapshot,
+                run_id=run_id
+            )
             completed_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
             
             # Update provenance execution_mode
             if isinstance(briefing, dict):
                 briefing.setdefault("provenance", {})["execution_mode"] = "QSTASH_BACKGROUND_JOB"
                 briefing.setdefault("provenance", {})["run_id"] = run_id
+                briefing.setdefault("provenance", {})["objective_id"] = objective_snapshot["objective_id"]
                 briefing["run_id"] = run_id
+                briefing["objective_id"] = objective_snapshot["objective_id"]
+                briefing["objective_snapshot"] = objective_snapshot
+                self.store.save_run_briefing(run_id, briefing)
                 self.store.save_briefing(briefing)
 
             status_data = self.save_status(

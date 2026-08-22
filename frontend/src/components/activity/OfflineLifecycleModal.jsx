@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
+import { verifyRunBriefing, verifySavedObjective } from '../../lib/offlineRun';
 import { soundFx } from '../../lib/sound';
 
 export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memoryState }) {
@@ -14,6 +15,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
 
   const creatorName = memoryState?.creator_name || 'ALEX RIVERA';
   const niche = memoryState?.niche || 'Developer Tools & AI Automation';
+  const currentObjective = memoryState?.creator_objectives?.[0] || null;
 
   useEffect(() => {
     let timer;
@@ -32,14 +34,21 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
   const handleStartChainSimulation = async () => {
     soundFx.playSynapsePulse();
     setErrorMessage(null);
-    setStep(1); // Step 1: Objective Persisted
-
-    await new Promise((r) => setTimeout(r, 600));
-    setStep(2); // Step 2: Triggering Job
 
     try {
-      const res = await api.triggerBriefing();
-      const rid = res.run_id || `run_${Math.random().toString(36).substring(2, 10)}`;
+      const durableState = await api.getMemoryState();
+      const savedObjective = verifySavedObjective(durableState, currentObjective);
+      setStep(1); // Step 1: Objective Persisted
+
+      await new Promise((r) => setTimeout(r, 600));
+      setStep(2); // Step 2: Triggering Job
+
+      const res = await api.triggerBriefing(savedObjective.id);
+      if (!res.run_id) throw new Error('The queue did not return a run ID.');
+      if (res.objective?.objective_id !== savedObjective.id) {
+        throw new Error('The queued run is not bound to the selected objective.');
+      }
+      const rid = res.run_id;
       setRunId(rid);
       setJobStatus(res.job_status || 'QUEUED');
       setExecutionMode(res.execution_mode || 'QSTASH_BACKGROUND_JOB');
@@ -84,12 +93,11 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
       setStep(6); // Step 6: Result Persisted
       await new Promise((r) => setTimeout(r, 800));
 
-      const briefingRes = await api.getLatestBriefing();
-      if (briefingRes && briefingRes.briefing) {
-        setBriefingData(briefingRes.briefing);
-        if (onBriefingUpdated) {
-          onBriefingUpdated(briefingRes.briefing);
-        }
+      const briefingRes = await api.getRunBriefing(rid);
+      const briefing = verifyRunBriefing(briefingRes?.briefing, rid, savedObjective.id);
+      setBriefingData(briefing);
+      if (onBriefingUpdated) {
+        onBriefingUpdated(briefing);
       }
 
       setStep(7); // Step 7: Creator Returns

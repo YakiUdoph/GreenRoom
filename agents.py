@@ -248,7 +248,12 @@ class GreenroomCoreMind:
         ))
         return payload
 
-    async def run_autonomous_cycle(self, signal_provider=None) -> Dict[str, Any]:
+    async def run_autonomous_cycle(
+        self,
+        signal_provider=None,
+        objective_snapshot: Optional[Dict[str, Any]] = None,
+        run_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Core Greenroom Autonomous Workflow:
         CREATOR CONTEXT/MEMORY -> ASYNC RUN -> MINDS AGENT -> ANALYZE SIGNALS -> RANK OPPORTUNITIES -> PERSIST BRIEFING
@@ -259,7 +264,14 @@ class GreenroomCoreMind:
         from minds_integration import DemoSignalProvider, REAL_PLATFORM_MIND_ID
         
         created_at_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-        run_id = f"run_{uuid.uuid4().hex[:8]}"
+        run_id = run_id or f"run_{uuid.uuid4().hex[:8]}"
+        objective_snapshot = objective_snapshot or {
+            "objective_id": "objective_unspecified",
+            "title": "Find useful creator opportunities",
+            "constraints": ""
+        }
+        objective_title = objective_snapshot["title"]
+        objective_constraints = objective_snapshot.get("constraints", "")
 
         provider = signal_provider or DemoSignalProvider()
         raw_signals = provider.get_signals()
@@ -278,7 +290,10 @@ class GreenroomCoreMind:
 
         # Call remote Mind for strategic evaluation
         minds_response = await self.minds_agent.generate_response(
-            "Synthesize While You Were Away briefing from filtered trends, comment insights, and deal scores."
+            "Synthesize a While You Were Away briefing for this exact run objective.\n"
+            f"OBJECTIVE: {objective_title}\n"
+            f"CONSTRAINTS: {objective_constraints}\n"
+            "Use persisted creator memory as supporting context, never as a replacement for the run objective."
         )
 
         analysis_provider = "Animoca Minds" if (minds_response.get("source") == "Animoca_Minds_Builder_API") else "Mock"
@@ -292,19 +307,23 @@ class GreenroomCoreMind:
             last_fb = feedbacks[-1]
             continuity_note = f"Adjusted using your previous feedback on item '{last_fb.get('item_id')}' ({last_fb.get('feedback_type').upper()})."
 
+        monetization_focused = any(
+            term in f"{objective_title} {objective_constraints}".lower()
+            for term in ("paid", "sponsor", "partnership", "monetary", "revenue", "collaboration")
+        )
         items = [
             {
                 "id": "opp_001",
                 "priority": "HIGH PRIORITY",
-                "title": "Beginner Local AI Agent Walkthrough Video",
-                "category": "Content Strategy",
-                "what_changed": "ScoutMind detected +145k daily discussions for beginner local AI setup guides.",
+                "title": "Paid AI and technology partnership opportunities" if monetization_focused else f"Opportunity aligned to: {objective_title}",
+                "category": "Monetization" if monetization_focused else "Objective Opportunity",
+                "what_changed": "Greenroom evaluated available signals against the immutable run objective.",
                 "why_it_matters": (
-                    "Matches saved goal: 78% viewer retention on setup walkthroughs. "
-                    + ("Grounding: Persisted rule applied — terminal open-source focus." if terminal_focus else "Grounding: Direct developer retention driver.")
+                    f"Directly evaluated against objective '{objective_title}' and its saved constraints."
+                    + (" Supporting memory: creator prefers terminal and open-source detail." if terminal_focus else "")
                 ),
-                "recommended_action": "Record a 3-step terminal setup tutorial for local open-source AI agent workflows.",
-                "memory_context_used": "profile.brand_voice + retention_node_78%",
+                "recommended_action": "Verify sponsor terms, audience fit, and creator compensation before outreach." if monetization_focused else "Review this opportunity against the saved objective constraints.",
+                "memory_context_used": f"objective:{objective_snapshot['objective_id']} + creator_profile",
                 "status": "NEW"
             },
             {
@@ -336,6 +355,8 @@ class GreenroomCoreMind:
 
         provenance = {
             "run_id": run_id,
+            "objective_id": objective_snapshot["objective_id"],
+            "objective_fingerprint": objective_snapshot.get("fingerprint"),
             "created_at": created_at_iso,
             "completed_at": completed_at_iso,
             "status": "COMPLETED",
@@ -351,6 +372,8 @@ class GreenroomCoreMind:
 
         briefing = {
             "run_id": run_id,
+            "objective_id": objective_snapshot["objective_id"],
+            "objective_snapshot": objective_snapshot,
             "timestamp": completed_at_iso,
             "last_run_formatted": time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime()),
             "signals_reviewed_count": len(raw_signals),

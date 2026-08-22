@@ -1,7 +1,16 @@
 import { createMindsClient } from "@animocabrands/minds-client-lib";
 import { Receiver } from "@upstash/qstash";
 import { Redis } from "@upstash/redis";
-import { parseMindBriefing, requireVerifiedMindReply, validateWorkerConfiguration, verifyMindIdentity } from "./worker-guards.mjs";
+import {
+  buildMindsPrompt,
+  buildObjectiveAwareSignals,
+  parseMindBriefing,
+  requireVerifiedMindReply,
+  resolveIdempotentBriefing,
+  validateObjectiveSnapshot,
+  validateWorkerConfiguration,
+  verifyMindIdentity,
+} from "./worker-guards.mjs";
 
 export const maxDuration = 60;
 
@@ -90,6 +99,12 @@ export default async function handler(req, res) {
     try { payload = JSON.parse(rawBody); } catch (e) {}
   }
   const runId = payload.run_id || `run_${Math.random().toString(36).substring(2, 10)}`;
+  let objective;
+  try {
+    objective = validateObjectiveSnapshot(payload.objective);
+  } catch (error) {
+    return res.status(422).json({ status: "failed", run_id: runId, error: error.message });
+  }
 
 
   // 3. Upstash Redis Connection (DURABLE Persistence)
@@ -104,15 +119,38 @@ export default async function handler(req, res) {
 
   const startedAt = new Date().toISOString();
 
-  // Mark status = RUNNING in Redis
+  // Preserve the immutable queued snapshot and make duplicate delivery idempotent.
+  let statusObj = {};
   try {
     const existingStatus = (await redis.get(`greenroom:run_status:${runId}`)) || {};
-    const statusObj = typeof existingStatus === "string" ? JSON.parse(existingStatus) : existingStatus;
+    statusObj = typeof existingStatus === "string" ? JSON.parse(existingStatus) : existingStatus;
+    const queuedObjective = statusObj.objective_snapshot;
+    const snapshotMismatch = ["objective_id", "title", "constraints", "fingerprint"]
+      .some((field) => queuedObjective?.[field] !== objective[field]);
+    if (!queuedObjective || snapshotMismatch) {
+      throw new Error("QStash objective snapshot does not match the queued run snapshot");
+    }
+
+    const storedRunBriefing = await redis.get(`greenroom:briefing:${runId}`);
+    const parsedRunBriefing = typeof storedRunBriefing === "string"
+      ? JSON.parse(storedRunBriefing)
+      : storedRunBriefing;
+    const completedBriefing = resolveIdempotentBriefing(statusObj, parsedRunBriefing, runId, objective);
+    if (completedBriefing) {
+      return res.status(200).json({
+        status: "success",
+        run_id: runId,
+        briefing: completedBriefing,
+        idempotent_replay: true,
+      });
+    }
+
     await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
       ...statusObj,
       run_id: runId,
       status: "RUNNING",
-      started_at: startedAt
+      started_at: startedAt,
+      objective_snapshot: objective,
     }));
   } catch (e) {
     return res.status(503).json({
@@ -161,12 +199,8 @@ export default async function handler(req, res) {
     const beforeFingerprint = await mindsClient.getLatestHistoryFingerprint(alias);
 
     const learnedRules = creatorProfile.learned_voice_rules || [];
-    const demoSignals = [
-      { id: "sig_001", source: "Demo Dataset (Simulated)", signal: "Beginner local AI setup discussions increased; viewers request terminal-first walkthroughs." },
-      { id: "sig_002", source: "Demo Dataset (Simulated)", signal: "A fictional developer-infrastructure sponsor matches the creator's CPM benchmark." },
-      { id: "sig_003", source: "Demo Dataset (Simulated)", signal: "Generic crypto and clickbait topics conflict with stored creator boundaries." },
-    ];
-    const prompt = `You are Greenroom's ranking Mind. Analyze the supplied simulated signals against durable creator memory. Return JSON only with an "items" array ranked best-first. Each item must contain: id, priority, title, category, what_changed, why_it_matters, recommended_action, memory_context_used, status. Do not claim the signals are live or real.\nCreator memory: ${JSON.stringify(creatorProfile)}\nSignals: ${JSON.stringify(demoSignals)}\nLearned rules: ${JSON.stringify(learnedRules)}`;
+    const demoSignals = buildObjectiveAwareSignals(objective);
+    const prompt = buildMindsPrompt(objective, creatorProfile, demoSignals);
     await mindsClient.sendMessage({ alias, messageText: prompt });
 
     const timeoutMs = parseInt(process.env.MINDS_REPLY_TIMEOUT_MS || "60000", 10);
@@ -197,6 +231,8 @@ export default async function handler(req, res) {
 
     const provenance = {
       run_id: runId,
+      objective_id: objective.objective_id,
+      objective_fingerprint: objective.fingerprint,
       created_at: startedAt,
       completed_at: completedAt,
       status: "COMPLETED",
@@ -213,6 +249,8 @@ export default async function handler(req, res) {
 
     const briefing = {
       run_id: runId,
+      objective_id: objective.objective_id,
+      objective_snapshot: objective,
       timestamp: completedAt,
       last_run_formatted: new Date().toUTCString(),
       signals_reviewed_count: 3,
@@ -232,15 +270,18 @@ export default async function handler(req, res) {
       mind_raw_reply: mindReplyText
     };
 
-    // Save briefing and COMPLETED run status to Redis
+    // The per-run record is authoritative; latest is only a convenience pointer.
+    await redis.set(`greenroom:briefing:${runId}`, JSON.stringify(briefing));
     await redis.set("greenroom:latest_briefing", JSON.stringify(briefing));
     await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
+      ...statusObj,
       run_id: runId,
       status: "COMPLETED",
-      queued_at: startedAt,
+      queued_at: statusObj.queued_at,
       started_at: startedAt,
       completed_at: completedAt,
       briefing_id: runId,
+      objective_snapshot: objective,
       provenance
     }));
 
@@ -252,10 +293,12 @@ export default async function handler(req, res) {
 
     try {
       await redis.set(`greenroom:run_status:${runId}`, JSON.stringify({
+        ...statusObj,
         run_id: runId,
         status: "FAILED",
         started_at: startedAt,
         completed_at: failedAt,
+        objective_snapshot: objective,
         error: err.message || String(err)
       }));
     } catch (e) {

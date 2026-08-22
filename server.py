@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import os
 import time
@@ -109,7 +110,7 @@ class RejectionRequest(BaseModel):
     notes: Optional[str] = None
 
 class TriggerBriefingRequest(BaseModel):
-    accelerated: bool = True
+    objective_id: str
 
 
 # REST Endpoints
@@ -157,6 +158,26 @@ def get_latest_briefing():
         "minds_status": minds_manager.get_status()
     }
 
+@app.get("/api/briefing/run/{run_id}")
+def get_run_briefing(run_id: str):
+    status = qstash_runner.get_status(run_id)
+    if status.get("status") != "COMPLETED":
+        raise HTTPException(status_code=409, detail=f"Run {run_id} is not completed")
+
+    briefing = qstash_runner.store.get_run_briefing(run_id)
+    if not briefing:
+        raise HTTPException(status_code=404, detail=f"Briefing for run {run_id} was not found")
+
+    snapshot = status.get("objective_snapshot") or {}
+    if briefing.get("run_id") != run_id:
+        raise HTTPException(status_code=409, detail="Persisted briefing run ID does not match requested run")
+    if briefing.get("objective_id") != snapshot.get("objective_id"):
+        raise HTTPException(status_code=409, detail="Persisted briefing objective does not match queued run")
+    if briefing.get("objective_snapshot", {}).get("fingerprint") != snapshot.get("fingerprint"):
+        raise HTTPException(status_code=409, detail="Persisted briefing objective snapshot does not match queued run")
+
+    return {"status": "success", "briefing": briefing, "objective_snapshot": snapshot}
+
 @app.post("/api/briefing/trigger")
 async def trigger_briefing(request: Request, req: Optional[TriggerBriefingRequest] = None):
     """
@@ -164,6 +185,26 @@ async def trigger_briefing(request: Request, req: Optional[TriggerBriefingReques
     Enqueues job with status QUEUED and returns IMMEDIATELY without waiting for Minds completion.
     """
     minds_manager.validate_configuration()
+    if not req:
+        raise HTTPException(status_code=422, detail="objective_id is required")
+
+    state = memory_tool.reload_state()
+    objective = next(
+        (item for item in state.get("creator_objectives", []) if item.get("id") == req.objective_id),
+        None
+    )
+    if not objective:
+        raise HTTPException(status_code=404, detail="Saved objective was not found in durable state")
+
+    snapshot_basis = {
+        "objective_id": objective["id"],
+        "title": objective["title"],
+        "constraints": objective.get("details", "")
+    }
+    fingerprint = hashlib.sha256(
+        json.dumps(snapshot_basis, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    objective_snapshot = {**snapshot_basis, "fingerprint": fingerprint}
 
     is_demo_mode = os.getenv("DEMO_MODE", "").lower() in ("true", "1")
     if not is_demo_mode:
@@ -192,13 +233,13 @@ async def trigger_briefing(request: Request, req: Optional[TriggerBriefingReques
     worker_url = f"{scheme}://{host}/api/briefing-worker"
 
     # Enqueue job immediately (status = QUEUED)
-    res = await qstash_runner.enqueue_run(worker_url)
+    res = await qstash_runner.enqueue_run(worker_url, objective_snapshot=objective_snapshot)
     run_id = res["run_id"]
 
     # Execute background worker task locally if QSTASH_TOKEN is not configured
     if not os.getenv("QSTASH_TOKEN"):
         core = GreenroomCoreMind(memory_tool)
-        asyncio.create_task(qstash_runner.execute_worker_job(core, run_id))
+        asyncio.create_task(qstash_runner.execute_worker_job(core, run_id, objective_snapshot))
 
     return {
         "status": "success",
@@ -206,6 +247,7 @@ async def trigger_briefing(request: Request, req: Optional[TriggerBriefingReques
         "job_status": res.get("status", "QUEUED"),
         "execution_mode": res.get("execution_mode", "QUEUED"),
         "qstash_published": res.get("qstash_published", False),
+        "objective": objective_snapshot,
         "minds_status": minds_manager.get_status()
     }
 
@@ -242,9 +284,18 @@ async def briefing_worker(request: Request):
             pass
 
     run_id = payload.get("run_id") or f"run_{uuid.uuid4().hex[:8]}"
+    objective_snapshot = payload.get("objective")
+    queued = qstash_runner.get_status(run_id).get("objective_snapshot")
+    snapshot_fields = ("objective_id", "title", "constraints", "fingerprint")
+    if (
+        not objective_snapshot
+        or not queued
+        or any(objective_snapshot.get(field) != queued.get(field) for field in snapshot_fields)
+    ):
+        raise HTTPException(status_code=409, detail="Worker objective snapshot does not match queued run")
 
     core = GreenroomCoreMind(memory_tool)
-    result = await qstash_runner.execute_worker_job(core, run_id)
+    result = await qstash_runner.execute_worker_job(core, run_id, objective_snapshot)
     return {"status": "success", "worker_result": result}
 
 @app.get("/api/briefing/status")

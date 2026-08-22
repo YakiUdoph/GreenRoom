@@ -22,6 +22,12 @@ class PersistenceStore:
     def save_briefing(self, briefing: Dict[str, Any]) -> None:
         raise NotImplementedError
 
+    def save_run_briefing(self, run_id: str, briefing: Dict[str, Any]) -> None:
+        raise NotImplementedError
+
+    def get_run_briefing(self, run_id: str) -> Optional[Dict[str, Any]]:
+        raise NotImplementedError
+
     def save_feedback(self, entry: Dict[str, Any]) -> None:
         raise NotImplementedError
 
@@ -40,7 +46,9 @@ class LocalFileStore(PersistenceStore):
     def __init__(self, profile_path: str = "creator_profile.json", briefing_path: str = "latest_briefing.json"):
         self.profile_path = profile_path
         self.briefing_path = briefing_path
-        self.run_status_path = "run_statuses.json"
+        data_dir = os.path.dirname(os.path.abspath(profile_path))
+        self.run_status_path = os.path.join(data_dir, "run_statuses.json")
+        self.run_briefings_path = os.path.join(data_dir, "run_briefings.json")
 
     @property
     def mode_label(self) -> str:
@@ -78,6 +86,30 @@ class LocalFileStore(PersistenceStore):
         except Exception as e:
             print(f"[LocalFileStore] Failed to save briefing: {e}")
 
+    def save_run_briefing(self, run_id: str, briefing: Dict[str, Any]) -> None:
+        briefings = self._read_json_map(self.run_briefings_path)
+        briefings[run_id] = briefing
+        self._write_json_map(self.run_briefings_path, briefings)
+
+    def get_run_briefing(self, run_id: str) -> Optional[Dict[str, Any]]:
+        return self._read_json_map(self.run_briefings_path).get(run_id)
+
+    def _read_json_map(self, path: str) -> Dict[str, Any]:
+        if os.path.exists(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+            except Exception:
+                pass
+        return {}
+
+    def _write_json_map(self, path: str, value: Dict[str, Any]) -> None:
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(value, f, indent=2)
+        except Exception as e:
+            raise RuntimeError(f"Failed to persist {path}: {e}") from e
+
     def save_feedback(self, entry: Dict[str, Any]) -> None:
         profile = self.get_creator_profile()
         profile.setdefault("item_feedbacks", []).append(entry)
@@ -87,29 +119,12 @@ class LocalFileStore(PersistenceStore):
         return self.get_creator_profile().get("item_feedbacks", [])
 
     def save_run_status(self, run_id: str, status_data: Dict[str, Any]) -> None:
-        statuses = {}
-        if os.path.exists(self.run_status_path):
-            try:
-                with open(self.run_status_path, "r", encoding="utf-8") as f:
-                    statuses = json.load(f)
-            except Exception:
-                pass
+        statuses = self._read_json_map(self.run_status_path)
         statuses[run_id] = status_data
-        try:
-            with open(self.run_status_path, "w", encoding="utf-8") as f:
-                json.dump(statuses, f, indent=2)
-        except Exception as e:
-            print(f"[LocalFileStore] Error saving run status: {e}")
+        self._write_json_map(self.run_status_path, statuses)
 
     def get_run_status(self, run_id: str) -> Optional[Dict[str, Any]]:
-        if os.path.exists(self.run_status_path):
-            try:
-                with open(self.run_status_path, "r", encoding="utf-8") as f:
-                    statuses = json.load(f)
-                    return statuses.get(run_id)
-            except Exception:
-                pass
-        return None
+        return self._read_json_map(self.run_status_path).get(run_id)
 
     def _default_profile(self) -> Dict[str, Any]:
         return {
@@ -134,6 +149,7 @@ class EphemeralTmpStore(PersistenceStore):
         self.profile_path = "/tmp/creator_profile.json"
         self.briefing_path = "/tmp/latest_briefing.json"
         self.run_status_path = "/tmp/run_statuses.json"
+        self.run_briefings_path = "/tmp/run_briefings.json"
 
     @property
     def mode_label(self) -> str:
@@ -179,6 +195,27 @@ class EphemeralTmpStore(PersistenceStore):
                 json.dump(briefing, f, indent=2)
         except Exception:
             pass
+
+    def save_run_briefing(self, run_id: str, briefing: Dict[str, Any]) -> None:
+        briefings = {}
+        if os.path.exists(self.run_briefings_path):
+            try:
+                with open(self.run_briefings_path, "r", encoding="utf-8") as f:
+                    briefings = json.load(f)
+            except Exception:
+                pass
+        briefings[run_id] = briefing
+        with open(self.run_briefings_path, "w", encoding="utf-8") as f:
+            json.dump(briefings, f, indent=2)
+
+    def get_run_briefing(self, run_id: str) -> Optional[Dict[str, Any]]:
+        if os.path.exists(self.run_briefings_path):
+            try:
+                with open(self.run_briefings_path, "r", encoding="utf-8") as f:
+                    return json.load(f).get(run_id)
+            except Exception:
+                pass
+        return None
 
     def save_feedback(self, entry: Dict[str, Any]) -> None:
         profile = self.get_creator_profile()
@@ -279,6 +316,18 @@ class UpstashRedisStore(PersistenceStore):
 
     def save_briefing(self, briefing: Dict[str, Any]) -> None:
         self._redis_cmd(["SET", "greenroom:latest_briefing", json.dumps(briefing)])
+
+    def save_run_briefing(self, run_id: str, briefing: Dict[str, Any]) -> None:
+        self._redis_cmd(["SET", f"greenroom:briefing:{run_id}", json.dumps(briefing)])
+
+    def get_run_briefing(self, run_id: str) -> Optional[Dict[str, Any]]:
+        val = self._redis_cmd(["GET", f"greenroom:briefing:{run_id}"])
+        if val:
+            try:
+                return json.loads(val)
+            except Exception:
+                pass
+        return None
 
     def save_feedback(self, entry: Dict[str, Any]) -> None:
         profile = self.get_creator_profile()

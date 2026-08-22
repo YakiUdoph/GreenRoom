@@ -63,3 +63,60 @@ export function parseMindBriefing(replyText) {
   });
   return parsed;
 }
+
+export function validateObjectiveSnapshot(snapshot) {
+  const requiredNonEmpty = ["objective_id", "title", "fingerprint"];
+  const missing = requiredNonEmpty.filter((field) => typeof snapshot?.[field] !== "string" || !snapshot[field]);
+  if (typeof snapshot?.constraints !== "string") missing.push("constraints");
+  if (missing.length) {
+    throw new Error(`QStash payload objective snapshot missing: ${missing.join(", ")}`);
+  }
+  return Object.freeze({
+    objective_id: snapshot.objective_id,
+    title: snapshot.title,
+    constraints: snapshot.constraints,
+    fingerprint: snapshot.fingerprint,
+  });
+}
+
+export function buildObjectiveAwareSignals(objective) {
+  const target = `${objective.title} ${objective.constraints}`.toLowerCase();
+  const monetization = ["paid", "sponsor", "partnership", "monetary", "revenue", "collaboration"]
+    .some((term) => target.includes(term));
+  const terminal = ["terminal", "local ai", "command line", "cli"]
+    .some((term) => target.includes(term));
+
+  if (monetization) {
+    return [
+      { id: "sig_001", source: "Demo Dataset (Simulated)", signal: "A simulated paid AI infrastructure sponsorship matches the creator audience and includes explicit compensation terms." },
+      { id: "sig_002", source: "Demo Dataset (Simulated)", signal: "A simulated Web3 ecosystem partnership offers a paid educational collaboration with deliverables and budget disclosed." },
+      { id: "sig_003", source: "Demo Dataset (Simulated)", signal: "A simulated exposure-only awareness campaign has no creator compensation and conflicts with the active constraints." },
+    ];
+  }
+  if (terminal) {
+    return [
+      { id: "sig_001", source: "Demo Dataset (Simulated)", signal: "Audience requests for terminal-first local AI walkthroughs increased in the simulated dataset." },
+      { id: "sig_002", source: "Demo Dataset (Simulated)", signal: "A simulated developer-tools collaboration supports practical command-line education." },
+      { id: "sig_003", source: "Demo Dataset (Simulated)", signal: "Generic awareness content lacks the practical depth required by the active objective." },
+    ];
+  }
+  return [
+    { id: "sig_001", source: "Demo Dataset (Simulated)", signal: `A simulated opportunity directly relevant to the active objective: ${objective.title}` },
+    { id: "sig_002", source: "Demo Dataset (Simulated)", signal: `A simulated alternative must be evaluated against these constraints: ${objective.constraints}` },
+    { id: "sig_003", source: "Demo Dataset (Simulated)", signal: "A simulated generic campaign lacks a clear connection to the active objective." },
+  ];
+}
+
+export function buildMindsPrompt(objective, creatorProfile, signals) {
+  return `RUN OBJECTIVE (AUTHORITATIVE): ${objective.title}\nRUN CONSTRAINTS (AUTHORITATIVE): ${objective.constraints}\nRUN OBJECTIVE ID: ${objective.objective_id}\n\nYou are Greenroom's ranking Mind. Rank only opportunities that serve the authoritative run objective and constraints above. Persisted creator memory is supporting context and must never replace the run objective. Return JSON only with an "items" array ranked best-first. Each item must contain: id, priority, title, category, what_changed, why_it_matters, recommended_action, memory_context_used, status. Do not claim simulated signals are live or real.\n\nPersisted creator memory: ${JSON.stringify(creatorProfile)}\nSignals scoped to this objective: ${JSON.stringify(signals)}`;
+}
+
+export function resolveIdempotentBriefing(existingStatus, storedBriefing, runId, objective) {
+  if (existingStatus?.status !== "COMPLETED") return null;
+  if (!storedBriefing) throw new Error(`Completed run ${runId} has no run-specific briefing`);
+  if (storedBriefing.run_id !== runId) throw new Error("Completed briefing run ID mismatch");
+  if (storedBriefing.objective_id !== objective.objective_id) {
+    throw new Error("Completed briefing objective ID mismatch");
+  }
+  return storedBriefing;
+}

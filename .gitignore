@@ -16,6 +16,7 @@ __pycache__/
 creator_profile.json
 latest_briefing.json
 run_statuses.json
+run_briefings.json
 *.log
 logs/
 *.tmp

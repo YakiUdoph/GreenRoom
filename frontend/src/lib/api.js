@@ -74,12 +74,15 @@ export const api = {
 
   getSignals: () => request('/api/signals'),
 
-  triggerBriefing: () =>
+  triggerBriefing: (objectiveId) =>
     request('/api/briefing/trigger', {
       method: 'POST',
+      body: JSON.stringify({ objective_id: objectiveId }),
     }),
 
   getLatestBriefing: () => request('/api/briefing/latest'),
+
+  getRunBriefing: (runId) => request(`/api/briefing/run/${encodeURIComponent(runId)}`),
 
   getBriefingStatus: (runId) =>
     request(runId ? `/api/briefing/status?run_id=${runId}` : '/api/briefing/status'),

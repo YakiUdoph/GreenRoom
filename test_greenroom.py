@@ -6,6 +6,13 @@ import sys
 from memory_engine import GreenroomMemoryEngine, memory_tool
 from agents import GreenroomCoreMind
 
+TEST_OBJECTIVE_SNAPSHOT = {
+    "objective_id": "obj_test_background",
+    "title": "Find useful creator opportunities",
+    "constraints": "Prioritize audience fit",
+    "fingerprint": "test-objective-fingerprint",
+}
+
 def test_loud_failure_when_unconfigured():
     print("--- [TEST 1] Testing Loud Failure when Unconfigured ---")
     orig_builder_key = os.environ.pop("MINDS_BUILDER_API_KEY", None)
@@ -654,7 +661,10 @@ async def test_async_job_runner_status():
         core = GreenroomCoreMind(memory_tool)
         runner = QStashJobRunner()
 
-        enqueue_res = await runner.enqueue_run("http://localhost:8000/api/briefing/worker")
+        enqueue_res = await runner.enqueue_run(
+            "http://localhost:8000/api/briefing/worker",
+            objective_snapshot=TEST_OBJECTIVE_SNAPSHOT,
+        )
         assert enqueue_res["status"] == "QUEUED", "Enqueue must return status QUEUED"
         run_id = enqueue_res["run_id"]
 
@@ -731,7 +741,10 @@ async def test_qstash_async_job_runner_lifecycle_and_security():
     runner1 = QStashJobRunner(store1)
     
     # 1. Enqueue run -> returns QUEUED immediately
-    enqueue_res = await runner1.enqueue_run("http://localhost:8000/api/briefing/worker")
+    enqueue_res = await runner1.enqueue_run(
+        "http://localhost:8000/api/briefing/worker",
+        objective_snapshot=TEST_OBJECTIVE_SNAPSHOT,
+    )
     assert enqueue_res["status"] == "QUEUED", "Enqueue must return status QUEUED immediately"
     run_id = enqueue_res["run_id"]
     
@@ -756,10 +769,10 @@ async def test_qstash_async_job_runner_lifecycle_and_security():
     
     # 5. Verify failed worker execution transitions status to FAILED
     fail_run_id = "run_fail_test_123"
-    runner1.save_status(fail_run_id, status="QUEUED")
+    runner1.save_status(fail_run_id, status="QUEUED", objective_snapshot=TEST_OBJECTIVE_SNAPSHOT)
     
     class FailingMind:
-        async def run_autonomous_cycle(self):
+        async def run_autonomous_cycle(self, objective_snapshot=None, run_id=None):
             raise RuntimeError("Minds platform invocation timeout")
             
     fail_res = await runner1.execute_worker_job(FailingMind(), fail_run_id)

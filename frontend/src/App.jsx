@@ -173,8 +173,7 @@ export function App() {
     try {
       const res = await api.createObjective(title, details);
       if (res.state) greenroomStore.setMemoryState(res.state);
-    } catch (err) {
-      console.error('[GreenroomApp] Error creating objective:', err);
+      return res;
     } finally {
       setIsExecuting(false);
     }
@@ -326,8 +325,9 @@ export function App() {
         isOpen={isOfflineModalOpen}
         onClose={() => setIsOfflineModalOpen(false)}
         memoryState={memoryState}
-        onBriefingUpdated={() => {
-          loadInitialData();
+        onBriefingUpdated={(briefing) => {
+          const current = greenroomStore.getState().memoryState;
+          greenroomStore.setMemoryState({ ...current, latest_briefing: briefing });
         }}
       />
 
