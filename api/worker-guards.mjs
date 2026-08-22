@@ -121,6 +121,15 @@ export function collectionDeadlinePassed(deadline, now = new Date()) {
   return !Number.isFinite(timestamp) || now.getTime() >= timestamp;
 }
 
+export function collectionDelaySeconds(submittedAt, now = new Date()) {
+  const submitted = Date.parse(submittedAt || "");
+  if (!Number.isFinite(submitted)) return 15;
+  const elapsedMs = Math.max(0, now.getTime() - submitted);
+  if (elapsedMs < 60_000) return 5;
+  if (elapsedMs < 120_000) return 10;
+  return 15;
+}
+
 export function verifyMindIdentity(mind, expected) {
   const data = mind?.mind || mind?.data || mind;
   const actualId = data?.mindId || data?.id;

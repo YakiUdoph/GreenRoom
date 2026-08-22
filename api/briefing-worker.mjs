@@ -2,12 +2,11 @@ import crypto from "node:crypto";
 import { createMindsClient, isReplyHistoryRow } from "@animocabrands/minds-client-lib";
 import { Receiver } from "@upstash/qstash";
 import { Redis } from "@upstash/redis";
-import { buildMindsPrompt, buildMindReplyDiagnostics, classifyObjectiveSignals, collectionDeadlinePassed, extractSafeSdkMetadata, isTerminalRunStatus, normalizeMindReply, parseMindBriefing, resolveIdempotentBriefing, selectVerifiedHistoryReply, updateRecentRunIndex, validateObjectiveSnapshot, validateWorkerConfiguration, verifyMindIdentity } from "./worker-guards.mjs";
+import { buildMindsPrompt, buildMindReplyDiagnostics, classifyObjectiveSignals, collectionDeadlinePassed, collectionDelaySeconds, extractSafeSdkMetadata, isTerminalRunStatus, normalizeMindReply, parseMindBriefing, resolveIdempotentBriefing, selectVerifiedHistoryReply, updateRecentRunIndex, validateObjectiveSnapshot, validateWorkerConfiguration, verifyMindIdentity } from "./worker-guards.mjs";
 
 export const maxDuration = 60;
 export const config = { api: { bodyParser: false } };
 const MIND_ID = "8208493e-f36b-1410-8466-00039ce7df11";
-const COLLECTION_DELAY_SECONDS = 15;
 const DEFAULT_REPLY_DEADLINE_MS = 10 * 60 * 1000;
 const isoNow = (now = new Date()) => now.toISOString();
 const hashText = (text) => crypto.createHash("sha256").update(String(text)).digest("hex");
@@ -35,12 +34,12 @@ function assertMatchingRun(status, runId, objective) {
     throw new Error("QStash objective snapshot does not match the queued run snapshot");
   }
 }
-async function scheduleCollection(targetUrl, payload, env = process.env) {
+async function scheduleCollection(targetUrl, payload, env = process.env, delaySeconds = 15) {
   if (!env.QSTASH_TOKEN) throw new Error("QSTASH_TOKEN is required to schedule Minds collection");
   const base = (env.QSTASH_URL || "https://qstash.upstash.io").replace(/\/$/, "");
   const response = await fetch(`${base}/v2/publish/${targetUrl}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${env.QSTASH_TOKEN}`, "Content-Type": "application/json", "Upstash-Delay": `${COLLECTION_DELAY_SECONDS}s`, "Upstash-Retries": "2" },
+    headers: { Authorization: `Bearer ${env.QSTASH_TOKEN}`, "Content-Type": "application/json", "Upstash-Delay": `${Math.max(5, delaySeconds)}s`, "Upstash-Retries": "2" },
     body: JSON.stringify({ ...payload, phase: "collect" }),
   });
   const text = await response.text();
@@ -65,7 +64,10 @@ async function handleSubmission({ redis, mindsClient, runId, objective, targetUr
   }
   if (status.status === "FAILED") return { httpStatus: 200, body: { status: "FAILED", run_id: runId, error: status.error, idempotent_replay: true } };
   if (["SUBMITTING", "WAITING_FOR_MINDS"].includes(status.status)) {
-    if (status.status === "WAITING_FOR_MINDS") await enqueue(targetUrl, { run_id: runId, objective }, env);
+    if (status.status === "WAITING_FOR_MINDS") {
+      const delaySeconds = collectionDelaySeconds(status.submitted_at, now);
+      await enqueue(targetUrl, { run_id: runId, objective }, env, delaySeconds);
+    }
     return { httpStatus: 202, body: { status: status.status, run_id: runId, idempotent_replay: true } };
   }
 
@@ -91,8 +93,9 @@ async function handleSubmission({ redis, mindsClient, runId, objective, targetUr
   const deadlineMs = Number.parseInt(env.MINDS_REPLY_DEADLINE_MS || String(DEFAULT_REPLY_DEADLINE_MS), 10);
   const replyDeadlineAt = new Date(Date.parse(submittedAt) + deadlineMs).toISOString();
   status = await persistRunStatus(redis, runId, { ...status, status: "WAITING_FOR_MINDS", submitted_at: submittedAt, reply_deadline_at: replyDeadlineAt, collection_attempt: 0, message_metadata: extractSafeSdkMetadata(sendResult), stage_timestamps: stages(status, { message_submitted: submittedAt, waiting_began: submittedAt }) });
-  const scheduleMetadata = await enqueue(targetUrl, { run_id: runId, objective }, env);
-  await persistRunStatus(redis, runId, { ...status, collection_schedule_metadata: scheduleMetadata });
+  const delaySeconds = collectionDelaySeconds(submittedAt, new Date(submittedAt));
+  const scheduleMetadata = await enqueue(targetUrl, { run_id: runId, objective }, env, delaySeconds);
+  await persistRunStatus(redis, runId, { ...status, next_collection_delay_seconds: delaySeconds, collection_schedule_metadata: scheduleMetadata });
   return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, submitted_at: submittedAt, reply_deadline_at: replyDeadlineAt } };
 }
 
@@ -124,8 +127,10 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
       await persistRunStatus(redis, runId, failed);
       return { httpStatus: 200, body: { status: "FAILED", run_id: runId, error: failed.error } };
     }
-    await enqueue(targetUrl, { run_id: runId, objective }, env);
-    return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, collection_attempt: attempt } };
+    const delaySeconds = collectionDelaySeconds(status.submitted_at, now);
+    const scheduleMetadata = await enqueue(targetUrl, { run_id: runId, objective }, env, delaySeconds);
+    await persistRunStatus(redis, runId, { ...status, next_collection_delay_seconds: delaySeconds, collection_schedule_metadata: scheduleMetadata });
+    return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, collection_attempt: attempt, next_collection_delay_seconds: delaySeconds } };
   }
   const replyFoundAt = isoNow(now);
   const diagnostics = buildMindReplyDiagnostics({ reply, timedOut: false }, objective, runId);

@@ -6,6 +6,7 @@ import {
   buildObjectiveAwareSignals,
   classifyMindReplyText,
   classifyObjectiveSignals,
+  collectionDelaySeconds,
   normalizeMindReply,
   parseMindBriefing,
   requireVerifiedMindReply,
@@ -54,6 +55,18 @@ test("history reply selection rejects a submitted prompt echo by hash", () => {
     hashText: () => "same",
   }, () => true);
   assert.equal(result, null);
+});
+
+test("collection delay adapts from 5s to 10s to 15s without polling faster than 5s", () => {
+  const submitted = "2026-01-01T00:00:00.000Z";
+  const at = (milliseconds) => new Date(Date.parse(submitted) + milliseconds);
+  assert.equal(collectionDelaySeconds(submitted, at(0)), 5);
+  assert.equal(collectionDelaySeconds(submitted, at(59_999)), 5);
+  assert.equal(collectionDelaySeconds(submitted, at(60_000)), 10);
+  assert.equal(collectionDelaySeconds(submitted, at(119_999)), 10);
+  assert.equal(collectionDelaySeconds(submitted, at(120_000)), 15);
+  assert.equal(collectionDelaySeconds(submitted, at(599_999)), 15);
+  assert.equal(collectionDelaySeconds(null, at(0)), 15);
 });
 
 test("supported SDK messageText and text wrappers normalize", () => {

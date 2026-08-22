@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isOfflineRunPending, isOlderBriefingAfterFailedRun, verifyRunBriefing, verifySavedObjective } from './offlineRun.js';
+import { isOfflineRunPending, isOlderBriefingAfterFailedRun, offlineRunProgressLabel, verifyRunBriefing, verifySavedObjective } from './offlineRun.js';
 
 test('verifies the exact durable objective before enqueue', () => {
   const objective = { id: 'obj_b', title: 'Objective B', details: 'Constraint B' };
@@ -39,4 +39,12 @@ test('WAITING_FOR_MINDS remains an honest non-terminal UI state', () => {
   assert.equal(isOfflineRunPending('SUBMITTING'), true);
   assert.equal(isOfflineRunPending('COMPLETED'), false);
   assert.equal(isOfflineRunPending('FAILED'), false);
+});
+
+test('offline progress labels reflect durable phases without fake percentages', () => {
+  const checkedAt = '2026-01-01T00:00:10.000Z';
+  assert.equal(offlineRunProgressLabel({ status: 'WAITING_FOR_MINDS', collection_attempt: 0 }), 'Submitted to Mind');
+  assert.equal(offlineRunProgressLabel({ status: 'WAITING_FOR_MINDS', collection_attempt: 1, last_history_observation: { checked_at: checkedAt } }, Date.parse(checkedAt) + 500), 'Checking response');
+  assert.equal(offlineRunProgressLabel({ status: 'WAITING_FOR_MINDS', collection_attempt: 1, last_history_observation: { checked_at: checkedAt } }, Date.parse(checkedAt) + 3_000), 'Waiting for verified reply');
+  assert.equal(offlineRunProgressLabel({ status: 'COMPLETED' }), 'Ranking result');
 });

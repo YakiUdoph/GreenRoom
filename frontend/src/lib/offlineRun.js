@@ -29,3 +29,18 @@ export function isOlderBriefingAfterFailedRun(briefing, latestRun) {
 export function isOfflineRunPending(status) {
   return ['QUEUED', 'RUNNING', 'SUBMITTING', 'WAITING_FOR_MINDS'].includes(status);
 }
+
+export function offlineRunProgressLabel(runStatus, nowMs = Date.now()) {
+  const status = runStatus?.status;
+  if (status === 'QUEUED') return 'Queued for secure submission';
+  if (status === 'RUNNING' || status === 'SUBMITTING') return 'Submitting to Mind';
+  if (status === 'WAITING_FOR_MINDS') {
+    if (!runStatus.collection_attempt) return 'Submitted to Mind';
+    const checkedAt = Date.parse(runStatus.last_history_observation?.checked_at || '');
+    if (Number.isFinite(checkedAt) && nowMs - checkedAt < 2_000) return 'Checking response';
+    return 'Waiting for verified reply';
+  }
+  if (status === 'COMPLETED') return 'Ranking result';
+  if (status === 'FAILED') return 'Run failed';
+  return 'Preparing offline work';
+}

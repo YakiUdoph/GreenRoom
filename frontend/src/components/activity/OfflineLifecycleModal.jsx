@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
-import { isOfflineRunPending, verifyRunBriefing, verifySavedObjective } from '../../lib/offlineRun';
+import { isOfflineRunPending, offlineRunProgressLabel, verifyRunBriefing, verifySavedObjective } from '../../lib/offlineRun';
 import { soundFx } from '../../lib/sound';
 
 export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRunStatusChanged, memoryState }) {
   const [step, setStep] = useState(0); // 0: Idle/Start, 1: Objective Persisted, 2: Triggering Job, 3: Creator Offline, 4: Worker Executing, 5: Minds Processing, 6: Persisted, 7: Creator Returns, 8: Briefing Ready
   const [runId, setRunId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
+  const [runStatusDetails, setRunStatusDetails] = useState(null);
   const [executionMode, setExecutionMode] = useState('QSTASH_BACKGROUND_JOB');
   const [briefingData, setBriefingData] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
@@ -55,6 +56,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
       activeObjectiveId = savedObjective.id;
       setRunId(rid);
       setJobStatus(res.job_status || 'QUEUED');
+      setRunStatusDetails({ status: res.job_status || 'QUEUED' });
       setExecutionMode(res.execution_mode || 'QSTASH_BACKGROUND_JOB');
       onRunStatusChanged?.({ run_id: rid, objective_id: savedObjective.id, status: res.job_status || 'QUEUED' });
 
@@ -71,13 +73,14 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
 
       // The browser polls durable state only; Minds collection happens in delayed
       // QStash invocations and can safely outlive the old synchronous 60s window.
-      while (attempts < 360 && !completed) {
+      while (attempts < 660 && !completed) {
         attempts++;
-        await new Promise((r) => setTimeout(r, 2000));
+        await new Promise((r) => setTimeout(r, 1000));
         try {
           const statusRes = await api.getBriefingStatus(rid);
           latestStatus = statusRes.status || 'RUNNING';
           setJobStatus(latestStatus);
+          setRunStatusDetails(statusRes);
           if (isOfflineRunPending(latestStatus)) {
             setStep(5); // Step 5: Minds SDK Processing
           }
@@ -132,6 +135,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
     setStep(0);
     setRunId(null);
     setJobStatus(null);
+    setRunStatusDetails(null);
     setBriefingData(null);
     setErrorMessage(null);
   };
@@ -240,7 +244,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                       {step === 2 && 'STEP 2: ENQUEUING QSTASH BACKGROUND JOB'}
                       {step === 3 && 'STEP 3: CREATOR OFFLINE (SESSION SUSPENDED)'}
                       {step === 4 && 'STEP 4: QSTASH WORKER WEBHOOK EXECUTING'}
-                      {step === 5 && 'STEP 5: ANIMOCA MINDS SDK PROCESSING'}
+                      {step === 5 && `STEP 5: ${offlineRunProgressLabel(runStatusDetails).toUpperCase()}`}
                       {step === 6 && 'STEP 6: RESULT PERSISTED TO DURABLE STORE'}
                       {step === 7 && 'STEP 7: CREATOR RETURNED (SESSION RESUMED)'}
                     </span>
@@ -278,9 +282,9 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                   {step === 3 && `Simulating creator closing browser tab to record content. Greenroom operates autonomously.`}
                   {step === 4 && `QStash worker endpoint /api/briefing-worker triggered via signed webhook.`}
                   {step === 5 && (jobStatus === 'WAITING_FOR_MINDS'
-                    ? `GreenRoom handed this objective to your Mind. Work continues while you're away.`
+                    ? `${offlineRunProgressLabel(runStatusDetails)}. GreenRoom handed this objective to your Mind. Work continues while you're away.`
                     : `Greenroom is securely submitting the objective to Animoca Minds Builder API.`)}
-                  {step === 6 && `Executive Briefing and provenance metadata durably saved to latest_briefing.json / Upstash Redis.`}
+                  {step === 6 && `Ranking result. Executive Briefing and provenance metadata durably saved to its run-specific Upstash Redis record.`}
                   {step === 7 && `Creator re-opens dashboard. Polling confirms job completion.`}
                 </div>
               </div>

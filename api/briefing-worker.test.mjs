@@ -96,6 +96,19 @@ test("empty collection attempts stay WAITING and enqueue another delayed check",
   assert.equal(schedules, 3);
 });
 
+test("collection scheduling applies 5s, 10s and 15s adaptive QStash delays", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds([]);
+  const delays = [];
+  const enqueue = async (_target, _payload, _env, delay) => { delays.push(delay); return {}; };
+  await processWorkerPhase({ phase: "submit", ...runArgs(redis, minds, { enqueue }) });
+  const submitted = redis.json("greenroom:run_status:run_b").submitted_at;
+  await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds, { enqueue, now: new Date(Date.parse(submitted) + 30_000) }) });
+  await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds, { enqueue, now: new Date(Date.parse(submitted) + 90_000) }) });
+  await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds, { enqueue, now: new Date(Date.parse(submitted) + 130_000) }) });
+  assert.deepEqual(delays, [5, 5, 10, 15]);
+});
+
 test("duplicate collection delivery is harmless", async () => {
   const redis = initialRedis();
   const minds = fakeMinds([]);
