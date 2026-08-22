@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isOfflineRunPending, isOlderBriefingAfterFailedRun, offlineRunProgressLabel, verifyRunBriefing, verifySavedObjective } from './offlineRun.js';
+import { isOfflineRunPending, isOlderBriefingAfterFailedRun, offlineRunProgressLabel, restoreCurrentOfflineRun, runIndicatorLabel, shouldPollOfflineRun, verifyRunBriefing, verifySavedObjective } from './offlineRun.js';
 
 test('verifies the exact durable objective before enqueue', () => {
   const objective = { id: 'obj_b', title: 'Objective B', details: 'Constraint B' };
@@ -47,4 +47,32 @@ test('offline progress labels reflect durable phases without fake percentages', 
   assert.equal(offlineRunProgressLabel({ status: 'WAITING_FOR_MINDS', collection_attempt: 1, last_history_observation: { checked_at: checkedAt } }, Date.parse(checkedAt) + 500), 'Checking response');
   assert.equal(offlineRunProgressLabel({ status: 'WAITING_FOR_MINDS', collection_attempt: 1, last_history_observation: { checked_at: checkedAt } }, Date.parse(checkedAt) + 3_000), 'Waiting for verified reply');
   assert.equal(offlineRunProgressLabel({ status: 'COMPLETED' }), 'Ranking result');
+});
+
+test('header indicator translates durable run state without exposing internal labels', () => {
+  assert.equal(runIndicatorLabel('WAITING_FOR_MINDS'), 'WORKING');
+  assert.equal(runIndicatorLabel('COMPLETED'), 'RESULT READY');
+  assert.equal(runIndicatorLabel('FAILED'), 'RUN FAILED');
+  assert.equal(runIndicatorLabel('NOT_FOUND'), null);
+});
+
+test('closing the lifecycle modal does not stop durable active-run polling', () => {
+  assert.equal(shouldPollOfflineRun({ run_id: 'run_b', status: 'WAITING_FOR_MINDS' }), true);
+  assert.equal(shouldPollOfflineRun({ run_id: 'run_b', status: 'COMPLETED' }), false);
+});
+
+test('the active indicator restores from the durable recent-runs index after refresh', () => {
+  const restored = restoreCurrentOfflineRun({
+    runs: [{ run_id: 'run_b', objective_id: 'objective_b', status: 'WAITING_FOR_MINDS' }],
+  });
+  assert.equal(restored.run_id, 'run_b');
+  assert.equal(runIndicatorLabel(restored.status), 'WORKING');
+});
+
+test('RESULT READY still requires the exact run-specific briefing', () => {
+  assert.equal(runIndicatorLabel('COMPLETED'), 'RESULT READY');
+  assert.throws(
+    () => verifyRunBriefing({ run_id: 'run_a', objective_id: 'obj_a' }, 'run_b', 'obj_b'),
+    /does not match the completed run/,
+  );
 });

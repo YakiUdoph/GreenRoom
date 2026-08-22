@@ -44,3 +44,18 @@ export function offlineRunProgressLabel(runStatus, nowMs = Date.now()) {
   if (status === 'FAILED') return 'Run failed';
   return 'Preparing offline work';
 }
+
+export function runIndicatorLabel(status) {
+  if (isOfflineRunPending(status)) return 'WORKING';
+  if (status === 'COMPLETED') return 'RESULT READY';
+  if (status === 'FAILED') return 'RUN FAILED';
+  return null;
+}
+
+export function shouldPollOfflineRun(run) {
+  return Boolean(run?.run_id && isOfflineRunPending(run.status));
+}
+
+export function restoreCurrentOfflineRun(recentRuns) {
+  return Array.isArray(recentRuns?.runs) ? (recentRuns.runs[0] || null) : null;
+}

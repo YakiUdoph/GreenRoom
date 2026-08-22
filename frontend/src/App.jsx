@@ -4,6 +4,7 @@ import { useGreenroomState } from './hooks/useGreenroomState';
 import { useGreenroomSocket } from './hooks/useGreenroomSocket';
 import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
+import { restoreCurrentOfflineRun, runIndicatorLabel, shouldPollOfflineRun, verifyRunBriefing } from './lib/offlineRun';
 
 import { ManusHeader } from './components/layout/ManusHeader';
 import { PayloadModal } from './components/ui/PayloadModal';
@@ -30,6 +31,8 @@ export function App() {
   const [isMemoryProofModalOpen, setIsMemoryProofModalOpen] = useState(false);
   const [isSpecialistProofModalOpen, setIsSpecialistProofModalOpen] = useState(false);
   const [isNinetySecProofOpen, setIsNinetySecProofOpen] = useState(false);
+  const [currentOfflineRun, setCurrentOfflineRun] = useState(null);
+  const [resumeOfflineRun, setResumeOfflineRun] = useState(null);
 
   // Initialize Real WebSocket Gateway
   useGreenroomSocket();
@@ -64,6 +67,8 @@ export function App() {
           latest_offline_run: recentRuns?.runs?.[0] || null,
         });
       }
+      const restoredRun = restoreCurrentOfflineRun(recentRuns);
+      if (restoredRun) setCurrentOfflineRun(restoredRun);
       if (mStatus) {
         const executionVerified = latestBriefing?.briefing?.minds_verified === true
           && latestBriefing?.briefing?.provenance?.mind_verified === true;
@@ -83,6 +88,46 @@ export function App() {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  useEffect(() => {
+    if (!shouldPollOfflineRun(currentOfflineRun)) return undefined;
+    let disposed = false;
+    const refresh = async () => {
+      try {
+        const status = await api.getBriefingStatus(currentOfflineRun.run_id);
+        if (!disposed) setCurrentOfflineRun((previous) => ({
+          ...previous,
+          ...status,
+          objective_id: status.objective_snapshot?.objective_id || previous?.objective_id,
+        }));
+      } catch (error) {
+        console.warn('[GreenroomApp] Background run status refresh failed:', error);
+      }
+    };
+    refresh();
+    const timer = setInterval(refresh, 1000);
+    return () => { disposed = true; clearInterval(timer); };
+  }, [currentOfflineRun?.run_id, currentOfflineRun?.status]);
+
+  const openCurrentOfflineRun = async () => {
+    if (!currentOfflineRun?.run_id) return;
+    if (currentOfflineRun.status === 'COMPLETED') {
+      try {
+        const response = await api.getRunBriefing(currentOfflineRun.run_id);
+        const briefing = verifyRunBriefing(response?.briefing, currentOfflineRun.run_id, currentOfflineRun.objective_id);
+        const current = greenroomStore.getState().memoryState;
+        greenroomStore.setMemoryState({ ...current, latest_briefing: briefing, latest_offline_run: currentOfflineRun });
+        setActiveTab('home');
+        setTimeout(() => document.querySelector('.return-story')?.scrollIntoView({ behavior: 'smooth' }), 0);
+      } catch (error) {
+        setResumeOfflineRun({ ...currentOfflineRun, status: 'FAILED', error: error.message });
+        setIsOfflineModalOpen(true);
+      }
+      return;
+    }
+    setResumeOfflineRun(currentOfflineRun);
+    setIsOfflineModalOpen(true);
+  };
 
   // Onboarding Save Handler
   const handleSaveOnboarding = async (data) => {
@@ -214,7 +259,7 @@ export function App() {
             onNavigate={(tab) => setActiveTab(tab)}
             onRunFullDemo={handleRunFullDemo}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
-            onOpenOfflineModal={() => setIsOfflineModalOpen(true)}
+            onOpenOfflineModal={() => { setResumeOfflineRun(null); setIsOfflineModalOpen(true); }}
             onOpenMemoryProofModal={() => setIsMemoryProofModalOpen(true)}
             onOpenNinetySecProof={() => setIsNinetySecProofOpen(true)}
             onCreateObjective={handleCreateObjective}
@@ -300,7 +345,7 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <ManusHeader activeTab={activeTab} onTabChange={setActiveTab} />
+      <ManusHeader activeTab={activeTab} onTabChange={setActiveTab} runIndicator={runIndicatorLabel(currentOfflineRun?.status)} onRunIndicatorClick={openCurrentOfflineRun} />
       <main className="app-main">
         <AnimatePresence mode="wait">
           {renderPage()}
@@ -327,11 +372,13 @@ export function App() {
         isOpen={isOfflineModalOpen}
         onClose={() => setIsOfflineModalOpen(false)}
         memoryState={memoryState}
+        resumeRun={resumeOfflineRun?.run_id === currentOfflineRun?.run_id ? currentOfflineRun : resumeOfflineRun}
         onBriefingUpdated={(briefing) => {
           const current = greenroomStore.getState().memoryState;
           greenroomStore.setMemoryState({ ...current, latest_briefing: briefing });
         }}
         onRunStatusChanged={(latestOfflineRun) => {
+          setCurrentOfflineRun((previous) => ({ ...previous, ...latestOfflineRun }));
           const current = greenroomStore.getState().memoryState;
           greenroomStore.setMemoryState({ ...current, latest_offline_run: latestOfflineRun });
         }}

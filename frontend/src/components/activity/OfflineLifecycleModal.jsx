@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
 import { isOfflineRunPending, offlineRunProgressLabel, verifyRunBriefing, verifySavedObjective } from '../../lib/offlineRun';
 import { soundFx } from '../../lib/sound';
 
-export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRunStatusChanged, memoryState }) {
+export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRunStatusChanged, memoryState, resumeRun = null }) {
   const [step, setStep] = useState(0); // 0: Idle/Start, 1: Objective Persisted, 2: Triggering Job, 3: Creator Offline, 4: Worker Executing, 5: Minds Processing, 6: Persisted, 7: Creator Returns, 8: Briefing Ready
   const [runId, setRunId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
@@ -13,6 +13,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
   const [briefingData, setBriefingData] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
   const [offlineSeconds, setOfflineSeconds] = useState(0);
+  const backgroundedRef = useRef(false);
 
   const creatorName = memoryState?.creator_name || 'ALEX RIVERA';
   const niche = memoryState?.niche || 'Developer Tools & AI Automation';
@@ -30,9 +31,32 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
     return () => clearInterval(timer);
   }, [step]);
 
+  useEffect(() => {
+    if (!isOpen || !resumeRun?.run_id) return;
+    backgroundedRef.current = false;
+    setRunId(resumeRun.run_id);
+    setJobStatus(resumeRun.status);
+    setRunStatusDetails(resumeRun);
+    setErrorMessage(resumeRun.status === 'FAILED' ? (resumeRun.error || "GreenRoom couldn't complete this run.") : null);
+    if (resumeRun.status === 'COMPLETED') {
+      api.getRunBriefing(resumeRun.run_id).then((response) => {
+        const briefing = verifyRunBriefing(response?.briefing, resumeRun.run_id, resumeRun.objective_id);
+        setBriefingData(briefing);
+        onBriefingUpdated?.(briefing);
+        setStep(8);
+      }).catch((error) => {
+        setErrorMessage(error.message || 'The run-specific briefing could not be loaded.');
+        setStep(0);
+      });
+    } else {
+      setStep(5);
+    }
+  }, [isOpen, resumeRun?.run_id, resumeRun?.status]);
+
   if (!isOpen) return null;
 
   const handleStartChainSimulation = async () => {
+    backgroundedRef.current = false;
     soundFx.playSynapsePulse();
     setErrorMessage(null);
 
@@ -76,6 +100,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
       while (attempts < 660 && !completed) {
         attempts++;
         await new Promise((r) => setTimeout(r, 1000));
+        if (backgroundedRef.current) return;
         try {
           const statusRes = await api.getBriefingStatus(rid);
           latestStatus = statusRes.status || 'RUNNING';
@@ -140,6 +165,11 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
     setErrorMessage(null);
   };
 
+  const handleContinue = () => {
+    backgroundedRef.current = true;
+    onClose();
+  };
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
@@ -166,7 +196,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
               </p>
             </div>
 
-            <button onClick={onClose} className="text-zinc-400 hover:text-white p-1 transition">
+            <button onClick={handleContinue} className="text-zinc-400 hover:text-white p-1 transition">
               <span className="material-symbols-outlined text-xl">close</span>
             </button>
           </div>
@@ -281,12 +311,19 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                   {step === 2 && `POST /api/briefing/trigger called. Background job enqueued with status QUEUED.`}
                   {step === 3 && `Simulating creator closing browser tab to record content. Greenroom operates autonomously.`}
                   {step === 4 && `QStash worker endpoint /api/briefing-worker triggered via signed webhook.`}
-                  {step === 5 && (jobStatus === 'WAITING_FOR_MINDS'
-                    ? `${offlineRunProgressLabel(runStatusDetails)}. GreenRoom handed this objective to your Mind. Work continues while you're away.`
-                    : `Greenroom is securely submitting the objective to Animoca Minds Builder API.`)}
+                  {step === 5 && (jobStatus === 'FAILED'
+                    ? (errorMessage || `GreenRoom couldn't complete this run.`)
+                    : jobStatus === 'WAITING_FOR_MINDS'
+                      ? `Submitted to Mind. GreenRoom is working on this in the background. You can keep using GreenRoom.`
+                      : `Greenroom is securely submitting the objective to Animoca Minds Builder API.`)}
                   {step === 6 && `Ranking result. Executive Briefing and provenance metadata durably saved to its run-specific Upstash Redis record.`}
                   {step === 7 && `Creator re-opens dashboard. Polling confirms job completion.`}
                 </div>
+                {step === 5 && jobStatus === 'WAITING_FOR_MINDS' && (
+                  <button onClick={handleContinue} className="px-5 py-3 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition self-start">
+                    Continue in GreenRoom
+                  </button>
+                )}
               </div>
             )}
 
