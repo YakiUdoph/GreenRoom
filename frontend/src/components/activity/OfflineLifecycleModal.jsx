@@ -55,7 +55,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, memo
       let completed = false;
       let latestStatus = 'RUNNING';
 
-      while (attempts < 15 && !completed) {
+      while (attempts < 90 && !completed) {
         attempts++;
         await new Promise((r) => setTimeout(r, 1000));
         try {

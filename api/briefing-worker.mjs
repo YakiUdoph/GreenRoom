@@ -169,7 +169,7 @@ export default async function handler(req, res) {
     const prompt = `You are Greenroom's ranking Mind. Analyze the supplied simulated signals against durable creator memory. Return JSON only with an "items" array ranked best-first. Each item must contain: id, priority, title, category, what_changed, why_it_matters, recommended_action, memory_context_used, status. Do not claim the signals are live or real.\nCreator memory: ${JSON.stringify(creatorProfile)}\nSignals: ${JSON.stringify(demoSignals)}\nLearned rules: ${JSON.stringify(learnedRules)}`;
     await mindsClient.sendMessage({ alias, messageText: prompt });
 
-    const timeoutMs = parseInt(process.env.MINDS_REPLY_TIMEOUT_MS || "25000", 10);
+    const timeoutMs = parseInt(process.env.MINDS_REPLY_TIMEOUT_MS || "60000", 10);
     const outcome = await mindsClient.waitForReply({
       alias,
       timeoutMs,
