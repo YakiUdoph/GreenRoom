@@ -301,7 +301,7 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <ManusHeader activeTab={activeTab} onTabChange={setActiveTab} creatorName={memoryState?.creator_name || 'Creator'} />
+      <ManusHeader activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="app-main">
         <AnimatePresence mode="wait">
           {renderPage()}
