@@ -5,6 +5,7 @@ export function validateWorkerConfiguration(env) {
     "UPSTASH_REDIS_REST_URL",
     "UPSTASH_REDIS_REST_TOKEN",
     "MINDS_BUILDER_API_KEY",
+    "QSTASH_TOKEN",
   ];
   const aliases = {
     UPSTASH_REDIS_REST_URL: "KV_REST_API_URL",
@@ -85,6 +86,39 @@ export function buildMindReplyDiagnostics(outcome, objective, runId) {
     content_type: null,
     sanitized_prefix: typeof text === "string" ? safePrefix(text.trim()) : "",
   };
+}
+
+export function extractSafeSdkMetadata(value) {
+  if (!value || typeof value !== "object") return {};
+  const safe = {};
+  for (const key of ["conversationId", "messageId", "id", "fingerprint", "createdAt", "status"]) {
+    const item = value[key];
+    if (["string", "number", "boolean"].includes(typeof item) || item === null) safe[key] = item;
+  }
+  return safe;
+}
+
+export function selectVerifiedHistoryReply(rows, context, isReplyHistoryRow) {
+  if (!Array.isArray(rows)) return null;
+  return rows.find((row) => {
+    if (!isReplyHistoryRow(row, {
+      alias: context.alias,
+      afterFingerprint: context.afterFingerprint,
+    })) return false;
+    if (context.submittedPromptHash && typeof row?.messageText === "string") {
+      return context.hashText(row.messageText) !== context.submittedPromptHash;
+    }
+    return true;
+  }) || null;
+}
+
+export function isTerminalRunStatus(status) {
+  return status === "COMPLETED" || status === "FAILED";
+}
+
+export function collectionDeadlinePassed(deadline, now = new Date()) {
+  const timestamp = Date.parse(deadline || "");
+  return !Number.isFinite(timestamp) || now.getTime() >= timestamp;
 }
 
 export function verifyMindIdentity(mind, expected) {

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isOlderBriefingAfterFailedRun, verifyRunBriefing, verifySavedObjective } from './offlineRun.js';
+import { isOfflineRunPending, isOlderBriefingAfterFailedRun, verifyRunBriefing, verifySavedObjective } from './offlineRun.js';
 
 test('verifies the exact durable objective before enqueue', () => {
   const objective = { id: 'obj_b', title: 'Objective B', details: 'Constraint B' };
@@ -32,4 +32,11 @@ test('Run B Delivery rejects Run A even when it is presented as latest', () => {
     () => verifyRunBriefing({ run_id: 'run_b', objective_id: 'obj_a' }, 'run_b', 'obj_b'),
     /does not match the queued objective/
   );
+});
+
+test('WAITING_FOR_MINDS remains an honest non-terminal UI state', () => {
+  assert.equal(isOfflineRunPending('WAITING_FOR_MINDS'), true);
+  assert.equal(isOfflineRunPending('SUBMITTING'), true);
+  assert.equal(isOfflineRunPending('COMPLETED'), false);
+  assert.equal(isOfflineRunPending('FAILED'), false);
 });

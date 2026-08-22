@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
-import { verifyRunBriefing, verifySavedObjective } from '../../lib/offlineRun';
+import { isOfflineRunPending, verifyRunBriefing, verifySavedObjective } from '../../lib/offlineRun';
 import { soundFx } from '../../lib/sound';
 
 export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRunStatusChanged, memoryState }) {
@@ -69,14 +69,16 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
       let completed = false;
       let latestStatus = 'RUNNING';
 
-      while (attempts < 90 && !completed) {
+      // The browser polls durable state only; Minds collection happens in delayed
+      // QStash invocations and can safely outlive the old synchronous 60s window.
+      while (attempts < 360 && !completed) {
         attempts++;
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise((r) => setTimeout(r, 2000));
         try {
           const statusRes = await api.getBriefingStatus(rid);
           latestStatus = statusRes.status || 'RUNNING';
           setJobStatus(latestStatus);
-          if (latestStatus === 'RUNNING') {
+          if (isOfflineRunPending(latestStatus)) {
             setStep(5); // Step 5: Minds SDK Processing
           }
           if (latestStatus === 'COMPLETED') {
@@ -92,7 +94,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
       }
 
       if (!completed) {
-        throw new Error('Background run did not complete before the polling window ended.');
+        throw new Error('Background run did not reach a terminal state before the polling window ended. You can safely close this window and return later.');
       }
 
       setStep(6); // Step 6: Result Persisted
@@ -275,7 +277,9 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                   {step === 2 && `POST /api/briefing/trigger called. Background job enqueued with status QUEUED.`}
                   {step === 3 && `Simulating creator closing browser tab to record content. Greenroom operates autonomously.`}
                   {step === 4 && `QStash worker endpoint /api/briefing-worker triggered via signed webhook.`}
-                  {step === 5 && `Greenroom Core Mind + Scout, Community, and Business Minds querying Animoca Minds Builder API.`}
+                  {step === 5 && (jobStatus === 'WAITING_FOR_MINDS'
+                    ? `GreenRoom handed this objective to your Mind. Work continues while you're away.`
+                    : `Greenroom is securely submitting the objective to Animoca Minds Builder API.`)}
                   {step === 6 && `Executive Briefing and provenance metadata durably saved to latest_briefing.json / Upstash Redis.`}
                   {step === 7 && `Creator re-opens dashboard. Polling confirms job completion.`}
                 </div>

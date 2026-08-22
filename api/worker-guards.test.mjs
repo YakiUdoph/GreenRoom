@@ -10,6 +10,7 @@ import {
   parseMindBriefing,
   requireVerifiedMindReply,
   resolveIdempotentBriefing,
+  selectVerifiedHistoryReply,
   validateObjectiveSnapshot,
   validateWorkerConfiguration,
   verifyMindIdentity,
@@ -18,14 +19,14 @@ import {
 test("production worker reports missing security, persistence, and Minds configuration", () => {
   assert.deepEqual(validateWorkerConfiguration({}), [
     "QSTASH_CURRENT_SIGNING_KEY", "QSTASH_NEXT_SIGNING_KEY",
-    "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "MINDS_BUILDER_API_KEY",
+    "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "MINDS_BUILDER_API_KEY", "QSTASH_TOKEN",
   ]);
 });
 
 test("KV aliases satisfy durable persistence configuration", () => {
   assert.deepEqual(validateWorkerConfiguration({
     QSTASH_CURRENT_SIGNING_KEY: "current", QSTASH_NEXT_SIGNING_KEY: "next",
-    KV_REST_API_URL: "url", KV_REST_API_TOKEN: "token", MINDS_BUILDER_API_KEY: "minds",
+    KV_REST_API_URL: "url", KV_REST_API_TOKEN: "token", MINDS_BUILDER_API_KEY: "minds", QSTASH_TOKEN: "qstash",
   }), []);
 });
 
@@ -44,6 +45,15 @@ const OBJECTIVE_B = {
 test("valid Run-A-style raw JSON supplies the ranked briefing", () => {
   const result = parseMindBriefing(VALID);
   assert.equal(result.items[0].title, "A");
+});
+
+test("history reply selection rejects a submitted prompt echo by hash", () => {
+  const rows = [{ alias: "greenroom-run", fingerprint: "fp_2", senderType: 0, messageText: "submitted prompt" }];
+  const result = selectVerifiedHistoryReply(rows, {
+    alias: "greenroom-run", afterFingerprint: "fp_1", submittedPromptHash: "same",
+    hashText: () => "same",
+  }, () => true);
+  assert.equal(result, null);
 });
 
 test("supported SDK messageText and text wrappers normalize", () => {

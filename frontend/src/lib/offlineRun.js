@@ -25,3 +25,7 @@ export function isOlderBriefingAfterFailedRun(briefing, latestRun) {
     && latestRun.run_id !== briefing.run_id
   );
 }
+
+export function isOfflineRunPending(status) {
+  return ['QUEUED', 'RUNNING', 'SUBMITTING', 'WAITING_FOR_MINDS'].includes(status);
+}
