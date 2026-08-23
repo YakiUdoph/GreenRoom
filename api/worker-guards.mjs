@@ -329,8 +329,90 @@ export function buildObjectiveAwareSignals(objective) {
   return classifyObjectiveSignals(objective).signals;
 }
 
-export function buildMindsPrompt(objective, creatorProfile, signals) {
-  return `RUN OBJECTIVE (AUTHORITATIVE): ${objective.title}\nRUN CONSTRAINTS (AUTHORITATIVE): ${objective.constraints}\nRUN OBJECTIVE ID: ${objective.objective_id}\n\nYou are Greenroom's ranking Mind. Rank only opportunities that serve the authoritative run objective and constraints above. Do not alter the objective or constraints. Persisted creator memory is supporting context and must never replace the run objective.\n\nReturn exactly one JSON object matching this structure:\n{"items":[{"id":"string","priority":"string or number","title":"non-empty string","category":"non-empty string","what_changed":"non-empty string","why_it_matters":"non-empty string","recommended_action":"non-empty string","memory_context_used":"string","status":"string"}]}\nNo Markdown. No code fences. No commentary. No HTML/XML. No text before or after the JSON object. Do not claim simulated signals are live or real.\n\nPersisted creator memory: ${JSON.stringify(creatorProfile)}\nSignals scoped to this objective: ${JSON.stringify(signals)}`;
+const MEMORY_SELECTION_VERSION = "objective_memory_projection_v1";
+const UNIVERSAL_PREFERENCE_TERMS = ["concise", "direct", "practical", "clickbait"];
+const COMMERCIAL_TERMS = ["monetary", "monetization", "paid", "sponsor", "sponsorship", "campaign", "brand deal", "partnership", "revenue"];
+const RELEVANCE_STOP_WORDS = new Set(["a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "is", "it", "of", "on", "or", "that", "the", "this", "to", "with", "without", "do", "not", "avoid", "focus", "prioritize", "recommend", "candidate", "creator", "dataset", "opportunity", "recommendation", "review", "signal", "simulated"]);
+
+function normalizedWords(value) {
+  return [...new Set(String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").split(/\s+/).filter((word) => word.length > 2 && !RELEVANCE_STOP_WORDS.has(word)))];
+}
+
+function stableRuleHash(rule) {
+  return crypto.createHash("sha256").update(String(rule).trim()).digest("hex");
+}
+
+function compactMemoryNode(node) {
+  const compact = {};
+  for (const field of ["node_id", "type", "category", "content", "key_takeaways", "tags"]) {
+    const value = node?.[field];
+    if (typeof value === "string" && value.trim()) compact[field] = value.trim().slice(0, field === "content" ? 240 : 80);
+    else if (Array.isArray(value) && value.length) compact[field] = value.filter((item) => typeof item === "string" && item.trim()).slice(0, field === "key_takeaways" ? 3 : 5).map((item) => item.trim().slice(0, 120));
+  }
+  return compact;
+}
+
+function ruleRepresentation(value) {
+  return String(value || "").toLowerCase().replace(/^user feedback rule:\s*/i, "").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+export function selectRelevantCreatorContext(objective, creatorProfile = {}, signals = []) {
+  const titleIntent = splitIntentText(objective?.title);
+  const constraintIntent = splitIntentText(objective?.constraints);
+  const positiveObjectiveText = [...titleIntent.positiveClauses, ...constraintIntent.positiveClauses].join(" ");
+  const signalText = signals.map((signal) => [signal?.category, signal?.candidate, signal?.signal].filter(Boolean).join(" ")).join(" ");
+  const queryWords = new Set(normalizedWords(`${positiveObjectiveText} ${signalText}`));
+  const exclusionText = [...titleIntent.excludedClauses, ...constraintIntent.excludedClauses].join(" ").toLowerCase();
+  const excludesCommercialWork = COMMERCIAL_TERMS.some((term) => exclusionText.includes(term));
+  const rules = Array.isArray(creatorProfile?.learned_voice_rules) ? creatorProfile.learned_voice_rules : [];
+
+  const selectedRules = rules.map((rule, index) => {
+    const text = String(rule || "").trim();
+    const lower = text.toLowerCase();
+    const ruleWords = normalizedWords(text);
+    const conflicts = excludesCommercialWork && COMMERCIAL_TERMS.some((term) => lower.includes(term));
+    const lexicalScore = ruleWords.filter((word) => queryWords.has(word)).length;
+    const universalScore = UNIVERSAL_PREFERENCE_TERMS.filter((term) => ruleWords.includes(term)).length * 2;
+    return { text, index, score: conflicts ? 0 : lexicalScore + universalScore };
+  }).filter((entry) => entry.text && entry.score > 0)
+    .sort((a, b) => b.score - a.score || b.index - a.index)
+    .slice(0, 3);
+
+  const allRuleRepresentations = new Set(rules.map(ruleRepresentation).filter(Boolean));
+  const nodes = Array.isArray(creatorProfile?.memory_nodes) ? creatorProfile.memory_nodes : [];
+  const selectedNodes = nodes.map((node, index) => {
+    const compact = compactMemoryNode(node);
+    const text = [compact.type, compact.category, compact.content, ...(compact.key_takeaways || []), ...(compact.tags || [])].filter(Boolean).join(" ");
+    const representation = ruleRepresentation(compact.content);
+    const duplicatesRule = representation && [...allRuleRepresentations].some((rule) => representation === rule || representation.endsWith(rule));
+    const conflicts = excludesCommercialWork && COMMERCIAL_TERMS.some((term) => text.toLowerCase().includes(term));
+    const score = duplicatesRule || conflicts ? 0 : normalizedWords(text).filter((word) => queryWords.has(word)).length;
+    const timestamp = Number.isFinite(Number(node?.timestamp)) ? Number(node.timestamp) : 0;
+    return { compact, index, score, timestamp };
+  }).filter((entry) => Object.keys(entry.compact).length && entry.score > 0)
+    .sort((a, b) => b.score - a.score || b.timestamp - a.timestamp || a.index - b.index)
+    .slice(0, 3);
+
+  const context = {
+    ...(typeof creatorProfile?.creator_name === "string" && creatorProfile.creator_name.trim() ? { creator_name: creatorProfile.creator_name.trim() } : {}),
+    ...(Array.isArray(creatorProfile?.brand_voice_attributes) ? { brand_voice_attributes: creatorProfile.brand_voice_attributes.filter((value) => typeof value === "string" && value.trim()).slice(0, 5) } : {}),
+    learned_rules: selectedRules.map((entry) => entry.text),
+    memory_nodes: selectedNodes.map((entry) => entry.compact),
+  };
+  return {
+    context,
+    provenance: {
+      memory_selection_version: MEMORY_SELECTION_VERSION,
+      selected_rule_hashes: selectedRules.map((entry) => stableRuleHash(entry.text)),
+      selected_memory_node_ids: selectedNodes.map((entry) => entry.compact.node_id).filter(Boolean),
+      selected_rule_count: selectedRules.length,
+      selected_memory_node_count: selectedNodes.length,
+    },
+  };
+}
+
+export function buildMindsPrompt(objective, creatorProfile, signals, selection = selectRelevantCreatorContext(objective, creatorProfile, signals)) {
+  return `GREENROOM BACKGROUND RUN\n\nRUN OBJECTIVE ID:\n${objective.objective_id}\n\nRUN OBJECTIVE — AUTHORITATIVE:\n${objective.title}\n\nRUN CONSTRAINTS — AUTHORITATIVE:\n${objective.constraints}\n\nThe objective and constraints above are immutable. Relevant persistent creator memory is supporting context only and must never replace them.\n\nRELEVANT PERSISTENT CREATOR MEMORY:\n${JSON.stringify(selection.context)}\n\nEVIDENCE MODE:\nThe following candidates are from a Demo Dataset (Simulated). They were not discovered through live research. Do not claim current availability, pricing, URLs, adoption, or market trends.\n\nOBJECTIVE-SPECIFIC SIGNALS:\n${JSON.stringify(signals)}\n\nTASK:\nRank only candidates that serve the authoritative objective and constraints. Explain practical workflow value and tradeoffs. Never allow supporting memory to override the constraints.\n\nSTRICT JSON OUTPUT SCHEMA:\n{"items":[{"id":"string","priority":"string or number","title":"non-empty string","category":"non-empty string","what_changed":"non-empty string","why_it_matters":"non-empty string","recommended_action":"non-empty string","memory_context_used":"string","status":"string"}]}\nNo Markdown. No code fences. No commentary. No HTML/XML. No text before or after the JSON object.`;
 }
 
 export function updateRecentRunIndex(existing, status, limit = 20) {
@@ -358,3 +440,4 @@ export function resolveIdempotentBriefing(existingStatus, storedBriefing, runId,
   }
   return storedBriefing;
 }
+import crypto from "node:crypto";

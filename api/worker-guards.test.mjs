@@ -11,6 +11,7 @@ import {
   parseMindBriefing,
   requireVerifiedMindReply,
   resolveIdempotentBriefing,
+  selectRelevantCreatorContext,
   selectVerifiedHistoryReply,
   validateObjectiveSnapshot,
   validateWorkerConfiguration,
@@ -125,11 +126,77 @@ test("Objective B is authoritative in the Minds prompt despite stale profile obj
   const signals = buildObjectiveAwareSignals(objectiveB);
   const prompt = buildMindsPrompt(objectiveB, staleProfile, signals);
 
-  assert.match(prompt, /^RUN OBJECTIVE \(AUTHORITATIVE\): Find paid Web3 partnerships/);
-  assert.match(prompt, /RUN CONSTRAINTS \(AUTHORITATIVE\): Reject exposure-only campaigns/);
-  assert.match(prompt, /Return exactly one JSON object/);
+  assert.match(prompt, /RUN OBJECTIVE — AUTHORITATIVE:\nFind paid Web3 partnerships/);
+  assert.match(prompt, /RUN CONSTRAINTS — AUTHORITATIVE:\nReject exposure-only campaigns/);
+  assert.match(prompt, /STRICT JSON OUTPUT SCHEMA/);
   assert.match(prompt, /No Markdown\. No code fences\. No commentary\. No HTML\/XML/);
+  assert.doesNotMatch(prompt, /Terminal-first local AI/);
   assert.ok(signals.every((signal) => !signal.signal.toLowerCase().includes("terminal-first")));
+});
+
+test("Objective B receives a deterministic compact relevant-memory projection", () => {
+  const profile = {
+    creator_name: "Creator",
+    brand_voice_attributes: ["Direct", "Educational"],
+    learned_voice_rules: [
+      "Prioritize creator opportunities with clear monetary value.",
+      "Keep recommendations concise and practical",
+      "Avoid clickbait-style content ideas",
+      "Prefer AI video editing workflow comparisons",
+      "Use animation examples when useful",
+    ],
+    memory_nodes: [
+      { node_id: "video-node", type: "preference", content: "Compare AI video generation and editing workflow tradeoffs", timestamp: 2 },
+      { node_id: "money-node", type: "preference", content: "Prioritize paid sponsorship and monetization campaigns", timestamp: 9 },
+      { node_id: "zero-node", type: "preference", content: "Discuss sourdough recipes", timestamp: 10 },
+      { node_id: "duplicate-node", type: "feedback", content: "User Feedback Rule: Keep recommendations concise and practical", timestamp: 11 },
+    ],
+    creator_objectives: [{ id: "old-objective", title: "OLD OBJECTIVE SENTINEL" }],
+    latest_briefing: { title: "LATEST BRIEFING SENTINEL" },
+    briefing_history: [{ title: "BRIEFING HISTORY SENTINEL" }],
+    monetization_benchmarks: { sentinel: "MONETIZATION BENCHMARK SENTINEL" },
+    decision_history: [{ sentinel: "DECISION HISTORY SENTINEL" }],
+  };
+  const before = structuredClone(profile);
+  const signals = classifyObjectiveSignals(OBJECTIVE_B).signals;
+  const first = selectRelevantCreatorContext(OBJECTIVE_B, profile, signals);
+  const second = selectRelevantCreatorContext(OBJECTIVE_B, profile, signals);
+  const prompt = buildMindsPrompt(OBJECTIVE_B, profile, signals, first);
+
+  assert.deepEqual(first, second);
+  assert.deepEqual(profile, before);
+  assert.deepEqual([...first.context.learned_rules].sort(), [
+    "Prefer AI video editing workflow comparisons",
+    "Keep recommendations concise and practical",
+    "Avoid clickbait-style content ideas",
+  ].sort());
+  assert.deepEqual(first.context.memory_nodes.map((node) => node.node_id), ["video-node"]);
+  assert.equal(first.provenance.selected_rule_count, 3);
+  assert.equal(first.provenance.selected_memory_node_count, 1);
+  assert.ok(first.provenance.selected_rule_hashes.every((hash) => /^[a-f0-9]{64}$/.test(hash)));
+  assert.deepEqual(first.provenance.selected_memory_node_ids, ["video-node"]);
+  assert.match(prompt, new RegExp(OBJECTIVE_B.title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(prompt, new RegExp(OBJECTIVE_B.constraints.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  for (const sentinel of ["OLD OBJECTIVE SENTINEL", "LATEST BRIEFING SENTINEL", "BRIEFING HISTORY SENTINEL", "MONETIZATION BENCHMARK SENTINEL", "DECISION HISTORY SENTINEL", "sourdough", "paid sponsorship"]) {
+    assert.equal(prompt.includes(sentinel), false);
+  }
+  assert.ok(prompt.length >= 2_500 && prompt.length < 4_000, `compact prompt length was ${prompt.length}`);
+  assert.equal(JSON.stringify(prompt).includes(JSON.stringify(profile)), false);
+});
+
+test("memory projection enforces three-rule and three-node limits and excludes zero-score entries", () => {
+  const signals = classifyObjectiveSignals(OBJECTIVE_B).signals;
+  const profile = {
+    learned_voice_rules: Array.from({ length: 7 }, (_, index) => `Rule ${index}: concise AI video workflow guidance`),
+    memory_nodes: [
+      ...Array.from({ length: 7 }, (_, index) => ({ node_id: `video-${index}`, content: `AI video editing workflow note ${index}`, timestamp: index })),
+      { node_id: "unrelated", content: "Garden soil notes", timestamp: 99 },
+    ],
+  };
+  const selected = selectRelevantCreatorContext(OBJECTIVE_B, profile, signals);
+  assert.equal(selected.context.learned_rules.length, 3);
+  assert.equal(selected.context.memory_nodes.length, 3);
+  assert.equal(selected.context.memory_nodes.some((node) => node.node_id === "unrelated"), false);
 });
 
 test("exact Objective B selects simulated AI-video tools and preserves its snapshot", () => {

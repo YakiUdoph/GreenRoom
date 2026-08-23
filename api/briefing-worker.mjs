@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { createMindsClient, isReplyHistoryRow } from "@animocabrands/minds-client-lib";
 import { Receiver } from "@upstash/qstash";
 import { Redis } from "@upstash/redis";
-import { buildMindsPrompt, buildMindReplyDiagnostics, classifyObjectiveSignals, collectionDeadlinePassed, collectionDelaySeconds, extractSafeSdkMetadata, isTerminalRunStatus, normalizeMindReply, parseMindBriefing, resolveIdempotentBriefing, selectVerifiedHistoryReply, updateRecentRunIndex, validateObjectiveSnapshot, validateWorkerConfiguration, verifyMindIdentity } from "./worker-guards.mjs";
+import { buildMindsPrompt, buildMindReplyDiagnostics, classifyObjectiveSignals, collectionDeadlinePassed, collectionDelaySeconds, extractSafeSdkMetadata, isTerminalRunStatus, normalizeMindReply, parseMindBriefing, resolveIdempotentBriefing, selectRelevantCreatorContext, selectVerifiedHistoryReply, updateRecentRunIndex, validateObjectiveSnapshot, validateWorkerConfiguration, verifyMindIdentity } from "./worker-guards.mjs";
 
 export const maxDuration = 60;
 export const config = { api: { bodyParser: false } };
@@ -138,9 +138,10 @@ async function handleSubmission({ redis, mindsClient, runId, objective, targetUr
   const conversation = await mindsClient.ensureConversation(alias, MIND_ID);
   const beforeFingerprint = await mindsClient.getLatestHistoryFingerprint(alias);
   const classification = classifyObjectiveSignals(objective);
-  const prompt = buildMindsPrompt(objective, creatorProfile, classification.signals);
+  const memorySelection = selectRelevantCreatorContext(objective, creatorProfile, classification.signals);
+  const prompt = buildMindsPrompt(objective, creatorProfile, classification.signals, memorySelection);
   const preparedAt = isoNow();
-  status = await persistRunStatus(redis, runId, { ...status, conversation_alias: alias, conversation_metadata: extractSafeSdkMetadata(conversation), pre_send_fingerprint: beforeFingerprint || null, submitted_prompt_hash: hashText(prompt), signal_classification: classification.provenance, signals_reviewed_count: classification.signals.length, memory_nodes_used_count: Array.isArray(creatorProfile.memory_nodes) ? creatorProfile.memory_nodes.length : 0, learned_rules_snapshot: Array.isArray(creatorProfile.learned_voice_rules) ? creatorProfile.learned_voice_rules : [], stage_timestamps: stages(status, { submission_prepared: preparedAt }) });
+  status = await persistRunStatus(redis, runId, { ...status, conversation_alias: alias, conversation_metadata: extractSafeSdkMetadata(conversation), pre_send_fingerprint: beforeFingerprint || null, submitted_prompt_hash: hashText(prompt), signal_classification: classification.provenance, memory_selection: { ...memorySelection.provenance, compact_prompt_character_count: prompt.length }, signals_reviewed_count: classification.signals.length, memory_nodes_used_count: memorySelection.provenance.selected_memory_node_count, learned_rules_snapshot: memorySelection.context.learned_rules, stage_timestamps: stages(status, { submission_prepared: preparedAt }) });
   const sendResult = await mindsClient.sendMessage({ alias, messageText: prompt });
   const submittedAt = isoNow();
   const deadlineMs = Number.parseInt(env.MINDS_REPLY_DEADLINE_MS || String(DEFAULT_REPLY_DEADLINE_MS), 10);
