@@ -69,6 +69,23 @@ test('the active indicator restores from the durable recent-runs index after ref
   assert.equal(runIndicatorLabel(restored.status), 'WORKING');
 });
 
+test('historical failed runs are not promoted to current state on a fresh visit', () => {
+  assert.equal(restoreCurrentOfflineRun({
+    runs: [{ run_id: 'run_old', objective_id: 'objective_b', status: 'FAILED' }],
+  }), null);
+});
+
+test('the browser remembered current terminal run restores without promoting another run', () => {
+  const runs = {
+    runs: [
+      { run_id: 'run_old', objective_id: 'objective_a', status: 'FAILED' },
+      { run_id: 'run_current', objective_id: 'objective_b', status: 'COMPLETED' },
+    ],
+  };
+  assert.equal(restoreCurrentOfflineRun(runs, 'run_current').run_id, 'run_current');
+  assert.equal(restoreCurrentOfflineRun(runs, 'missing'), null);
+});
+
 test('RESULT READY still requires the exact run-specific briefing', () => {
   assert.equal(runIndicatorLabel('COMPLETED'), 'RESULT READY');
   assert.throws(

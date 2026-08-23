@@ -4,7 +4,7 @@ import { useGreenroomState } from './hooks/useGreenroomState';
 import { useGreenroomSocket } from './hooks/useGreenroomSocket';
 import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
-import { restoreCurrentOfflineRun, runIndicatorLabel, shouldPollOfflineRun, verifyRunBriefing } from './lib/offlineRun';
+import { CURRENT_OFFLINE_RUN_STORAGE_KEY, restoreCurrentOfflineRun, runIndicatorLabel, shouldPollOfflineRun, verifyRunBriefing } from './lib/offlineRun';
 
 import { ManusHeader } from './components/layout/ManusHeader';
 import { PayloadModal } from './components/ui/PayloadModal';
@@ -60,14 +60,16 @@ export function App() {
         api.getRecentBriefingRuns().catch(() => null),
       ]);
 
+      let rememberedRunId = null;
+      try { rememberedRunId = window.localStorage.getItem(CURRENT_OFFLINE_RUN_STORAGE_KEY); } catch { /* storage unavailable */ }
+      const restoredRun = restoreCurrentOfflineRun(recentRuns, rememberedRunId);
       if (mState) {
         greenroomStore.setMemoryState({
           ...mState,
           latest_briefing: latestBriefing?.briefing || mState.latest_briefing || null,
-          latest_offline_run: recentRuns?.runs?.[0] || null,
+          latest_offline_run: restoredRun,
         });
       }
-      const restoredRun = restoreCurrentOfflineRun(recentRuns);
       if (restoredRun) setCurrentOfflineRun(restoredRun);
       if (mStatus) {
         const executionVerified = latestBriefing?.briefing?.minds_verified === true
@@ -117,6 +119,8 @@ export function App() {
         const briefing = verifyRunBriefing(response?.briefing, currentOfflineRun.run_id, currentOfflineRun.objective_id);
         const current = greenroomStore.getState().memoryState;
         greenroomStore.setMemoryState({ ...current, latest_briefing: briefing, latest_offline_run: currentOfflineRun });
+        try { window.localStorage.removeItem(CURRENT_OFFLINE_RUN_STORAGE_KEY); } catch { /* storage unavailable */ }
+        setCurrentOfflineRun(null);
         setActiveTab('home');
         setTimeout(() => document.querySelector('.return-story')?.scrollIntoView({ behavior: 'smooth' }), 0);
       } catch (error) {
@@ -370,7 +374,15 @@ export function App() {
       {/* Offline Story Lifecycle Proof Modal */}
       <OfflineLifecycleModal
         isOpen={isOfflineModalOpen}
-        onClose={() => setIsOfflineModalOpen(false)}
+        onClose={() => {
+          setIsOfflineModalOpen(false);
+          if (['COMPLETED', 'FAILED'].includes(currentOfflineRun?.status)) {
+            try { window.localStorage.removeItem(CURRENT_OFFLINE_RUN_STORAGE_KEY); } catch { /* storage unavailable */ }
+            setCurrentOfflineRun(null);
+            const current = greenroomStore.getState().memoryState;
+            greenroomStore.setMemoryState({ ...current, latest_offline_run: null });
+          }
+        }}
         memoryState={memoryState}
         resumeRun={resumeOfflineRun?.run_id === currentOfflineRun?.run_id ? currentOfflineRun : resumeOfflineRun}
         onBriefingUpdated={(briefing) => {
@@ -378,6 +390,7 @@ export function App() {
           greenroomStore.setMemoryState({ ...current, latest_briefing: briefing });
         }}
         onRunStatusChanged={(latestOfflineRun) => {
+          try { window.localStorage.setItem(CURRENT_OFFLINE_RUN_STORAGE_KEY, latestOfflineRun.run_id); } catch { /* storage unavailable */ }
           setCurrentOfflineRun((previous) => ({ ...previous, ...latestOfflineRun }));
           const current = greenroomStore.getState().memoryState;
           greenroomStore.setMemoryState({ ...current, latest_offline_run: latestOfflineRun });

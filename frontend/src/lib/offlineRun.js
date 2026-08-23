@@ -56,6 +56,12 @@ export function shouldPollOfflineRun(run) {
   return Boolean(run?.run_id && isOfflineRunPending(run.status));
 }
 
-export function restoreCurrentOfflineRun(recentRuns) {
-  return Array.isArray(recentRuns?.runs) ? (recentRuns.runs[0] || null) : null;
+export const CURRENT_OFFLINE_RUN_STORAGE_KEY = 'greenroom.currentOfflineRunId';
+
+export function restoreCurrentOfflineRun(recentRuns, rememberedRunId = null) {
+  const runs = Array.isArray(recentRuns?.runs) ? recentRuns.runs : [];
+  const activeRun = runs.find((run) => run?.run_id && isOfflineRunPending(run.status));
+  if (activeRun) return activeRun;
+  if (!rememberedRunId) return null;
+  return runs.find((run) => run?.run_id === rememberedRunId) || null;
 }
