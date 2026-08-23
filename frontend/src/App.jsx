@@ -4,7 +4,7 @@ import { useGreenroomState } from './hooks/useGreenroomState';
 import { useGreenroomSocket } from './hooks/useGreenroomSocket';
 import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
-import { CURRENT_OFFLINE_RUN_STORAGE_KEY, restoreCurrentOfflineRun, runIndicatorLabel, shouldPollOfflineRun, verifyRunBriefing } from './lib/offlineRun';
+import { CURRENT_OFFLINE_RUN_STORAGE_KEY, restoreCurrentOfflineRun, shouldPollOfflineRun, verifyRunBriefing } from './lib/offlineRun';
 
 import { ManusHeader } from './components/layout/ManusHeader';
 import { PayloadModal } from './components/ui/PayloadModal';
@@ -340,7 +340,7 @@ export function App() {
 
   return (
     <div className="app-shell">
-      <ManusHeader activeTab={activeTab} onTabChange={setActiveTab} runIndicator={runIndicatorLabel(currentOfflineRun?.status)} onRunIndicatorClick={openCurrentOfflineRun} />
+      <ManusHeader activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="app-main">
         <AnimatePresence mode="wait">
           {renderPage()}
