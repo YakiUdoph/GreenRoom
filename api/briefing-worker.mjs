@@ -8,6 +8,7 @@ export const maxDuration = 60;
 export const config = { api: { bodyParser: false } };
 const MIND_ID = "8208493e-f36b-1410-8466-00039ce7df11";
 const DEFAULT_REPLY_DEADLINE_MS = 10 * 60 * 1000;
+const MINDS_SSE_WAIT_MS = 15_000;
 const isoNow = (now = new Date()) => now.toISOString();
 const hashText = (text) => crypto.createHash("sha256").update(String(text)).digest("hex");
 
@@ -155,34 +156,95 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
   assertMatchingRun(status, runId, objective);
   if (isTerminalRunStatus(status.status)) return { httpStatus: 200, body: { status: status.status, run_id: runId, idempotent_replay: true } };
   if (status.status !== "WAITING_FOR_MINDS") return { httpStatus: 202, body: { status: status.status, run_id: runId, collection_skipped: true } };
+  if (collectionDeadlinePassed(status.reply_deadline_at, now)) {
+    const failedAt = isoNow(now);
+    const failed = { ...status, status: "FAILED", completed_at: failedAt, error: "Animoca Mind reply deadline passed without a verified response", reply_diagnostics: buildMindReplyDiagnostics({ timedOut: true }, objective, runId), stage_timestamps: stages(status, { terminal_failure: failedAt }) };
+    await persistRunStatus(redis, runId, failed);
+    return { httpStatus: 200, body: { status: "FAILED", run_id: runId, error: failed.error } };
+  }
   const attemptAt = isoNow(now);
   const attempt = (status.collection_attempt || 0) + 1;
   const claim = await redis.set(`greenroom:collection_claim:${runId}:${attempt}`, attemptAt, { nx: true, ex: 5 * 60 });
   if (claim === null) return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, collection_attempt: attempt, idempotent_replay: true } };
-  status = await persistRunStatus(redis, runId, { ...status, collection_attempt: attempt, collection_attempt_timestamps: [...(status.collection_attempt_timestamps || []), attemptAt].slice(-50), stage_timestamps: stages(status, { last_collection_attempt: attemptAt }) });
-  const rows = await mindsClient.getHistory(status.conversation_alias, { after: status.pre_send_fingerprint || undefined, limit: 50 });
+  const remainingMs = Math.max(0, Date.parse(status.reply_deadline_at) - now.getTime());
+  const sseTimeoutMs = Math.min(MINDS_SSE_WAIT_MS, remainingMs);
   status = await persistRunStatus(redis, runId, {
     ...status,
-    last_history_observation: {
-      checked_at: attemptAt,
-      row_count: Array.isArray(rows) ? rows.length : 0,
-      fingerprints: Array.isArray(rows) ? rows.map((row) => row?.fingerprint).filter((value) => typeof value === "string").slice(-5) : [],
-      sender_types: Array.isArray(rows) ? [...new Set(rows.map((row) => row?.senderType).filter((value) => Number.isInteger(value)))] : [],
-    },
+    collection_attempt: attempt,
+    collection_attempt_timestamps: [...(status.collection_attempt_timestamps || []), attemptAt].slice(-50),
+    last_collection_transport: { attempt, collection_started_at: attemptAt, transport_attempted: "sse", sse_wait_timeout_ms: sseTimeoutMs, sse_result: "WAITING", history_fallback_attempted: false },
+    stage_timestamps: stages(status, { last_collection_attempt: attemptAt }),
   });
-  const reply = selectVerifiedHistoryReply(rows, { alias: status.conversation_alias, afterFingerprint: status.pre_send_fingerprint || undefined, submittedPromptHash: status.submitted_prompt_hash, hashText }, isReplyHistoryRow);
+  let reply = null;
+  let replySource = null;
+  let sseResult = "timeout";
+  let sseErrorType = null;
+  const sseStartedAt = isoNow();
+  const sseStartedMs = Date.now();
+  try {
+    const outcome = await mindsClient.waitForReply({ alias: status.conversation_alias, timeoutMs: sseTimeoutMs, afterFingerprint: status.pre_send_fingerprint || undefined });
+    const candidate = outcome?.reply
+      ? selectVerifiedHistoryReply([outcome.reply], { alias: status.conversation_alias, afterFingerprint: status.pre_send_fingerprint || undefined, submittedPromptHash: status.submitted_prompt_hash, hashText }, isReplyHistoryRow)
+      : null;
+    if (candidate) {
+      reply = candidate;
+      replySource = "sse";
+      sseResult = "verified_reply";
+    } else if (outcome?.reply) {
+      sseResult = "rejected_candidate";
+    }
+  } catch (error) {
+    sseResult = "sdk_error";
+    sseErrorType = String(error?.name || "Error").slice(0, 80);
+  }
+  const sseWaitDurationMs = Math.max(0, Date.now() - sseStartedMs);
+  let rows = [];
+  const historyFallbackAttempted = !reply;
+  const historyCheckedAt = historyFallbackAttempted ? isoNow() : null;
   if (!reply) {
-    if (collectionDeadlinePassed(status.reply_deadline_at, now)) {
-      const failedAt = isoNow(now);
+    rows = await mindsClient.getHistory(status.conversation_alias, { after: status.pre_send_fingerprint || undefined, limit: 50 });
+    reply = selectVerifiedHistoryReply(rows, { alias: status.conversation_alias, afterFingerprint: status.pre_send_fingerprint || undefined, submittedPromptHash: status.submitted_prompt_hash, hashText }, isReplyHistoryRow);
+    if (reply) replySource = "history";
+  }
+  status = await persistRunStatus(redis, runId, {
+    ...status,
+    last_collection_transport: {
+      attempt,
+      collection_started_at: attemptAt,
+      transport_attempted: "sse",
+      sse_wait_timeout_ms: sseTimeoutMs,
+      sse_wait_started_at: sseStartedAt,
+      sse_wait_duration_ms: sseWaitDurationMs,
+      sse_result: sseResult,
+      ...(sseErrorType ? { sse_error_type: sseErrorType } : {}),
+      history_fallback_attempted: historyFallbackAttempted,
+      history_checked_at: historyCheckedAt,
+      history_row_count: Array.isArray(rows) ? rows.length : 0,
+      verified_reply_found_at: reply ? isoNow() : null,
+      reply_source: replySource,
+    },
+    ...(historyFallbackAttempted ? {
+      last_history_observation: {
+        checked_at: historyCheckedAt,
+        row_count: Array.isArray(rows) ? rows.length : 0,
+        fingerprints: Array.isArray(rows) ? rows.map((row) => row?.fingerprint).filter((value) => typeof value === "string").slice(-5) : [],
+        sender_types: Array.isArray(rows) ? [...new Set(rows.map((row) => row?.senderType).filter((value) => Number.isInteger(value)))] : [],
+      },
+    } : {}),
+  });
+  if (!reply) {
+    const afterTransport = new Date(now.getTime() + sseWaitDurationMs);
+    if (collectionDeadlinePassed(status.reply_deadline_at, afterTransport)) {
+      const failedAt = isoNow(afterTransport);
       const failed = { ...status, status: "FAILED", completed_at: failedAt, error: "Animoca Mind reply deadline passed without a verified response", reply_diagnostics: buildMindReplyDiagnostics({ timedOut: true }, objective, runId), stage_timestamps: stages(status, { terminal_failure: failedAt }) };
       await persistRunStatus(redis, runId, failed);
       return { httpStatus: 200, body: { status: "FAILED", run_id: runId, error: failed.error } };
     }
-    const delaySeconds = collectionDelaySeconds(status.submitted_at, now);
+    const delaySeconds = collectionDelaySeconds(status.submitted_at, afterTransport);
     await enqueueCollectionWithTelemetry({ redis, runId, status, targetUrl, payload: { run_id: runId, objective }, env, delaySeconds, enqueue });
     return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, collection_attempt: attempt, next_collection_delay_seconds: delaySeconds } };
   }
-  const replyFoundAt = isoNow(now);
+  const replyFoundAt = status.last_collection_transport.verified_reply_found_at;
   const diagnostics = buildMindReplyDiagnostics({ reply, timedOut: false }, objective, runId);
   try {
     const { text } = normalizeMindReply({ reply, timedOut: false });
@@ -191,7 +253,7 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
     const briefing = buildBriefing({ runId, objective, status, mindBriefing: parsed, mindReplyText: text, completedAt });
     await redis.set(`greenroom:briefing:${runId}`, JSON.stringify(briefing));
     await redis.set("greenroom:latest_briefing", JSON.stringify(briefing));
-    await persistRunStatus(redis, runId, { ...status, status: "COMPLETED", completed_at: completedAt, briefing_id: runId, provenance: briefing.provenance, reply_diagnostics: diagnostics, reply_metadata: extractSafeSdkMetadata(reply), stage_timestamps: stages(status, { verified_reply_found: replyFoundAt, parsing_completed: completedAt, briefing_persisted: completedAt }) });
+    await persistRunStatus(redis, runId, { ...status, status: "COMPLETED", completed_at: completedAt, briefing_id: runId, provenance: briefing.provenance, reply_diagnostics: diagnostics, reply_metadata: extractSafeSdkMetadata(reply), submission_to_verified_reply_ms: Math.max(0, Date.parse(replyFoundAt) - Date.parse(status.submitted_at)), submission_to_completion_ms: Math.max(0, Date.parse(completedAt) - Date.parse(status.submitted_at)), stage_timestamps: stages(status, { verified_reply_found: replyFoundAt, parsing_started: replyFoundAt, parsing_completed: completedAt, briefing_persisted: completedAt }) });
     return { httpStatus: 200, body: { status: "COMPLETED", run_id: runId, briefing } };
   } catch (error) {
     const failedAt = isoNow();

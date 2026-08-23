@@ -24,14 +24,15 @@ function initialRedis(runId = "run_b") {
   });
 }
 
-function fakeMinds(history = []) {
-  const calls = { send: 0, history: 0 };
+function fakeMinds(history = [], sse = { timedOut: true }) {
+  const calls = { send: 0, history: 0, wait: 0, waitOptions: [] };
   return {
     calls,
     async getMind() { return { mindId: "8208493e-f36b-1410-8466-00039ce7df11", email: "udophia@hellominds.ai", walletAddress: "0xB675Ec9857776678aE540cF3248d898f015987Cb", isEnabled: true }; },
     async ensureConversation(alias) { return { conversationId: "conversation-safe", alias }; },
     async getLatestHistoryFingerprint() { return "fp_before"; },
     async sendMessage() { calls.send++; return { messageId: "message-safe", ignoredSecret: "no-store" }; },
+    async waitForReply(options) { calls.wait++; calls.waitOptions.push(options); return typeof sse === "function" ? sse(calls.wait) : sse; },
     async getHistory() { calls.history++; return typeof history === "function" ? history(calls.history) : history; },
   };
 }
@@ -235,13 +236,118 @@ test("empty collection attempts stay WAITING and enqueue another delayed check",
   const second = await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds, { enqueue }) });
   assert.equal(second.body.status, "WAITING_FOR_MINDS");
   assert.equal(redis.json("greenroom:run_status:run_b").collection_attempt, 2);
-  assert.deepEqual(redis.json("greenroom:run_status:run_b").last_history_observation, {
-    checked_at: redis.json("greenroom:run_status:run_b").collection_attempt_timestamps.at(-1),
-    row_count: 0,
-    fingerprints: [],
-    sender_types: [],
-  });
+  const observation = redis.json("greenroom:run_status:run_b").last_history_observation;
+  assert.equal(typeof observation.checked_at, "string");
+  assert.equal(observation.row_count, 0);
+  assert.deepEqual(observation.fingerprints, []);
+  assert.deepEqual(observation.sender_types, []);
   assert.equal(schedules, 3);
+});
+
+test("bounded SSE reply completes the run without history fallback", async () => {
+  const redis = initialRedis();
+  const reply = { alias: "greenroom-run_b", fingerprint: "zz_reply", senderType: 0, mindId: "8208493e-f36b-1410-8466-00039ce7df11", messageText: VALID };
+  const minds = fakeMinds([], { reply, timedOut: false });
+  await processWorkerPhase({ phase: "submit", ...runArgs(redis, minds) });
+  const result = await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds) });
+  assert.equal(result.body.status, "COMPLETED");
+  assert.equal(minds.calls.wait, 1);
+  assert.equal(minds.calls.waitOptions[0].timeoutMs, 15_000);
+  assert.equal(minds.calls.history, 0);
+  assert.equal(minds.calls.send, 1);
+  assert.equal(redis.json("greenroom:briefing:run_b").run_id, "run_b");
+  assert.equal(redis.json("greenroom:run_status:run_b").last_collection_transport.reply_source, "sse");
+});
+
+test("SSE timeout recovers a verified reply from history", async () => {
+  const redis = initialRedis();
+  const reply = { alias: "greenroom-run_b", fingerprint: "zz_reply", senderType: 0, messageText: VALID };
+  const minds = fakeMinds([reply]);
+  await processWorkerPhase({ phase: "submit", ...runArgs(redis, minds) });
+  const result = await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds) });
+  assert.equal(result.body.status, "COMPLETED");
+  assert.equal(minds.calls.wait, 1);
+  assert.equal(minds.calls.history, 1);
+  assert.equal(redis.json("greenroom:run_status:run_b").last_collection_transport.reply_source, "history");
+});
+
+test("SSE SDK error falls back safely to history", async () => {
+  const redis = initialRedis();
+  const reply = { alias: "greenroom-run_b", fingerprint: "zz_reply", senderType: 0, messageText: VALID };
+  const minds = fakeMinds([reply], () => { const error = new Error("sensitive details"); error.name = "TransportError"; throw error; });
+  await processWorkerPhase({ phase: "submit", ...runArgs(redis, minds) });
+  const result = await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds) });
+  assert.equal(result.body.status, "COMPLETED");
+  const telemetry = redis.json("greenroom:run_status:run_b").last_collection_transport;
+  assert.equal(telemetry.sse_result, "sdk_error");
+  assert.equal(telemetry.sse_error_type, "TransportError");
+  assert.equal(JSON.stringify(telemetry).includes("sensitive details"), false);
+});
+
+test("invalid SSE candidates are rejected before history recovery", async () => {
+  for (const candidate of [
+    { alias: "greenroom-run_b", fingerprint: "zz_reply", senderType: 1, messageText: VALID },
+    { alias: "wrong", fingerprint: "zz_reply", senderType: 0, messageText: VALID },
+    { alias: "greenroom-run_b", fingerprint: "aa", senderType: 0, messageText: VALID },
+  ]) {
+    const redis = initialRedis();
+    const minds = fakeMinds([], { reply: candidate, timedOut: false });
+    await processWorkerPhase({ phase: "submit", ...runArgs(redis, minds) });
+    const result = await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds) });
+    assert.equal(result.body.status, "WAITING_FOR_MINDS");
+    assert.equal(minds.calls.history, 1);
+    assert.equal(redis.json("greenroom:briefing:run_b"), undefined);
+  }
+});
+
+test("SSE prompt echo is rejected using the persisted prompt hash", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds();
+  await processWorkerPhase({ phase: "submit", ...runArgs(redis, minds) });
+  const status = redis.json("greenroom:run_status:run_b");
+  minds.waitForReply = async () => ({ reply: { alias: status.conversation_alias, fingerprint: "zz_reply", senderType: 0, messageText: "echo" }, timedOut: false });
+  status.submitted_prompt_hash = (await import("node:crypto")).createHash("sha256").update("echo").digest("hex");
+  await redis.set("greenroom:run_status:run_b", JSON.stringify(status));
+  const result = await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds) });
+  assert.equal(result.body.status, "WAITING_FOR_MINDS");
+  assert.equal(redis.json("greenroom:briefing:run_b"), undefined);
+});
+
+test("malformed verified SSE JSON fails strictly without polling again", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds([], { reply: { alias: "greenroom-run_b", fingerprint: "zz_reply", senderType: 0, messageText: '{"items":[' }, timedOut: false });
+  await processWorkerPhase({ phase: "submit", ...runArgs(redis, minds) });
+  const result = await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds) });
+  assert.equal(result.body.status, "FAILED");
+  assert.match(result.body.error, /not valid briefing JSON/);
+  assert.equal(minds.calls.history, 0);
+  assert.equal(redis.json("greenroom:briefing:run_b"), undefined);
+});
+
+test("terminal runs perform no SSE or history work", async () => {
+  for (const terminal of ["COMPLETED", "FAILED"]) {
+    const redis = initialRedis();
+    const status = redis.json("greenroom:run_status:run_b");
+    status.status = terminal;
+    await redis.set("greenroom:run_status:run_b", JSON.stringify(status));
+    const minds = fakeMinds();
+    const result = await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds) });
+    assert.equal(result.body.status, terminal);
+    assert.equal(minds.calls.wait, 0);
+    assert.equal(minds.calls.history, 0);
+    assert.equal(minds.calls.send, 0);
+  }
+});
+
+test("deadline is enforced before starting a bounded SSE wait", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds();
+  await processWorkerPhase({ phase: "submit", ...runArgs(redis, minds) });
+  const status = redis.json("greenroom:run_status:run_b");
+  const result = await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds, { now: new Date(Date.parse(status.reply_deadline_at) + 1) }) });
+  assert.equal(result.body.status, "FAILED");
+  assert.equal(minds.calls.wait, 0);
+  assert.equal(minds.calls.history, 0);
 });
 
 test("collection scheduling applies 5s, 10s and 15s adaptive QStash delays", async () => {
