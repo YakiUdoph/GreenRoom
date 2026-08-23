@@ -1,20 +1,39 @@
 import React, { useState } from 'react';
-import { api } from '../lib/api';
 import { getDisplayMemories } from '../lib/memoryPresentation';
 
-export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, onOpenMemoryProofModal, onOpenNinetySecProof, isExecuting }) {
-  const [feedback,setFeedback]=useState(''); const [comparison,setComparison]=useState(null); const [comparing,setComparing]=useState(false); const [submitting,setSubmitting]=useState(false); const [saveStatus,setSaveStatus]=useState(null);
-  const memories=getDisplayMemories(memoryState); const objective=memoryState?.creator_objectives?.[0];
-  const submit=async e=>{e.preventDefault();if(!feedback.trim()||submitting)return;const submitted=feedback;setSubmitting(true);setSaveStatus(null);try{const result=await onSubmitFeedback(submitted);setFeedback('');setSaveStatus({type:'success',message:result.created===false?'Already remembered.':'Preference remembered.'});}catch(err){setSaveStatus({type:'error',message:err.message||'Could not save this preference.'});}finally{setSubmitting(false);}};
-  const compare=async()=>{setComparing(true);try{setComparison(await api.compareRecommendations());}finally{setComparing(false);}};
+export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, isExecuting }) {
+  const [feedback, setFeedback] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [saveStatus, setSaveStatus] = useState(null);
+  const memories = getDisplayMemories(memoryState);
+  const objective = memoryState?.creator_objectives?.[0];
+  const submit = async (event) => {
+    event.preventDefault();
+    if (!feedback.trim() || submitting) return;
+    const submitted = feedback;
+    setSubmitting(true);
+    setSaveStatus(null);
+    try {
+      const result = await onSubmitFeedback(submitted);
+      setFeedback('');
+      setSaveStatus({ type: 'success', message: result.created === false ? 'Already remembered.' : 'Preference remembered.' });
+    } catch (error) {
+      setSaveStatus({ type: 'error', message: error.message || 'Could not save this preference.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return <div className="rich-route memory-route">
-    <section className="route-visual-hero"><img src="/assets/greenroom-creator-night.png" alt="Creator at work"/><div className="route-visual-copy"><p>Memory / creator context</p><h1>What Greenroom remembers.</h1><span>Useful understanding, held in human language and available whenever the work begins.</span></div><div className="route-visual-meta"><span>{String(memories.length).padStart(2,'0')} saved memories</span></div></section>
-    <section className="density-shell"><div className="density-band"><article><small>CURRENT THREAD / 01</small><h2>{objective?.title||'An objective is waiting.'}</h2><p>The creator context Greenroom carries between sessions.</p></article><article><small>LEARNED RULES / 02</small><strong>{String(memories.length).padStart(2,'0')}</strong><p>{memories.length?'Human-readable context is available for the next run.':'No learned rules have been saved yet.'}</p></article></div>
-    <div className="route-image-ribbon"><img src="/assets/greenroom-away-workspace.png" alt="Creator workspace"/><span>Context is the input to better work</span></div>
-    {memories.length?<ul className="density-list">{memories.map((m,i)=><li key={i}><span>{String(i+1).padStart(2,'0')}</span><p>{m}</p><small>MEMORY</small></li>)}</ul>:<div className="density-empty">Creator preferences and learned rules will appear here once they are saved by a completed workflow.</div>}
-    <form className="memory-teach" onSubmit={submit}><p>TEACH GREENROOM</p><div className="memory-teach-field"><input value={feedback} onChange={e=>{setFeedback(e.target.value);setSaveStatus(null);}} placeholder="A preference GreenRoom should remember" disabled={submitting}/>{saveStatus&&<span className={`memory-save-status is-${saveStatus.type}`} role={saveStatus.type==='error'?'alert':'status'}>{saveStatus.message}</span>}</div><button disabled={isExecuting||submitting||!feedback.trim()}>{submitting?'Remembering…':'Remember this ↗'}</button></form>
-    {comparison&&<details open className="memory-comparison"><summary>Personalization comparison</summary><div><p>{comparison.before_memory}</p><p>{comparison.after_memory}</p></div></details>}
-    <div className="route-cta-row"><button disabled={comparing} onClick={compare}>{comparing?'Comparing…':'Run live comparison'}</button><button onClick={onOpenOnboarding}>Edit creator context</button><button onClick={onOpenMemoryProofModal}>Prove adaptation</button><button onClick={onOpenNinetySecProof}>Run memory proof</button></div></section>
+    <section className="route-visual-hero"><img src="/assets/greenroom-creator-night.png" alt="Creator at work"/><div className="route-visual-copy"><p>Memory / creator context</p><h1>What GreenRoom remembers.</h1><span>Profile facts, preferences, rules, and feedback that make the next decision specific to you.</span></div><div className="route-visual-meta"><span>{String(memories.length).padStart(2,'0')} saved memories</span></div></section>
+    <section className="density-shell">
+      <div className="density-band"><article><small>OBJECTIVE / 01</small><h2>{objective?.title || 'No objective is active.'}</h2><p>The outcome GreenRoom currently keeps in view.</p></article><article><small>LEARNED PREFERENCES / 02</small><strong>{String(memories.length).padStart(2,'0')}</strong><p>{memories.length ? 'Human-readable context is available for the next run.' : 'No learned preferences have been saved yet.'}</p></article></div>
+      <div className="route-image-ribbon"><img src="/assets/greenroom-away-workspace.png" alt="Creator workspace"/><span>Context is the input to better decisions</span></div>
+      {memories.length ? <ul className="density-list">{memories.map((memory, index) => <li key={index}><span>{String(index + 1).padStart(2,'0')}</span><p>{memory}</p><small>LEARNED PREFERENCE</small></li>)}</ul> : <div className="density-empty">No learned Memory yet. Add a preference below or edit creator context.</div>}
+      <form className="memory-teach" onSubmit={submit}><p>DECISION FEEDBACK</p><div className="memory-teach-field"><input value={feedback} onChange={event => { setFeedback(event.target.value); setSaveStatus(null); }} placeholder="A preference GreenRoom should remember" disabled={submitting}/>{saveStatus && <span className={`memory-save-status is-${saveStatus.type}`} role={saveStatus.type === 'error' ? 'alert' : 'status'}>{saveStatus.message}</span>}</div><button disabled={isExecuting || submitting || !feedback.trim()}>{submitting ? 'Remembering…' : 'Remember this ↗'}</button></form>
+      <div className="route-cta-row"><div><p>PROFILE FACTS</p><span>Edit the creator and audience context that persists between sessions.</span></div><button onClick={onOpenOnboarding}>Edit creator context</button></div>
+    </section>
   </div>;
 }
+
 export default MemoryPage;

@@ -1,5 +1,7 @@
 # GREENROOM — FINAL PRODUCT AUDIT & WINNING POLISH REPORT
 
+> **Historical, non-canonical audit.** This earlier narrative is superseded by `README.md`, `PRD.md`, and `TECHNICAL_CONSTRAINTS.md`. Scout, Community, and Business are local software roles, not separately verified platform Minds. Udophia (`8208493e-f36b-1410-8466-00039ce7df11`) is the only verified remote Mind in current repository evidence; simulated signals are not live research.
+
 > **PRODUCT THESIS:**  
 > **GREENROOM WORKS WHILE YOU WORK.**  
 > **GREENROOM REMEMBERS WHY.**

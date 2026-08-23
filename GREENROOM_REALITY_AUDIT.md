@@ -1,5 +1,7 @@
 # Greenroom Reality Audit (GREENROOM_REALITY_AUDIT.md)
 
+> **Historical, non-canonical audit.** This document is superseded by `README.md`, `PRD.md`, and `TECHNICAL_CONSTRAINTS.md`. References below to a multi-Mind cycle describe local orchestration roles sharing the Udophia integration; they do not prove four distinct remote platform Minds. Udophia (`8208493e-f36b-1410-8466-00039ce7df11`) is the only verified platform Mind, and the current evidence bundle is simulated.
+
 ## Executive Audit Overview
 This audit evaluates every major backend component, Minds platform integration, memory engine function, REST endpoint, WebSocket handler, and frontend feature against the **Absolute Rule — No Fake Product Behavior**.
 

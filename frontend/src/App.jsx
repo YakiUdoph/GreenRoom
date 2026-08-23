@@ -11,7 +11,6 @@ import { PayloadModal } from './components/ui/PayloadModal';
 import { CreatorOnboardingModal } from './components/onboarding/CreatorOnboardingModal';
 import { OfflineLifecycleModal } from './components/activity/OfflineLifecycleModal';
 import { MemoryBehaviorProofModal } from './components/memory/MemoryBehaviorProofModal';
-import { SpecialistMindsProofModal } from './components/mind/SpecialistMindsProofModal';
 import { NinetySecondProofModal } from './components/memory/NinetySecondProofModal';
 
 
@@ -29,7 +28,6 @@ export function App() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
   const [isMemoryProofModalOpen, setIsMemoryProofModalOpen] = useState(false);
-  const [isSpecialistProofModalOpen, setIsSpecialistProofModalOpen] = useState(false);
   const [isNinetySecProofOpen, setIsNinetySecProofOpen] = useState(false);
   const [currentOfflineRun, setCurrentOfflineRun] = useState(null);
   const [resumeOfflineRun, setResumeOfflineRun] = useState(null);
@@ -276,7 +274,7 @@ export function App() {
           <MindPage
             key="mind"
             mindsStatus={mindsStatus}
-            onRunStep={handleRunStep}
+            memoryState={memoryState}
             isExecuting={isExecuting}
           />
         );
@@ -287,8 +285,6 @@ export function App() {
             memoryState={memoryState}
             onSubmitFeedback={handleSubmitFeedback}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
-            onOpenMemoryProofModal={() => setIsMemoryProofModalOpen(true)}
-            onOpenNinetySecProof={() => setIsNinetySecProofOpen(true)}
             isExecuting={isExecuting}
           />
         );
@@ -296,12 +292,7 @@ export function App() {
         return (
           <IntelligencePage
             key="intelligence"
-            impMessages={impMessages}
             memoryState={memoryState}
-            onInspectPayload={(msg) => greenroomStore.openPayloadModal(msg)}
-            onRunStep={handleRunStep}
-            onOpenSpecialistProofModal={() => setIsSpecialistProofModalOpen(true)}
-            isExecuting={isExecuting}
           />
         );
       case 'actions':
@@ -404,12 +395,6 @@ export function App() {
         onMemoryUpdated={() => {
           loadInitialData();
         }}
-      />
-
-      {/* Specialist Minds Multi-Agent Architecture Proof Modal */}
-      <SpecialistMindsProofModal
-        isOpen={isSpecialistProofModalOpen}
-        onClose={() => setIsSpecialistProofModalOpen(false)}
       />
 
       {/* 90-Second Unavoidable Memory Proof Modal */}

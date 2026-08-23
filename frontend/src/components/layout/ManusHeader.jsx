@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const items = [['HOME', 'home'], ['MIND', 'mind'], ['MEMORY', 'memory'], ['INTELLIGENCE', 'intelligence'], ['ACTIONS', 'actions'], ['SYSTEM', 'system'], ['DOCS', 'docs']];
+const items = [['HOME', 'home'], ['MIND', 'mind'], ['MEMORY', 'memory'], ['INTELLIGENCE', 'intelligence'], ['DOCS', 'docs']];
 
 export function ManusHeader({ activeTab, onTabChange, runIndicator, onRunIndicatorClick }) {
   const [open, setOpen] = useState(false);

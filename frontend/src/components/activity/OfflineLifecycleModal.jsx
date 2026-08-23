@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { api } from '../../lib/api';
-import { isOfflineRunPending, offlineRunProgressLabel, verifyRunBriefing, verifySavedObjective } from '../../lib/offlineRun';
+import { isOfflineRunPending, verifyRunBriefing, verifySavedObjective } from '../../lib/offlineRun';
 import { soundFx } from '../../lib/sound';
 
 export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRunStatusChanged, memoryState, resumeRun = null }) {
@@ -185,14 +185,14 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
               <div className="flex items-center gap-2 mb-1">
                 <span className="material-symbols-outlined text-primary-fixed text-xl">cloud_done</span>
                 <span className="font-mono text-[10px] text-primary-fixed uppercase tracking-widest font-bold bg-[#142616] px-2.5 py-0.5 rounded border border-[#234d28]">
-                  PROVE THE OFFLINE CHAIN • ASYNCHRONOUS ENGINE
+                  BACKGROUND WORK
                 </span>
               </div>
               <h2 className="text-xl md:text-2xl font-display font-bold text-white uppercase tracking-tight">
-                "Greenroom Works While You Work"
+                GreenRoom works while you are away
               </h2>
               <p className="text-xs font-sans text-zinc-300 mt-1 font-medium">
-                Complete verifiable lifecycle: Objective Persisted → QStash Queue → Minds SDK Autonomous Run → Durable Storage → "While You Were Away" Delivery.
+                Start the objective, leave this screen if you need to, and return when the decision briefing is ready.
               </p>
             </div>
 
@@ -210,7 +210,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
 
           {/* Stepper Progress Bar */}
           <div className="space-y-4">
-            <div className="grid grid-cols-4 md:grid-cols-8 gap-1.5 font-mono text-[10px] text-center font-bold">
+            <div className="creator-technical-detail grid grid-cols-4 md:grid-cols-8 gap-1.5 font-mono text-[10px] text-center font-bold">
               {[
                 '1. Objective',
                 '2. Enqueue',
@@ -248,9 +248,9 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                   <span className="material-symbols-outlined text-2xl animate-pulse">power_settings_new</span>
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-base font-display font-bold text-white uppercase">Ready to Prove the Offline Chain</h3>
+                  <h3 className="text-base font-display font-bold text-white uppercase">Ready for background work</h3>
                   <p className="text-xs text-zinc-300 max-w-md mx-auto leading-relaxed">
-                    Clicking below will enqueue a genuine QStash background run, simulate creator offline departure, execute Animoca Minds SDK processing, and deliver the completed briefing upon creator return.
+                    GreenRoom will hold this objective in the background. A result appears only after the run completes successfully.
                   </p>
                 </div>
                 <button
@@ -258,7 +258,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                   className="px-6 py-3 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition shadow-lg shadow-primary-container/20 flex items-center gap-2 mx-auto"
                 >
                   <span className="material-symbols-outlined text-base">play_arrow</span>
-                  <span>Launch Complete Offline Lifecycle Test</span>
+                  <span>Start background work</span>
                 </button>
               </div>
             )}
@@ -270,13 +270,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                   <div className="flex items-center gap-2 text-primary-fixed">
                     <span className="w-2.5 h-2.5 rounded-full bg-primary-fixed animate-ping" />
                     <span className="font-bold uppercase">
-                      {step === 1 && 'STEP 1: CREATOR OBJECTIVE PERSISTED'}
-                      {step === 2 && 'STEP 2: ENQUEUING QSTASH BACKGROUND JOB'}
-                      {step === 3 && 'STEP 3: CREATOR OFFLINE (SESSION SUSPENDED)'}
-                      {step === 4 && 'STEP 4: QSTASH WORKER WEBHOOK EXECUTING'}
-                      {step === 5 && `STEP 5: ${offlineRunProgressLabel(runStatusDetails).toUpperCase()}`}
-                      {step === 6 && 'STEP 6: RESULT PERSISTED TO DURABLE STORE'}
-                      {step === 7 && 'STEP 7: CREATOR RETURNED (SESSION RESUMED)'}
+                      {jobStatus === 'FAILED' ? 'RUN FAILED' : 'WORKING'}
                     </span>
                   </div>
 
@@ -286,7 +280,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                 </div>
 
                 {/* Job Ticket Details */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono text-xs">
+                <div className="creator-technical-detail grid grid-cols-2 md:grid-cols-4 gap-3 font-mono text-xs">
                   <div className="p-2.5 bg-[#111115] rounded border border-outline-variant">
                     <span className="text-[10px] text-zinc-400 block font-bold">RUN ID</span>
                     <span className="text-primary-fixed font-bold">{runId || 'GENERATING...'}</span>
@@ -306,7 +300,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                 </div>
 
                 {/* Visual Description Card */}
-                <div className="p-4 bg-[#142616]/40 border border-[#234d28] rounded font-mono text-xs text-zinc-200 leading-relaxed">
+                <div className="creator-technical-detail p-4 bg-[#142616]/40 border border-[#234d28] rounded font-mono text-xs text-zinc-200 leading-relaxed">
                   {step === 1 && `Creator "${creatorName}" identity rules & $45 CPM benchmark verified in memory store.`}
                   {step === 2 && `POST /api/briefing/trigger called. Background job enqueued with status QUEUED.`}
                   {step === 3 && `Simulating creator closing browser tab to record content. Greenroom operates autonomously.`}

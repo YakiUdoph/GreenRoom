@@ -89,7 +89,7 @@ export function ActiveObjectiveCard({
             What Are You Trying To Accomplish?
           </h2>
           <p className="text-xs font-sans text-zinc-300 mt-1 font-medium">
-            Greenroom coordinates specialist Minds (Scout, Community, Business) and evaluates opportunities directly against your objective.
+            GreenRoom evaluates returned intelligence against your objective and persistent creator context.
           </p>
         </div>
 
@@ -110,7 +110,7 @@ export function ActiveObjectiveCard({
               type="text"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="e.g., Find a sponsorship opportunity that fits my audience..."
+              placeholder="e.g., Improve my short-form video production workflow..."
               className="w-full bg-[#0a0c0e] border border-outline-variant rounded p-3 text-white focus:border-primary-fixed focus:outline-none"
               autoFocus
             />
@@ -121,7 +121,7 @@ export function ActiveObjectiveCard({
               type="text"
               value={newDetails}
               onChange={(e) => setNewDetails(e.target.value)}
-              placeholder="e.g., Focus on developer tools; target $45 CPM benchmark..."
+              placeholder="e.g., Focus on practical, low-cost tools..."
               className="w-full bg-[#0a0c0e] border border-outline-variant rounded p-3 text-white focus:border-primary-fixed focus:outline-none"
             />
           </div>
