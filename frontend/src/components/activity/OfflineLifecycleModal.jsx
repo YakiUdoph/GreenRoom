@@ -5,13 +5,14 @@ import { isOfflineRunPending, verifyRunBriefing, verifySavedObjective } from '..
 import { soundFx } from '../../lib/sound';
 
 export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRunStatusChanged, memoryState, resumeRun = null }) {
-  const [step, setStep] = useState(0); // 0: Idle/Start, 1: Objective Persisted, 2: Triggering Job, 3: Creator Offline, 4: Worker Executing, 5: Minds Processing, 6: Persisted, 7: Creator Returns, 8: Briefing Ready
+  const [step, setStep] = useState(0);
   const [runId, setRunId] = useState(null);
   const [jobStatus, setJobStatus] = useState(null);
   const [runStatusDetails, setRunStatusDetails] = useState(null);
   const [executionMode, setExecutionMode] = useState('QSTASH_BACKGROUND_JOB');
   const [briefingData, setBriefingData] = useState(null);
   const [errorMessage, setErrorMessage] = useState(null);
+  const [noRelevantUpdate, setNoRelevantUpdate] = useState(false);
   const [offlineSeconds, setOfflineSeconds] = useState(0);
   const backgroundedRef = useRef(false);
 
@@ -38,7 +39,10 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
     setJobStatus(resumeRun.status);
     setRunStatusDetails(resumeRun);
     setErrorMessage(resumeRun.status === 'FAILED' ? (resumeRun.error || "GreenRoom couldn't complete this run.") : null);
-    if (resumeRun.status === 'COMPLETED') {
+    if (['NO_RELEVANT_UPDATE', 'UNSUPPORTED_DOMAIN'].includes(resumeRun.status)) {
+      setNoRelevantUpdate(true);
+      setStep(8);
+    } else if (resumeRun.status === 'COMPLETED') {
       api.getRunBriefing(resumeRun.run_id).then((response) => {
         const briefing = verifyRunBriefing(response?.briefing, resumeRun.run_id, resumeRun.objective_id);
         setBriefingData(briefing);
@@ -55,10 +59,11 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
 
   if (!isOpen) return null;
 
-  const handleStartChainSimulation = async () => {
+  const handleStartLiveRun = async () => {
     backgroundedRef.current = false;
     soundFx.playSynapsePulse();
     setErrorMessage(null);
+    setNoRelevantUpdate(false);
 
     let activeRunId = null;
     let activeObjectiveId = null;
@@ -90,13 +95,12 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
       await new Promise((r) => setTimeout(r, 1200));
       setStep(4); // Step 4: Worker Executing (QStash webhook)
 
-      // Poll run status until completed
+      // Poll durable run state until a truthful terminal state is reached.
       let attempts = 0;
       let completed = false;
       let latestStatus = 'RUNNING';
 
-      // The browser polls durable state only; Minds collection happens in delayed
-      // QStash invocations and can safely outlive the old synchronous 60s window.
+      // The browser polls durable state only; the signed worker owns live retrieval.
       while (attempts < 660 && !completed) {
         attempts++;
         await new Promise((r) => setTimeout(r, 1000));
@@ -107,9 +111,12 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
           setJobStatus(latestStatus);
           setRunStatusDetails(statusRes);
           if (isOfflineRunPending(latestStatus)) {
-            setStep(5); // Step 5: Minds SDK Processing
+            setStep(5);
           }
           if (latestStatus === 'COMPLETED') {
+            completed = true;
+          }
+          if (['NO_RELEVANT_UPDATE', 'UNSUPPORTED_DOMAIN'].includes(latestStatus)) {
             completed = true;
           }
           if (latestStatus === 'FAILED') {
@@ -127,6 +134,15 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
 
       setStep(6); // Step 6: Result Persisted
       await new Promise((r) => setTimeout(r, 800));
+
+      if (['NO_RELEVANT_UPDATE', 'UNSUPPORTED_DOMAIN'].includes(latestStatus)) {
+        setNoRelevantUpdate(true);
+        onRunStatusChanged?.({ run_id: rid, objective_id: savedObjective.id, status: latestStatus });
+        setStep(7);
+        await new Promise((r) => setTimeout(r, 500));
+        setStep(8);
+        return;
+      }
 
       const briefingRes = await api.getRunBriefing(rid);
       const briefing = verifyRunBriefing(briefingRes?.briefing, rid, savedObjective.id);
@@ -163,6 +179,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
     setRunStatusDetails(null);
     setBriefingData(null);
     setErrorMessage(null);
+    setNoRelevantUpdate(false);
   };
 
   const handleContinue = () => {
@@ -216,7 +233,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                 '2. Enqueue',
                 '3. Offline',
                 '4. Worker',
-                '5. Minds SDK',
+                '5. Live evidence',
                 '6. Persisted',
                 '7. Return',
                 '8. Delivery',
@@ -254,7 +271,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                   </p>
                 </div>
                 <button
-                  onClick={handleStartChainSimulation}
+                  onClick={handleStartLiveRun}
                   className="px-6 py-3 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition shadow-lg shadow-primary-container/20 flex items-center gap-2 mx-auto"
                 >
                   <span className="material-symbols-outlined text-base">play_arrow</span>
@@ -294,8 +311,8 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                     <span className="text-cyan-400 font-bold">{executionMode}</span>
                   </div>
                   <div className="p-2.5 bg-[#111115] rounded border border-outline-variant">
-                    <span className="text-[10px] text-zinc-400 block font-bold">MINDS UUID</span>
-                    <span className="text-white font-bold text-[11px]">8208493e</span>
+                    <span className="text-[10px] text-zinc-400 block font-bold">DECISION ENGINE</span>
+                    <span className="text-white font-bold text-[11px]">LIVE CORE</span>
                   </div>
                 </div>
 
@@ -303,26 +320,21 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                 <div className="creator-technical-detail p-4 bg-[#142616]/40 border border-[#234d28] rounded font-mono text-xs text-zinc-200 leading-relaxed">
                   {step === 1 && `Creator "${creatorName}" identity rules & $45 CPM benchmark verified in memory store.`}
                   {step === 2 && `POST /api/briefing/trigger called. Background job enqueued with status QUEUED.`}
-                  {step === 3 && `Simulating creator closing browser tab to record content. Greenroom operates autonomously.`}
+                  {step === 3 && `The creator can close this view while GreenRoom keeps the durable run active.`}
                   {step === 4 && `QStash worker endpoint /api/briefing-worker triggered via signed webhook.`}
                   {step === 5 && (jobStatus === 'FAILED'
                     ? (errorMessage || `GreenRoom couldn't complete this run.`)
-                    : jobStatus === 'WAITING_FOR_MINDS'
-                      ? `Submitted to Mind. GreenRoom is working on this in the background. You can keep using GreenRoom.`
-                      : `Greenroom is securely submitting the objective to Animoca Minds Builder API.`)}
+                    : `GreenRoom is retrieving and validating current first-party AI-video evidence.`)}
                   {step === 6 && `Ranking result. Executive Briefing and provenance metadata durably saved to its run-specific Upstash Redis record.`}
                   {step === 7 && `Creator re-opens dashboard. Polling confirms job completion.`}
                 </div>
-                {step === 5 && jobStatus === 'WAITING_FOR_MINDS' && (
-                  <button onClick={handleContinue} className="px-5 py-3 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition self-start">
-                    Continue in GreenRoom
-                  </button>
-                )}
+                {step === 5 && isOfflineRunPending(jobStatus) && <button onClick={handleContinue} className="px-5 py-3 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition self-start">Continue in GreenRoom</button>}
               </div>
             )}
 
             {/* Stage 8: Briefing Ready ("While You Were Away...") */}
-            {step === 8 && (
+            {step === 8 && noRelevantUpdate && <div className="density-empty"><strong>{jobStatus === 'UNSUPPORTED_DOMAIN' ? 'NO LIVE PROVIDER' : 'NO RELEVANT UPDATE'}</strong><p>{jobStatus === 'UNSUPPORTED_DOMAIN' ? 'GreenRoom does not yet have a live evidence provider for this objective domain. No unrelated evidence was substituted.' : 'No current evidence passed GreenRoom’s strict relevance and freshness filters. Previous results were not reused.'}</p><button onClick={handleReset}>Check again later</button></div>}
+            {step === 8 && !noRelevantUpdate && (
               <div className="space-y-4">
                 <div className="p-4 bg-[#142616] border border-[#234d28] rounded-xl flex justify-between items-center font-mono text-xs">
                   <div className="flex items-center gap-3">
@@ -357,7 +369,7 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                     </div>
 
                     <span className="font-mono text-[10px] text-emerald-400 font-bold bg-[#142616] px-2.5 py-1 rounded border border-[#234d28]">
-                      ANIMOCA MINDS SDK VERIFIED
+                      GREENROOM LIVE CORE · MINDS NOT USED
                     </span>
                   </div>
 

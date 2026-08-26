@@ -3,6 +3,7 @@ import { createMindsClient, isReplyHistoryRow } from "@animocabrands/minds-clien
 import { Receiver } from "@upstash/qstash";
 import { Redis } from "@upstash/redis";
 import { buildMindsPrompt, buildMindReplyDiagnostics, classifyObjectiveSignals, collectionDeadlinePassed, collectionDelaySeconds, extractSafeSdkMetadata, isTerminalRunStatus, normalizeMindReply, parseMindBriefing, resolveIdempotentBriefing, selectRelevantCreatorContext, selectVerifiedHistoryReply, updateRecentRunIndex, validateObjectiveSnapshot, validateWorkerConfiguration, verifyMindIdentity } from "./worker-guards.mjs";
+import { buildDeterministicLiveBriefing, retrieveLiveEvidenceForObjective } from "./live-evidence.mjs";
 
 export const maxDuration = 60;
 export const config = { api: { bodyParser: false } };
@@ -152,6 +153,119 @@ async function handleSubmission({ redis, mindsClient, runId, objective, targetUr
   return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, submitted_at: submittedAt, reply_deadline_at: replyDeadlineAt } };
 }
 
+async function handleLiveSubmission({ redis, runId, objective, now = new Date(), fetchEvidence = retrieveLiveEvidenceForObjective }) {
+  let status = await loadRunStatus(redis, runId);
+  assertMatchingRun(status, runId, objective);
+  if (isTerminalRunStatus(status.status)) {
+    const briefing = status.status === "COMPLETED"
+      ? parseStored(await redis.get(`greenroom:briefing:${runId}`), null)
+      : null;
+    return { httpStatus: 200, body: { status: status.status, run_id: runId, briefing, idempotent_replay: true } };
+  }
+
+  const claim = await redis.set(`greenroom:live_claim:${runId}`, isoNow(now), { nx: true, ex: 24 * 60 * 60 });
+  if (claim === null) {
+    status = await loadRunStatus(redis, runId);
+    return { httpStatus: 202, body: { status: status.status || "WORKING", run_id: runId, idempotent_replay: true } };
+  }
+
+  const startedAt = isoNow(now);
+  status = await persistRunStatus(redis, runId, {
+    ...status,
+    run_id: runId,
+    status: "WORKING",
+    started_at: status.started_at || startedAt,
+    objective_snapshot: objective,
+    evidence_mode: "LIVE",
+    decision_engine: "GREENROOM_DETERMINISTIC_LIVE_CORE",
+    minds_verified: false,
+    stage_timestamps: stages(status, { live_retrieval_started: startedAt }),
+  });
+
+  const creatorProfile = parseStored(await redis.get("greenroom:creator_profile"), { learned_voice_rules: [], memory_nodes: [] });
+  let retrieval;
+  try {
+    retrieval = await fetchEvidence({ objective, now });
+  } catch (error) {
+    const failedAt = isoNow();
+    const code = typeof error?.code === "string" ? error.code : "SOURCE_UNAVAILABLE";
+    const safeMessage = code === "SOURCE_TIMEOUT"
+      ? "Live evidence source timed out"
+      : code === "MALFORMED_SOURCE"
+        ? "Live evidence source returned malformed data"
+        : "Live evidence source is unavailable";
+    await persistRunStatus(redis, runId, {
+      ...status,
+      status: "FAILED",
+      completed_at: failedAt,
+      error: safeMessage,
+      failure_code: code,
+      evidence_mode: "LIVE",
+      decision_engine: "GREENROOM_DETERMINISTIC_LIVE_CORE",
+      minds_verified: false,
+      stage_timestamps: stages(status, { terminal_failure: failedAt }),
+    });
+    return { httpStatus: 200, body: { status: "FAILED", run_id: runId, error: safeMessage } };
+  }
+  const retrievalCompletedAt = isoNow();
+  if (!retrieval.evidence.length) {
+    const terminalStatus = retrieval.status === "UNSUPPORTED_DOMAIN" ? "UNSUPPORTED_DOMAIN" : "NO_RELEVANT_UPDATE";
+    const terminal = await persistRunStatus(redis, runId, {
+      ...status,
+      status: terminalStatus,
+      completed_at: retrievalCompletedAt,
+      evidence_mode: "LIVE",
+      decision_engine: "GREENROOM_DETERMINISTIC_LIVE_CORE",
+      minds_verified: false,
+      evidence_retrieval: {
+        domain: retrieval.domain || null,
+        provider_ids: retrieval.provider_ids || [],
+        candidate_count: retrieval.candidate_count,
+        relevant_count: 0,
+        retrieval_latency_ms: retrieval.retrieval_latency_ms,
+        retrieved_at: retrieval.retrieved_at,
+      },
+      stage_timestamps: stages(status, { live_retrieval_completed: retrievalCompletedAt, [terminalStatus === "UNSUPPORTED_DOMAIN" ? "unsupported_domain" : "no_relevant_update"]: retrievalCompletedAt }),
+    });
+    return { httpStatus: 200, body: { status: terminal.status, run_id: runId } };
+  }
+
+  const evidence = retrieval.evidence[0];
+  const memorySelection = selectRelevantCreatorContext(objective, creatorProfile, [evidence]);
+  const completedAt = isoNow();
+  const briefing = buildDeterministicLiveBriefing({ runId, objective, evidence, memorySelection, startedAt, completedAt });
+  await redis.set(`greenroom:briefing:${runId}`, JSON.stringify(briefing));
+  await redis.set("greenroom:latest_briefing", JSON.stringify(briefing));
+  await persistRunStatus(redis, runId, {
+    ...status,
+    status: "COMPLETED",
+    completed_at: completedAt,
+    briefing_id: runId,
+    evidence_mode: "LIVE",
+    decision_engine: briefing.decision_engine,
+    minds_verified: false,
+    provenance: briefing.provenance,
+    memory_selection: memorySelection.provenance,
+    selected_memory: memorySelection.context,
+    evidence_retrieval: {
+      domain: retrieval.domain || null,
+      provider_ids: retrieval.provider_ids || [],
+      source: evidence.source,
+      source_url: evidence.source_url,
+      published_at: evidence.published_at,
+      retrieved_at: evidence.retrieved_at,
+      candidate_count: retrieval.candidate_count,
+      fresh_count: retrieval.fresh_count,
+      relevant_count: retrieval.relevant_count,
+      deduplicated_count: retrieval.deduplicated_count,
+      request_count: retrieval.request_count,
+      retrieval_latency_ms: retrieval.retrieval_latency_ms,
+    },
+    stage_timestamps: stages(status, { live_retrieval_completed: retrievalCompletedAt, briefing_persisted: completedAt }),
+  });
+  return { httpStatus: 200, body: { status: "COMPLETED", run_id: runId, briefing } };
+}
+
 async function handleCollection({ redis, mindsClient, runId, objective, targetUrl, env, now = new Date(), enqueue = scheduleCollection }) {
   let status = await loadRunStatus(redis, runId);
   assertMatchingRun(status, runId, objective);
@@ -263,7 +377,12 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
   }
 }
 
-export async function processWorkerPhase(args) { return args.phase === "collect" ? handleCollection(args) : handleSubmission(args); }
+export async function processWorkerPhase(args) {
+  if (args.phase === "collect") return handleCollection(args);
+  // Explicit diagnostic compatibility only. Production never supplies this flag.
+  if (args.executionPath === "legacy_minds") return handleSubmission(args);
+  return handleLiveSubmission(args);
+}
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -286,7 +405,9 @@ export default async function handler(req, res) {
   try { objective = validateObjectiveSnapshot(payload.objective); }
   catch (error) { return res.status(422).json({ status: "failed", run_id: payload.run_id, error: error.message }); }
   const redis = new Redis({ url: process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL, token: process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN });
-  const mindsClient = createMindsClient({ builderApiKey: process.env.MINDS_BUILDER_API_KEY });
+  const mindsClient = process.env.MINDS_BUILDER_API_KEY
+    ? createMindsClient({ builderApiKey: process.env.MINDS_BUILDER_API_KEY })
+    : null;
   try {
     const result = await processWorkerPhase({ phase: payload.phase || "submit", redis, mindsClient, runId: payload.run_id, objective, targetUrl, env: process.env });
     return res.status(result.httpStatus).json(result.body);

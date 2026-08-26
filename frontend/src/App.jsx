@@ -367,7 +367,7 @@ export function App() {
         isOpen={isOfflineModalOpen}
         onClose={() => {
           setIsOfflineModalOpen(false);
-          if (['COMPLETED', 'FAILED'].includes(currentOfflineRun?.status)) {
+          if (['COMPLETED', 'NO_RELEVANT_UPDATE', 'UNSUPPORTED_DOMAIN', 'FAILED'].includes(currentOfflineRun?.status)) {
             try { window.localStorage.removeItem(CURRENT_OFFLINE_RUN_STORAGE_KEY); } catch { /* storage unavailable */ }
             setCurrentOfflineRun(null);
             const current = greenroomStore.getState().memoryState;

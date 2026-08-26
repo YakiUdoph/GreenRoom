@@ -39,7 +39,7 @@ function fakeMinds(history = [], sse = { timedOut: true }) {
 
 const env = { QSTASH_TOKEN: "test", MINDS_REPLY_DEADLINE_MS: "600000" };
 const targetUrl = "https://example.test/api/briefing-worker";
-const runArgs = (redis, mindsClient, extras = {}) => ({ redis, mindsClient, runId: "run_b", objective: OBJECTIVE, targetUrl, env, enqueue: async () => ({ messageId: "qstash-safe" }), ...extras });
+const runArgs = (redis, mindsClient, extras = {}) => ({ redis, mindsClient, runId: "run_b", objective: OBJECTIVE, targetUrl, env, executionPath: "legacy_minds", enqueue: async () => ({ messageId: "qstash-safe" }), ...extras });
 
 function qstashResponse(status, body = {}) {
   return { ok: status >= 200 && status < 300, status, async text() { return typeof body === "string" ? body : JSON.stringify(body); } };

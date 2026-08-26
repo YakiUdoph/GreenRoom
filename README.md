@@ -2,102 +2,102 @@
 
 **Persistent decision intelligence for solo creators.**
 
-GreenRoom is a persistent AI decision layer that remembers creator preferences, objectives, feedback, and prior decisions. A creator sets an objective; GreenRoom selects relevant context, orchestrates background work through its real Minds integration, and returns a concise decision briefing: **what changed, why it matters, and what to do next**.
+Live product: https://greenroom-ruby.vercel.app
 
-> Product thesis, not validated market evidence: creators need intelligence that remembers a career, not merely an AI conversation. External creator validation is still pending.
+GreenRoom keeps a creator objective, relevant preferences, feedback, and prior decisions connected across background runs. AI video is its first acceptance-test vertical, not the product's identity. Its initial supported live objective is deliberately narrow:
 
-## The Problem
+> Keep me updated on important AI video tools that could improve my workflow.
 
-Solo creators simultaneously manage production, tools, audience growth, monetization, and workflow decisions. Most AI tools solve isolated tasks and repeatedly ask the creator to reconstruct their goals, preferences, and rejected options. That creates decision overhead precisely where an independent creator has the least spare attention.
+The product retrieves current first-party evidence, applies conservative relevance and freshness rules, returns a source-backed decision briefing, persists the exact run, and carries creator feedback into later Memory selection.
 
-## The Insight
+> Product thesis, not validated market evidence: creators need decision intelligence that remembers a career rather than only a conversation. External creator validation remains in progress.
 
-AI remembers a conversation. Creators need intelligence that remembers a career.
+## What works today
 
-GreenRoom's differentiation is **persistent creator decision memory**: what the creator values, how they work, what they rejected, what they decided, and which objective is active.
+- Durable creator profile, objectives, preferences, feedback, and briefing history
+- Immutable objective snapshots and SHA-256 fingerprints
+- Signed QStash background delivery and Upstash Redis persistence
+- Run-specific status and briefing records with duplicate-delivery protection
+- Live Adobe Blog evidence for the supported AI-video objective
+- Strict rejection of malformed, future, stale, and weakly related evidence
+- Source title, URL, publication time, and retrieval time preserved through delivery
+- Truthful `QUEUED`, `WORKING`, `RESULT READY`, `NO RELEVANT UPDATE`, and `RUN FAILED` states
+- Verified Udophia identity and official Minds Builder conversation/SSE/history integration
 
-## What GreenRoom Does
+## Live evidence lifecycle
 
 ```text
-objective → relevant persistent memory → background intelligence
-          → actionable briefing → creator feedback → future memory
+creator objective
+  → immutable run snapshot
+  → signed background worker
+  → Adobe official Blog query index
+  → strict AI-video relevance + 365-day freshness filter
+  → normalized source record
+  → relevant persistent Memory selection
+  → deterministic GreenRoom briefing
+  → run-specific persistence
+  → creator feedback
+  → later Memory selection
 ```
 
-GreenRoom is not primarily a content generator, generic chatbot, social scheduler, moderation tool, dashboard collection, or fictional team of remote specialist Minds.
+The evidence layer classifies a supported objective domain and selects providers from a small registry. Today `AI_VIDEO` maps to `ADOBE_BLOG`. The worker, Memory, persistence, briefing, feedback, and frontend consume normalized evidence and do not need Adobe-specific fields. Future domains can register providers without rewriting that lifecycle.
 
-## The Decision Briefing
+The first live provider is intentionally not a generic crawler. It supports official Adobe article metadata related to AI video creation, Firefly video, generative video, video generation, AI video editing, AI animation, or AI filmmaking. False negatives are preferred to unrelated claims. Unsupported objectives remain saved but return `NO LIVE PROVIDER`; they never receive substituted AI-video evidence.
 
-Every completed briefing uses the existing internal contract:
+If the source is unavailable or malformed, the run fails safely. If the source works but no current item passes the filters, the run becomes `NO_RELEVANT_UPDATE`. Neither outcome substitutes simulated evidence or an older briefing.
 
-- **WHAT CHANGED** — the relevant finding.
-- **WHY IT MATTERS** — its significance for this creator and objective.
-- **WHAT TO DO NEXT** — a practical next action.
+## Decision briefing
 
-## Why Minds
+Every successful live item exposes:
 
-Persistence is central, not decorative. GreenRoom supplies the real platform Mind with objective-bound creator context and treats a response as usable only after identity and reply validation. The application keeps objectives, memory, run lifecycle, and delivery separate from the platform conversation so failures cannot silently become successful briefings.
+- **WHAT CHANGED** — a conservative transformation of verified source metadata
+- **WHY IT MATTERS** — the explicit match between the AI-video evidence and active objective, with no broader impact inferred
+- **WHAT TO DO NEXT** — a bounded instruction to inspect and compare the first-party source
+- **SOURCE** — first-party name, article title, URL, and publication date
+
+This content is generated by `GREENROOM_DETERMINISTIC_LIVE_CORE`. It is not represented as an Udophia answer. A selected saved preference may be attached as an evaluation constraint; this proves Memory selection, not changed AI reasoning.
+
+## Persistent Memory
+
+GreenRoom stores the complete durable creator profile while projecting only relevant context into a run. Memory includes creator facts, objectives, explicit preferences, item feedback, decision references, and provenance-bearing Memory nodes.
+
+Feedback such as `Prefer free or low-cost tools.` becomes a durable rule and Memory node. A later AI-video tools run can select that rule without rewriting earlier briefings.
+
+## Udophia and Minds
+
+- Verified Mind: `udophia@hellominds.ai`
+- Mind UUID: `8208493e-f36b-1410-8466-00039ce7df11`
+- Official client: `@animocabrands/minds-client-lib`
+- Preserved capabilities: identity verification, conversations, message submission, SSE replies, durable history, and strict response validation
+
+Udophia has produced verified responses in bounded diagnostics, but reply generation has not been reliable enough to be the mandatory completion dependency of every live run. The integration remains available and tested; deterministic live briefings explicitly set `minds_verified: false` and `minds_involved: false`.
+
+## Run isolation and persistence
+
+Each run has its own ID, objective ID, objective fingerprint, status, evidence metadata, selected-Memory metadata, and briefing key. `latest_briefing` is a convenience pointer only. The frontend accepts a current result only when its run ID, objective ID, and fingerprint match the active completed run.
+
+Historical simulated briefings are never rewritten and remain labeled `DEMO DATASET — SIMULATED`.
 
 ## Architecture
 
 ```mermaid
 flowchart TD
     C[Creator] --> O[Immutable objective snapshot]
-    O --> M[GreenRoom Memory]
-    M --> X[Objective-aware context selection]
-    X --> Q[QStash background orchestration]
-    Q --> U[Udophia via Minds Builder]
-    U --> V[Reply validation and run-specific persistence]
-    V --> B[Decision briefing]
+    O --> Q[Signed QStash run]
+    Q --> E[Adobe first-party evidence]
+    E --> V[Date and relevance validation]
+    V --> M[Relevant persistent Memory]
+    M --> D[GreenRoom deterministic live core]
+    D --> P[Run-specific Redis persistence]
+    P --> B[Source-backed briefing]
     B --> F[Creator feedback]
     F --> M
+    U[Udophia / Minds] -. verified optional capability .-> D
 ```
 
-GreenRoom orchestration owns objective validation, simulated-signal classification, queue lifecycle, reply verification, run isolation, and delivery. GreenRoom Memory is the application's creator-profile and decision-memory layer. Neither is represented as a separate platform Mind.
+## Local setup
 
-## Real Minds Integration
-
-- Verified platform identity: `udophia@hellominds.ai`
-- Mind UUID: `8208493e-f36b-1410-8466-00039ce7df11`
-- Official client: `@animocabrands/minds-client-lib`
-- Confirmed source usage: `createMindsClient`, `getMind`, `ensureConversation`, `getLatestHistoryFingerprint`, `sendMessage`, `waitForReply`, and `getHistory`
-
-No Builder credential is stored in documentation or source control.
-
-## Persistence and Memory
-
-The memory model stores creator identity context, preferences, constraints, learned voice rules, objectives, feedback, decision history, and briefing references. Local development uses file-backed persistence; production supports Upstash Redis (including the Vercel KV-compatible aliases used by the source). Relevant memory is selected for execution without deleting the full durable profile.
-
-## Background Execution
-
-Production submission creates a run-specific immutable objective snapshot, publishes a signed job through Upstash QStash, and returns without requiring the browser to remain open. The Node worker verifies QStash signatures, calls Minds Builder, collects verified replies through SSE and/or conversation history, and persists terminal state.
-
-## Run Isolation
-
-Each run has its own `run_id`, objective ID and fingerprint, status, conversation metadata, and briefing key. `latest_briefing` is a convenience pointer; it is not allowed to substitute another run's result. `FAILED` and `COMPLETED` are terminal.
-
-## Evidence Integrity
-
-The current objective-aware evidence bundle is a **Demo Dataset (Simulated)**. GreenRoom does not currently claim live research, current URLs, current pricing, adoption data, or live market discovery. Simulated evidence and real Mind execution are different provenance dimensions and must remain visibly distinct.
-
-## Current Technical Constraint
-
-Foundation testing proved Builder authentication, Udophia identity retrieval, conversation creation, message submission, successful SSE replies, and durable history visibility. It also found inconsistent reply generation for creator-intelligence tasks, especially—but not exclusively—when more context was supplied. The upstream cause was not conclusively established; it is a post-hackathon reliability and observability priority.
-
-## Built for Creative Minds Jam #1
-
-GreenRoom explores a Minds-native creator problem: maintaining decision continuity while a solo creator is producing, publishing, and operating a business. The demo should prove memory, objective binding, honest background state, and run-specific delivery—not imply product-market validation that has not occurred.
-
-## Who It Is For
-
-The primary user is a solo or independent digital creator who makes recurring tool, workflow, audience, growth, and monetization decisions without a dedicated strategy team.
-
-## Post-Hackathon Direction
-
-Near-term work focuses on Minds execution reliability, creator interviews, instrumentation, and the first real external creator-data integration. Planned capabilities are documented in [ROADMAP.md](ROADMAP.md); canonical requirements live in [PRD.md](PRD.md).
-
-## Local Development
-
-Prerequisites: Python, Node.js, npm, and credentials only for the integrations you intend to exercise.
+Prerequisites: Python, Node.js 22+, npm, and credentials for the integrations being exercised.
 
 ```bash
 python -m venv .venv
@@ -108,10 +108,9 @@ npm install
 npm --prefix frontend install
 ```
 
-Required production environment names, without values:
+Copy `.env.example` to an ignored local environment file and provide values only there. Production live execution requires:
 
 ```text
-MINDS_BUILDER_API_KEY
 QSTASH_TOKEN
 QSTASH_CURRENT_SIGNING_KEY
 QSTASH_NEXT_SIGNING_KEY
@@ -119,14 +118,16 @@ UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
 ```
 
-`KV_REST_API_URL` and `KV_REST_API_TOKEN` are supported persistence aliases. `DEMO_MODE=true` explicitly enables local mock behavior in the Python integration; mock output must never be presented as production execution.
+`KV_REST_API_URL` and `KV_REST_API_TOKEN` are supported Redis aliases. `QSTASH_URL` is optional. `MINDS_BUILDER_API_KEY` enables the preserved Udophia integration but is not required by the deterministic live worker. Frontend API/WebSocket overrides are optional.
+
+`DEMO_MODE=true` enables explicitly separate local demo behavior. Demo output must never be represented as live evidence.
 
 ```bash
 python server.py
 npm --prefix frontend run dev
 ```
 
-Relevant verification commands:
+## Verification
 
 ```bash
 python test_greenroom.py
@@ -136,9 +137,20 @@ node --test api/*.test.mjs frontend/src/lib/*.test.js
 npm --prefix frontend run build
 ```
 
+## Known limitations
+
+- Live evidence currently supports one acceptance-test domain (`AI_VIDEO`) and one first-party provider (`ADOBE_BLOG`). GreenRoom remains persistent creator decision intelligence, not an AI-video tracker.
+- Writing, images/design, audio/podcasting, publishing, audience/growth, and other creator domains do not yet have live providers and return a truthful unsupported state.
+- Adobe’s query index is public infrastructure without a GreenRoom-controlled availability guarantee.
+- Relevance is conservative and deterministic; relevant articles can be omitted rather than risking false positives.
+- GreenRoom does not infer pricing, adoption, availability, performance, or strategic impact absent source evidence.
+- Udophia reply generation remains inconsistent and is not used to claim completion of deterministic live briefings.
+- Sustained production concurrency, source stability, and production latency distributions need further measurement.
+- The product thesis still requires creator interviews and behavioral validation.
+
 ## Security
 
-- `.env` and `.env.*` files are ignored and must never be committed.
-- Never print Builder, QStash, Redis, or other credentials.
+- `.env` and `.env.*` files are ignored; `.env.example` contains names only.
+- Builder, QStash, Redis, and other credentials must never enter source control or diagnostics.
 - Production worker requests require QStash signature verification.
-- Missing credentials, invalid Mind identity, invalid replies, and persistence mismatches must fail loudly.
+- Persistence mismatches, source failures, malformed evidence, and invalid Minds replies fail safely.

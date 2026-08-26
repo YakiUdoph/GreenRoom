@@ -184,7 +184,6 @@ async def trigger_briefing(request: Request, req: Optional[TriggerBriefingReques
     Triggers an autonomous background growth cycle.
     Enqueues job with status QUEUED and returns IMMEDIATELY without waiting for Minds completion.
     """
-    minds_manager.validate_configuration()
     if not req:
         raise HTTPException(status_code=422, detail="objective_id is required")
 
@@ -335,11 +334,16 @@ def submit_briefing_feedback(req: BriefingItemFeedbackRequest):
 
 @app.get("/api/signals")
 def get_signals():
+    is_demo_mode = os.getenv("DEMO_MODE", "").lower() in ("true", "1")
+    if not is_demo_mode:
+        return {"status": "success", "signals": [], "evidence_mode": "LIVE"}
     from minds_integration import DemoSignalProvider
     provider = DemoSignalProvider()
     return {
         "status": "success",
-        "signals": provider.get_signals()
+        "signals": provider.get_signals(),
+        "evidence_mode": "SIMULATED",
+        "demo_mode": True,
     }
 
 

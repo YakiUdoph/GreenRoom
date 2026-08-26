@@ -18,10 +18,10 @@ import {
   verifyMindIdentity,
 } from "./worker-guards.mjs";
 
-test("production worker reports missing security, persistence, and Minds configuration", () => {
+test("production live worker requires queue security and persistence but not Minds", () => {
   assert.deepEqual(validateWorkerConfiguration({}), [
     "QSTASH_CURRENT_SIGNING_KEY", "QSTASH_NEXT_SIGNING_KEY",
-    "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "MINDS_BUILDER_API_KEY", "QSTASH_TOKEN",
+    "UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN", "QSTASH_TOKEN",
   ]);
 });
 
@@ -197,6 +197,16 @@ test("memory projection enforces three-rule and three-node limits and excludes z
   assert.equal(selected.context.learned_rules.length, 3);
   assert.equal(selected.context.memory_nodes.length, 3);
   assert.equal(selected.context.memory_nodes.some((node) => node.node_id === "unrelated"), false);
+});
+
+test("a durable low-cost tools preference is selected for a later AI-video tools run", () => {
+  const signals = [{ category: "ai_video_workflow", title: "Firefly video update", summary: "AI video creation workflow" }];
+  const selected = selectRelevantCreatorContext(OBJECTIVE_B, {
+    learned_voice_rules: ["Prefer free or low-cost tools."],
+    memory_nodes: [],
+  }, signals);
+  assert.deepEqual(selected.context.learned_rules, ["Prefer free or low-cost tools."]);
+  assert.equal(selected.provenance.selected_rule_count, 1);
 });
 
 test("exact Objective B selects simulated AI-video tools and preserves its snapshot", () => {

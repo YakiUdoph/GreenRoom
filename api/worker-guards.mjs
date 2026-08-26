@@ -4,7 +4,6 @@ export function validateWorkerConfiguration(env) {
     "QSTASH_NEXT_SIGNING_KEY",
     "UPSTASH_REDIS_REST_URL",
     "UPSTASH_REDIS_REST_TOKEN",
-    "MINDS_BUILDER_API_KEY",
     "QSTASH_TOKEN",
   ];
   const aliases = {
@@ -113,7 +112,7 @@ export function selectVerifiedHistoryReply(rows, context, isReplyHistoryRow) {
 }
 
 export function isTerminalRunStatus(status) {
-  return status === "COMPLETED" || status === "FAILED";
+  return status === "COMPLETED" || status === "NO_RELEVANT_UPDATE" || status === "UNSUPPORTED_DOMAIN" || status === "FAILED";
 }
 
 export function collectionDeadlinePassed(deadline, now = new Date()) {

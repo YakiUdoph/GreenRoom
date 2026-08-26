@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { completedHistoryRuns, currentIntelligence, isSimulatedBriefing, verifyHistoricalBriefing } from './briefingHistory.js';
+import { completedHistoryRuns, currentIntelligence, isLiveBriefing, isSimulatedBriefing, verifyHistoricalBriefing } from './briefingHistory.js';
 
 const historical = { run_id: 'run_history', objective_id: 'obj_history', items: [{ what_changed: 'A', why_it_matters: 'B', recommended_action: 'C' }] };
 const current = { run_id: 'run_current', objective_id: 'obj_current', items: [] };
@@ -78,6 +78,29 @@ test('run_13f9724a is loadable generically when returned by recent runs', () => 
 
 test('simulated historical evidence remains detectable for disclosure', () => {
   assert.equal(isSimulatedBriefing({ provenance: { signal_source: 'Demo Dataset (Simulated)' } }), true);
+});
+
+test('live evidence is detected independently from historical simulated provenance', () => {
+  assert.equal(isLiveBriefing({ evidence_mode: 'LIVE', sources: [{ source_url: 'https://blog.adobe.com/example' }] }), true);
+  assert.equal(isSimulatedBriefing({ evidence_mode: 'LIVE' }), false);
+});
+
+test('no relevant update is truthful and cannot expose an older briefing as current', () => {
+  const result = currentIntelligence({
+    latest_offline_run: { run_id: 'run_new', status: 'NO_RELEVANT_UPDATE', objective_id: 'obj_1' },
+    latest_briefing: { run_id: 'run_old', objective_id: 'obj_1', objective_snapshot: {} },
+  });
+  assert.equal(result.status, 'NO RELEVANT UPDATE');
+  assert.equal(result.currentBriefing, null);
+});
+
+test('unsupported domain is truthful and cannot expose an older briefing as current', () => {
+  const result = currentIntelligence({
+    latest_offline_run: { run_id: 'run_new', status: 'UNSUPPORTED_DOMAIN', objective_id: 'obj_writing' },
+    latest_briefing: { run_id: 'run_old', objective_id: 'obj_writing', objective_snapshot: {} },
+  });
+  assert.equal(result.status, 'NO LIVE PROVIDER');
+  assert.equal(result.currentBriefing, null);
 });
 
 test('historical briefing is not assigned current RESULT READY status', () => {

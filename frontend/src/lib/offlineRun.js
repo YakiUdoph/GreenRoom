@@ -27,13 +27,13 @@ export function isOlderBriefingAfterFailedRun(briefing, latestRun) {
 }
 
 export function isOfflineRunPending(status) {
-  return ['QUEUED', 'RUNNING', 'SUBMITTING', 'WAITING_FOR_MINDS'].includes(status);
+  return ['QUEUED', 'RUNNING', 'WORKING', 'SUBMITTING', 'WAITING_FOR_MINDS'].includes(status);
 }
 
 export function offlineRunProgressLabel(runStatus, nowMs = Date.now()) {
   const status = runStatus?.status;
   if (status === 'QUEUED') return 'Queued for secure submission';
-  if (status === 'RUNNING' || status === 'SUBMITTING') return 'Submitting to Mind';
+  if (status === 'RUNNING' || status === 'WORKING' || status === 'SUBMITTING') return 'Checking live evidence';
   if (status === 'WAITING_FOR_MINDS') {
     if (!runStatus.collection_attempt) return 'Submitted to Mind';
     const checkedAt = Date.parse(runStatus.last_history_observation?.checked_at || '');
@@ -41,6 +41,8 @@ export function offlineRunProgressLabel(runStatus, nowMs = Date.now()) {
     return 'Waiting for verified reply';
   }
   if (status === 'COMPLETED') return 'Ranking result';
+  if (status === 'NO_RELEVANT_UPDATE') return 'No relevant live update';
+  if (status === 'UNSUPPORTED_DOMAIN') return 'No live provider for this objective';
   if (status === 'FAILED') return 'Run failed';
   return 'Preparing offline work';
 }
@@ -48,6 +50,8 @@ export function offlineRunProgressLabel(runStatus, nowMs = Date.now()) {
 export function runIndicatorLabel(status) {
   if (isOfflineRunPending(status)) return 'WORKING';
   if (status === 'COMPLETED') return 'RESULT READY';
+  if (status === 'NO_RELEVANT_UPDATE') return 'NO RELEVANT UPDATE';
+  if (status === 'UNSUPPORTED_DOMAIN') return 'NO LIVE PROVIDER';
   if (status === 'FAILED') return 'RUN FAILED';
   return null;
 }

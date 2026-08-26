@@ -16,6 +16,10 @@ export function currentIntelligence(memoryState) {
     : null;
   const status = run?.status === 'FAILED'
     ? 'RUN FAILED'
+    : run?.status === 'NO_RELEVANT_UPDATE'
+      ? 'NO RELEVANT UPDATE'
+    : run?.status === 'UNSUPPORTED_DOMAIN'
+      ? 'NO LIVE PROVIDER'
     : PENDING_STATUSES.has(run?.status)
       ? 'WORKING'
       : currentBriefing
@@ -63,6 +67,10 @@ export function isSimulatedBriefing(briefing) {
     classification: briefing?.classification,
   });
   return /demo dataset|simulat/i.test(evidence);
+}
+
+export function isLiveBriefing(briefing) {
+  return briefing?.evidence_mode === 'LIVE' || briefing?.provenance?.evidence_mode === 'LIVE';
 }
 
 export function shortRunId(runId = '') {

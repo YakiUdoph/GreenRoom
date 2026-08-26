@@ -53,7 +53,13 @@ test('header indicator translates durable run state without exposing internal la
   assert.equal(runIndicatorLabel('WAITING_FOR_MINDS'), 'WORKING');
   assert.equal(runIndicatorLabel('COMPLETED'), 'RESULT READY');
   assert.equal(runIndicatorLabel('FAILED'), 'RUN FAILED');
+  assert.equal(runIndicatorLabel('UNSUPPORTED_DOMAIN'), 'NO LIVE PROVIDER');
   assert.equal(runIndicatorLabel('NOT_FOUND'), null);
+});
+
+test('unsupported domains are honest terminal lifecycle states', () => {
+  assert.equal(isOfflineRunPending('UNSUPPORTED_DOMAIN'), false);
+  assert.equal(offlineRunProgressLabel({ status: 'UNSUPPORTED_DOMAIN' }), 'No live provider for this objective');
 });
 
 test('closing the lifecycle modal does not stop durable active-run polling', () => {
