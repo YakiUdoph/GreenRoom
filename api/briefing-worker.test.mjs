@@ -164,7 +164,7 @@ test("submission returns WAITING without synchronously waiting and records safe 
   assert.equal(status.last_collection_schedule.target_host, "example.test");
   assert.equal("ignoredSecret" in status.message_metadata, false);
   assert.equal(typeof status.submitted_prompt_hash, "string");
-  assert.equal(status.memory_selection.memory_selection_version, "objective_memory_projection_v1");
+  assert.equal(status.memory_selection.memory_selection_version, "objective_memory_projection_v2");
   assert.equal(status.memory_selection.selected_memory_node_count, 0);
   assert.equal(status.memory_selection.selected_rule_count, 1);
   assert.equal(status.memory_selection.selected_rule_hashes.length, 1);

@@ -186,8 +186,9 @@ test("Objective B receives a deterministic compact relevant-memory projection", 
 
 test("memory projection enforces three-rule and three-node limits and excludes zero-score entries", () => {
   const signals = classifyObjectiveSignals(OBJECTIVE_B).signals;
+  const topics = ["editing", "animation", "generation", "captions", "storyboard", "rendering", "publishing"];
   const profile = {
-    learned_voice_rules: Array.from({ length: 7 }, (_, index) => `Rule ${index}: concise AI video workflow guidance`),
+    learned_voice_rules: topics.map((topic) => `Keep ${topic} guidance concise for AI video workflows`),
     memory_nodes: [
       ...Array.from({ length: 7 }, (_, index) => ({ node_id: `video-${index}`, content: `AI video editing workflow note ${index}`, timestamp: index })),
       { node_id: "unrelated", content: "Garden soil notes", timestamp: 99 },
@@ -207,6 +208,61 @@ test("a durable low-cost tools preference is selected for a later AI-video tools
   }, signals);
   assert.deepEqual(selected.context.learned_rules, ["Prefer free or low-cost tools."]);
   assert.equal(selected.provenance.selected_rule_count, 1);
+});
+
+test("duplicate style rules collapse without mutating historical Memory", () => {
+  const profile = {
+    learned_voice_rules: [
+      "Keep recommendations concise and practical",
+      "keep recommendation concise & practical.",
+      "I prefer concise, practical recommendations",
+      "Prefer free or low-cost tools.",
+    ],
+    memory_nodes: [
+      { node_id: "style-old", type: "learned_preference", content: "User Feedback Rule: Keep recommendations concise and practical", timestamp: 10 },
+      { node_id: "style-new", type: "learned_preference", content: "User Feedback Rule: I prefer concise, practical recommendations", timestamp: 30 },
+      { node_id: "cost-new", type: "learned_preference", content: "Prefer free or low-cost tools.", timestamp: 40 },
+    ],
+  };
+  const before = structuredClone(profile);
+  const first = selectRelevantCreatorContext(OBJECTIVE_B, profile, [{ category: "ai_video_workflow", title: "Creator tool update", summary: "Video workflow software" }]);
+  const second = selectRelevantCreatorContext(OBJECTIVE_B, profile, [{ category: "ai_video_workflow", title: "Creator tool update", summary: "Video workflow software" }]);
+
+  assert.deepEqual(first.context.learned_rules, [
+    "Prefer free or low-cost tools.",
+    "I prefer concise, practical recommendations",
+  ]);
+  assert.deepEqual(first.provenance.selected_rule_hashes, second.provenance.selected_rule_hashes);
+  assert.ok(first.provenance.selected_rule_hashes.every((hash) => /^[a-f0-9]{64}$/.test(hash)));
+  assert.deepEqual(profile, before);
+  assert.equal(profile.learned_voice_rules.length, 4);
+  assert.equal(profile.memory_nodes.length, 3);
+});
+
+test("cost constraints are category-aware and not forced into unrelated objectives", () => {
+  const profile = {
+    learned_voice_rules: ["Prefer affordable or budget software.", "Keep recommendations concise and practical"],
+    memory_nodes: [],
+  };
+  const selected = selectRelevantCreatorContext({
+    objective_id: "obj_writing",
+    title: "Improve the emotional arc of my personal essay",
+    constraints: "Preserve my first-person voice",
+    fingerprint: "fp_writing",
+  }, profile, [{ category: "writing", title: "Narrative structure", summary: "Essay pacing and emotional clarity" }]);
+  assert.deepEqual(selected.context.learned_rules, ["Keep recommendations concise and practical"]);
+});
+
+test("newer explicit relevant feedback wins over an older duplicate variant", () => {
+  const profile = {
+    learned_voice_rules: ["Prefer budget tools", "Prefer affordable tools"],
+    memory_nodes: [
+      { node_id: "older", type: "learned_preference", content: "User Feedback Rule: Prefer budget tools", timestamp: 10 },
+      { node_id: "newer", type: "learned_preference", content: "User Feedback Rule: Prefer affordable tools", timestamp: 20 },
+    ],
+  };
+  const selected = selectRelevantCreatorContext(OBJECTIVE_B, profile, []);
+  assert.deepEqual(selected.context.learned_rules, ["Prefer affordable tools"]);
 });
 
 test("exact Objective B selects simulated AI-video tools and preserves its snapshot", () => {

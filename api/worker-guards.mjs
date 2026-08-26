@@ -328,8 +328,11 @@ export function buildObjectiveAwareSignals(objective) {
   return classifyObjectiveSignals(objective).signals;
 }
 
-const MEMORY_SELECTION_VERSION = "objective_memory_projection_v1";
+const MEMORY_SELECTION_VERSION = "objective_memory_projection_v2";
 const UNIVERSAL_PREFERENCE_TERMS = ["concise", "direct", "practical", "clickbait"];
+const TOOL_DECISION_TERMS = ["tool", "tools", "software", "workflow", "workflows", "platform", "platforms", "service", "services", "subscription", "subscriptions", "adopt", "adoption", "evaluate", "evaluation"];
+const COST_PREFERENCE_PATTERN = /\b(free|affordable|budget|cheap|low[\s-]+cost|avoid(?:ing)? expensive)\b/i;
+const STYLE_FILLER_WORDS = new Set(["keep", "make", "prefer", "preference", "recommendation", "recommendations", "response", "responses", "style", "use"]);
 const COMMERCIAL_TERMS = ["monetary", "monetization", "paid", "sponsor", "sponsorship", "campaign", "brand deal", "partnership", "revenue"];
 const RELEVANCE_STOP_WORDS = new Set(["a", "an", "and", "are", "as", "at", "be", "by", "for", "from", "in", "is", "it", "of", "on", "or", "that", "the", "this", "to", "with", "without", "do", "not", "avoid", "focus", "prioritize", "recommend", "candidate", "creator", "dataset", "opportunity", "recommendation", "review", "signal", "simulated"]);
 
@@ -355,30 +358,67 @@ function ruleRepresentation(value) {
   return String(value || "").toLowerCase().replace(/^user feedback rule:\s*/i, "").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
+function preferenceIntent(text) {
+  if (COST_PREFERENCE_PATTERN.test(text)) return "COST_CONSTRAINT";
+  const words = normalizedWords(text);
+  const styleTerms = UNIVERSAL_PREFERENCE_TERMS.filter((term) => words.includes(term));
+  const substantiveWords = words.filter((word) => !UNIVERSAL_PREFERENCE_TERMS.includes(word) && !STYLE_FILLER_WORDS.has(word));
+  return styleTerms.length && !substantiveWords.length ? `STYLE:${styleTerms.sort().join(",")}` : null;
+}
+
+function ruleRecency(rule, index, nodes) {
+  const representation = ruleRepresentation(rule);
+  const matches = nodes.filter((node) => {
+    const nodeRepresentation = ruleRepresentation(node?.content);
+    return nodeRepresentation === representation || nodeRepresentation.endsWith(representation);
+  });
+  return {
+    explicit: matches.length > 0,
+    timestamp: Math.max(0, ...matches.map((node) => Number(node?.timestamp) || 0)),
+    index,
+  };
+}
+
 export function selectRelevantCreatorContext(objective, creatorProfile = {}, signals = []) {
   const titleIntent = splitIntentText(objective?.title);
   const constraintIntent = splitIntentText(objective?.constraints);
   const positiveObjectiveText = [...titleIntent.positiveClauses, ...constraintIntent.positiveClauses].join(" ");
-  const signalText = signals.map((signal) => [signal?.category, signal?.candidate, signal?.signal].filter(Boolean).join(" ")).join(" ");
+  const signalText = signals.map((signal) => [signal?.category, signal?.candidate, signal?.signal, signal?.title, signal?.summary].filter(Boolean).join(" ")).join(" ");
   const queryWords = new Set(normalizedWords(`${positiveObjectiveText} ${signalText}`));
+  const toolDecisionObjective = TOOL_DECISION_TERMS.some((term) => queryWords.has(term));
   const exclusionText = [...titleIntent.excludedClauses, ...constraintIntent.excludedClauses].join(" ").toLowerCase();
   const excludesCommercialWork = COMMERCIAL_TERMS.some((term) => exclusionText.includes(term));
   const rules = Array.isArray(creatorProfile?.learned_voice_rules) ? creatorProfile.learned_voice_rules : [];
+  const nodes = Array.isArray(creatorProfile?.memory_nodes) ? creatorProfile.memory_nodes : [];
 
-  const selectedRules = rules.map((rule, index) => {
+  const rankedRules = rules.map((rule, index) => {
     const text = String(rule || "").trim();
     const lower = text.toLowerCase();
     const ruleWords = normalizedWords(text);
+    const intent = preferenceIntent(text);
     const conflicts = excludesCommercialWork && COMMERCIAL_TERMS.some((term) => lower.includes(term));
     const lexicalScore = ruleWords.filter((word) => queryWords.has(word)).length;
     const universalScore = UNIVERSAL_PREFERENCE_TERMS.filter((term) => ruleWords.includes(term)).length * 2;
-    return { text, index, score: conflicts ? 0 : lexicalScore + universalScore };
-  }).filter((entry) => entry.text && entry.score > 0)
-    .sort((a, b) => b.score - a.score || b.index - a.index)
+    const categoryScore = intent === "COST_CONSTRAINT" && toolDecisionObjective ? 6 : 0;
+    const recency = ruleRecency(text, index, nodes);
+    return { text, intent, duplicateKey: intent || ruleRepresentation(text), ...recency, score: conflicts ? 0 : lexicalScore + universalScore + categoryScore };
+  }).filter((entry) => entry.text && entry.score > 0);
+
+  const deduplicatedRules = new Map();
+  for (const entry of rankedRules) {
+    const existing = deduplicatedRules.get(entry.duplicateKey);
+    if (!existing || entry.score > existing.score
+      || (entry.score === existing.score && Number(entry.explicit) > Number(existing.explicit))
+      || (entry.score === existing.score && entry.explicit === existing.explicit && entry.timestamp > existing.timestamp)
+      || (entry.score === existing.score && entry.explicit === existing.explicit && entry.timestamp === existing.timestamp && entry.index > existing.index)) {
+      deduplicatedRules.set(entry.duplicateKey, entry);
+    }
+  }
+  const selectedRules = [...deduplicatedRules.values()]
+    .sort((a, b) => b.score - a.score || Number(b.explicit) - Number(a.explicit) || b.timestamp - a.timestamp || b.index - a.index || a.text.localeCompare(b.text))
     .slice(0, 3);
 
   const allRuleRepresentations = new Set(rules.map(ruleRepresentation).filter(Boolean));
-  const nodes = Array.isArray(creatorProfile?.memory_nodes) ? creatorProfile.memory_nodes : [];
   const selectedNodes = nodes.map((node, index) => {
     const compact = compactMemoryNode(node);
     const text = [compact.type, compact.category, compact.content, ...(compact.key_takeaways || []), ...(compact.tags || [])].filter(Boolean).join(" ");
