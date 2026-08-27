@@ -64,10 +64,12 @@ export const CURRENT_OFFLINE_RUN_STORAGE_KEY = 'greenroom.currentOfflineRunId';
 
 export function restoreCurrentOfflineRun(recentRuns, rememberedRunId = null) {
   const runs = Array.isArray(recentRuns?.runs) ? recentRuns.runs : [];
-  const activeRun = runs.find((run) => run?.run_id && isOfflineRunPending(run.status));
-  if (activeRun) return activeRun;
-  if (!rememberedRunId) return null;
-  return runs.find((run) => run?.run_id === rememberedRunId) || null;
+  const rememberedRun = rememberedRunId
+    ? runs.find((run) => run?.run_id === rememberedRunId) || null
+    : null;
+  if (rememberedRun) return rememberedRun;
+  const newestRun = runs[0];
+  return newestRun?.run_id && isOfflineRunPending(newestRun.status) ? newestRun : null;
 }
 
 export function selectCurrentRunForRefresh(recentRuns, restoredRun = null) {

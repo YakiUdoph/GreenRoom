@@ -81,6 +81,15 @@ test('historical failed runs are not promoted to current state on a fresh visit'
   }), null);
 });
 
+test('an older unfinished run never outranks the newest completed run on refresh', () => {
+  assert.equal(restoreCurrentOfflineRun({
+    runs: [
+      { run_id: 'run_latest', objective_id: 'objective_latest', status: 'COMPLETED' },
+      { run_id: 'run_stale', objective_id: 'objective_old', status: 'WAITING_FOR_MINDS' },
+    ],
+  }), null);
+});
+
 test('the browser remembered current terminal run restores without promoting another run', () => {
   const runs = {
     runs: [
