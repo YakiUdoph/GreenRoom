@@ -15,7 +15,6 @@ import { NinetySecondProofModal } from './components/memory/NinetySecondProofMod
 
 
 import { HomePage } from './pages/HomePage';
-import { MindPage } from './pages/MindPage';
 import { MemoryPage } from './pages/MemoryPage';
 import { IntelligencePage } from './pages/IntelligencePage';
 import { ActionsPage } from './pages/ActionsPage';
@@ -256,15 +255,7 @@ export function App() {
             isExecuting={isExecuting}
           />
         );
-      case 'mind':
-        return (
-          <MindPage
-            key="mind"
-            mindsStatus={mindsStatus}
-            memoryState={memoryState}
-            isExecuting={isExecuting}
-          />
-        );
+
       case 'memory':
         return (
           <MemoryPage
@@ -333,6 +324,14 @@ export function App() {
           {renderPage()}
         </AnimatePresence>
       </main>
+
+      <footer className="py-6 border-t border-outline-variant/60 font-mono text-[10px] text-zinc-500 text-center space-x-2">
+        <span>GREENROOM POWERED BY ANIMOCA MINDS</span>
+        <span>•</span>
+        <button onClick={() => setActiveTab('docs')} className="underline hover:text-zinc-300">
+          DEVELOPER DOCS & JUDGE PROOF
+        </button>
+      </footer>
 
       {/* Payload Modal Inspector */}
       <PayloadModal
