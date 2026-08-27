@@ -153,7 +153,121 @@ async function handleSubmission({ redis, mindsClient, runId, objective, targetUr
   return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, submitted_at: submittedAt, reply_deadline_at: replyDeadlineAt } };
 }
 
-async function handleLiveSubmission({ redis, runId, objective, now = new Date(), fetchEvidence = retrieveLiveEvidenceForObjective }) {
+function cleanParsedSection(text) {
+  if (typeof text !== "string") return "";
+  let cleaned = text;
+  cleaned = cleaned.replace(/^[\s\S]*?<\/b>/i, "");
+  cleaned = cleaned.replace(/<b>[\s\S]*?$/i, "");
+  cleaned = cleaned
+    .replace(/^[:\s\-*#</b]*|[:\s\-*#</b]*$/gi, "")
+    .trim();
+  cleaned = cleaned
+    .replace(/^<\/?[a-z0-9]+[^>]*>/gi, "")
+    .replace(/<\/?[a-z0-9]+[^>]*>$/gi, "")
+    .trim();
+  return cleaned;
+}
+
+export function parseMindPlainResponse(text) {
+  if (typeof text !== "string" || !text.trim()) {
+    throw new Error("Animoca Mind briefing response was empty");
+  }
+  const whyMatch = text.match(/WHY\s+IT\s+MATTERS[\s\S]*?(?=WHAT\s+TO\s+DO\s+NEXT|$)/i);
+  const whatMatch = text.match(/WHAT\s+TO\s+DO\s+NEXT[\s\S]*$/i);
+  
+  let whyItMatters = "";
+  if (whyMatch) {
+    whyItMatters = cleanParsedSection(
+      whyMatch[0]
+        .replace(/WHY\s+IT\s+MATTERS/i, "")
+    );
+  }
+  
+  let whatToDoNext = "";
+  if (whatMatch) {
+    whatToDoNext = cleanParsedSection(
+      whatMatch[0]
+        .replace(/WHAT\s+TO\s+DO\s+NEXT/i, "")
+    );
+  }
+  
+  if (!whyItMatters || !whatToDoNext) {
+    const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+    if (paragraphs.length >= 2) {
+      whyItMatters = cleanParsedSection(paragraphs[0]);
+      whatToDoNext = cleanParsedSection(paragraphs.slice(1).join("\n\n"));
+    } else {
+      whyItMatters = cleanParsedSection(text);
+      whatToDoNext = "Review the verified update.";
+    }
+  }
+  
+  return {
+    why_it_matters: whyItMatters,
+    what_to_do_next: whatToDoNext
+  };
+}
+
+function buildMindsNativeBriefing({ runId, objective, status, parsedWhyItMatters, parsedWhatToDoNext, mindReplyText, completedAt, evidence }) {
+  const selectedRules = status.learned_rules_snapshot || [];
+  const selectedNodes = status.selected_memory || [];
+  const item = {
+    id: "live_001",
+    priority: "REVIEW",
+    status: "NEW",
+    title: evidence.title,
+    category: "live_creator_evidence",
+    what_changed: `${evidence.source} published this update: ${evidence.summary}`,
+    why_it_matters: parsedWhyItMatters,
+    recommended_action: parsedWhatToDoNext,
+    memory_context_used: selectedRules[0] || null,
+    source: evidence.source,
+    source_url: evidence.source_url,
+    published_at: evidence.published_at,
+  };
+  const provenance = {
+    run_id: runId,
+    objective_id: objective.objective_id,
+    objective_fingerprint: objective.fingerprint,
+    created_at: status.started_at,
+    completed_at: completedAt,
+    status: "COMPLETED",
+    evidence_mode: "LIVE",
+    signal_source: evidence.source,
+    decision_engine: "MINDS_NATIVE_DECISION",
+    analysis_status: "AVAILABLE",
+    minds_verified: true,
+    minds_involved: true,
+    persistence_mode: "DURABLE",
+    execution_mode: "QSTASH_BACKGROUND_JOB",
+  };
+  return {
+    run_id: runId,
+    objective_id: objective.objective_id,
+    objective_snapshot: objective,
+    timestamp: completedAt,
+    last_run_formatted: new Date(completedAt).toUTCString(),
+    signals_reviewed_count: 1,
+    opportunities_found_count: 1,
+    memory_nodes_used_count: selectedNodes.length,
+    signal_source_label: "LIVE EVIDENCE",
+    evidence_mode: "LIVE",
+    decision_engine: provenance.decision_engine,
+    analysis_provider: "Animoca Minds via GreenRoom Decision Skill",
+    minds_status: "COMPLETED",
+    minds_verified: true,
+    persistence_mode: "DURABLE",
+    execution_mode: "QSTASH_BACKGROUND_JOB",
+    continuity_note: selectedRules.length ? `Selected persistent preference: "${selectedRules[0]}".` : null,
+    provenance,
+    sources: [evidence],
+    items: [item],
+    learned_rules_active: selectedRules,
+    mind_raw_reply: mindReplyText
+  };
+}
+
+async function handleLiveSubmission({ redis, mindsClient, runId, objective, targetUrl, env, now = new Date(), fetchEvidence = retrieveLiveEvidenceForObjective, enqueue = scheduleCollection }) {
   let status = await loadRunStatus(redis, runId);
   assertMatchingRun(status, runId, objective);
   if (isTerminalRunStatus(status.status)) {
@@ -161,6 +275,9 @@ async function handleLiveSubmission({ redis, runId, objective, now = new Date(),
       ? parseStored(await redis.get(`greenroom:briefing:${runId}`), null)
       : null;
     return { httpStatus: 200, body: { status: status.status, run_id: runId, briefing, idempotent_replay: true } };
+  }
+  if (status.status === "WAITING_FOR_MINDS") {
+    return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, idempotent_replay: true } };
   }
 
   const claim = await redis.set(`greenroom:live_claim:${runId}`, isoNow(now), { nx: true, ex: 24 * 60 * 60 });
@@ -177,7 +294,7 @@ async function handleLiveSubmission({ redis, runId, objective, now = new Date(),
     started_at: status.started_at || startedAt,
     objective_snapshot: objective,
     evidence_mode: "LIVE",
-    decision_engine: "GREENROOM_DETERMINISTIC_LIVE_CORE",
+    decision_engine: "MINDS_NATIVE_DECISION",
     minds_verified: false,
     stage_timestamps: stages(status, { live_retrieval_started: startedAt }),
   });
@@ -201,7 +318,7 @@ async function handleLiveSubmission({ redis, runId, objective, now = new Date(),
       error: safeMessage,
       failure_code: code,
       evidence_mode: "LIVE",
-      decision_engine: "GREENROOM_DETERMINISTIC_LIVE_CORE",
+      decision_engine: "MINDS_NATIVE_DECISION",
       minds_verified: false,
       stage_timestamps: stages(status, { terminal_failure: failedAt }),
     });
@@ -215,7 +332,7 @@ async function handleLiveSubmission({ redis, runId, objective, now = new Date(),
       status: terminalStatus,
       completed_at: retrievalCompletedAt,
       evidence_mode: "LIVE",
-      decision_engine: "GREENROOM_DETERMINISTIC_LIVE_CORE",
+      decision_engine: "MINDS_NATIVE_DECISION",
       minds_verified: false,
       evidence_retrieval: {
         domain: retrieval.domain || null,
@@ -232,38 +349,111 @@ async function handleLiveSubmission({ redis, runId, objective, now = new Date(),
 
   const evidence = retrieval.evidence[0];
   const memorySelection = selectRelevantCreatorContext(objective, creatorProfile, [evidence]);
-  const completedAt = isoNow();
-  const briefing = buildDeterministicLiveBriefing({ runId, objective, evidence, memorySelection, startedAt, completedAt });
-  await redis.set(`greenroom:briefing:${runId}`, JSON.stringify(briefing));
-  await redis.set("greenroom:latest_briefing", JSON.stringify(briefing));
-  await persistRunStatus(redis, runId, {
+  
+  if (!mindsClient) {
+    const failedAt = isoNow();
+    const errorMsg = "Production Mode Error: Mind has no active Animoca Minds Builder API client. Set MINDS_BUILDER_API_KEY in your environment or pass DEMO_MODE=true for local testing.";
+    await persistRunStatus(redis, runId, {
+      ...status,
+      status: "FAILED",
+      completed_at: failedAt,
+      error: errorMsg,
+      evidence_snapshot: evidence,
+      selected_memory: memorySelection.context,
+      stage_timestamps: stages(status, { terminal_failure: failedAt }),
+    });
+    return { httpStatus: 200, body: { status: "FAILED", run_id: runId, error: errorMsg } };
+  }
+
+  const alias = `greenroom-${runId}`;
+  let conversation;
+  let beforeFingerprint;
+  try {
+    conversation = await mindsClient.ensureConversation(alias, MIND_ID);
+    beforeFingerprint = await mindsClient.getLatestHistoryFingerprint(alias);
+  } catch (error) {
+    const failedAt = isoNow();
+    const errorMsg = `Animoca Minds Builder connection failed: ${error.message || String(error)}`;
+    await persistRunStatus(redis, runId, {
+      ...status,
+      status: "FAILED",
+      completed_at: failedAt,
+      error: errorMsg,
+      evidence_snapshot: evidence,
+      selected_memory: memorySelection.context,
+      stage_timestamps: stages(status, { terminal_failure: failedAt }),
+    });
+    return { httpStatus: 200, body: { status: "FAILED", run_id: runId, error: errorMsg } };
+  }
+
+  const cleanPref = memorySelection.context.learned_rules && memorySelection.context.learned_rules.length > 0
+    ? memorySelection.context.learned_rules.slice(0, 2).join("\n")
+    : "None";
+
+  const prompt = `OBJECTIVE:
+${objective.title}
+
+RELEVANT CREATOR PREFERENCES:
+${cleanPref}
+
+VERIFIED UPDATE:
+${evidence.title}
+(${evidence.source}: ${evidence.source_url})
+${evidence.summary}
+
+Instruction: Use the GreenRoom Decision Skill.
+Return only:
+WHY IT MATTERS
+WHAT TO DO NEXT
+Keep the response concise. Use only the supplied objective, preference, and verified update. Do not invent facts.`;
+
+  const preparedAt = isoNow();
+  status = await persistRunStatus(redis, runId, {
     ...status,
-    status: "COMPLETED",
-    completed_at: completedAt,
-    briefing_id: runId,
-    evidence_mode: "LIVE",
-    decision_engine: briefing.decision_engine,
-    minds_verified: false,
-    provenance: briefing.provenance,
-    memory_selection: memorySelection.provenance,
+    conversation_alias: alias,
+    conversation_metadata: extractSafeSdkMetadata(conversation),
+    pre_send_fingerprint: beforeFingerprint || null,
+    submitted_prompt_hash: hashText(prompt),
+    evidence_snapshot: evidence,
     selected_memory: memorySelection.context,
-    evidence_retrieval: {
-      domain: retrieval.domain || null,
-      provider_ids: retrieval.provider_ids || [],
-      source: evidence.source,
-      source_url: evidence.source_url,
-      published_at: evidence.published_at,
-      retrieved_at: evidence.retrieved_at,
-      candidate_count: retrieval.candidate_count,
-      fresh_count: retrieval.fresh_count,
-      relevant_count: retrieval.relevant_count,
-      deduplicated_count: retrieval.deduplicated_count,
-      request_count: retrieval.request_count,
-      retrieval_latency_ms: retrieval.retrieval_latency_ms,
-    },
-    stage_timestamps: stages(status, { live_retrieval_completed: retrievalCompletedAt, briefing_persisted: completedAt }),
+    memory_selection: memorySelection.provenance,
+    stage_timestamps: stages(status, { submission_prepared: preparedAt }),
   });
-  return { httpStatus: 200, body: { status: "COMPLETED", run_id: runId, briefing } };
+
+  let sendResult;
+  try {
+    sendResult = await mindsClient.sendMessage({ alias, messageText: prompt });
+  } catch (error) {
+    const failedAt = isoNow();
+    const errorMsg = `Animoca Minds Builder sendMessage failed: ${error.message || String(error)}`;
+    await persistRunStatus(redis, runId, {
+      ...status,
+      status: "FAILED",
+      completed_at: failedAt,
+      error: errorMsg,
+      stage_timestamps: stages(status, { terminal_failure: failedAt }),
+    });
+    return { httpStatus: 200, body: { status: "FAILED", run_id: runId, error: errorMsg } };
+  }
+
+  const submittedAt = isoNow();
+  const deadlineMs = Number.parseInt(env.MINDS_REPLY_DEADLINE_MS || String(DEFAULT_REPLY_DEADLINE_MS), 10);
+  const replyDeadlineAt = new Date(Date.parse(submittedAt) + deadlineMs).toISOString();
+
+  status = await persistRunStatus(redis, runId, {
+    ...status,
+    status: "WAITING_FOR_MINDS",
+    submitted_at: submittedAt,
+    reply_deadline_at: replyDeadlineAt,
+    collection_attempt: 0,
+    message_metadata: extractSafeSdkMetadata(sendResult),
+    stage_timestamps: stages(status, { message_submitted: submittedAt, waiting_began: submittedAt }),
+  });
+
+  const delaySeconds = collectionDelaySeconds(submittedAt, new Date(submittedAt));
+  await enqueueCollectionWithTelemetry({ redis, runId, status, targetUrl, payload: { run_id: runId, objective }, env, delaySeconds, enqueue });
+  
+  return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, submitted_at: submittedAt, reply_deadline_at: replyDeadlineAt } };
 }
 
 async function handleCollection({ redis, mindsClient, runId, objective, targetUrl, env, now = new Date(), enqueue = scheduleCollection }) {
@@ -271,16 +461,28 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
   assertMatchingRun(status, runId, objective);
   if (isTerminalRunStatus(status.status)) return { httpStatus: 200, body: { status: status.status, run_id: runId, idempotent_replay: true } };
   if (status.status !== "WAITING_FOR_MINDS") return { httpStatus: 202, body: { status: status.status, run_id: runId, collection_skipped: true } };
+  
   if (collectionDeadlinePassed(status.reply_deadline_at, now)) {
     const failedAt = isoNow(now);
-    const failed = { ...status, status: "FAILED", completed_at: failedAt, error: "Animoca Mind reply deadline passed without a verified response", reply_diagnostics: buildMindReplyDiagnostics({ timedOut: true }, objective, runId), stage_timestamps: stages(status, { terminal_failure: failedAt }) };
+    const failed = {
+      ...status,
+      status: "FAILED",
+      completed_at: failedAt,
+      error: "Minds personalized interpretation is temporarily unavailable.",
+      minds_status: "DELAYED/UNAVAILABLE",
+      minds_verified: false,
+      reply_diagnostics: buildMindReplyDiagnostics({ timedOut: true }, objective, runId),
+      stage_timestamps: stages(status, { terminal_failure: failedAt })
+    };
     await persistRunStatus(redis, runId, failed);
     return { httpStatus: 200, body: { status: "FAILED", run_id: runId, error: failed.error } };
   }
+  
   const attemptAt = isoNow(now);
   const attempt = (status.collection_attempt || 0) + 1;
   const claim = await redis.set(`greenroom:collection_claim:${runId}:${attempt}`, attemptAt, { nx: true, ex: 5 * 60 });
   if (claim === null) return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, collection_attempt: attempt, idempotent_replay: true } };
+  
   const remainingMs = Math.max(0, Date.parse(status.reply_deadline_at) - now.getTime());
   const sseTimeoutMs = Math.min(MINDS_SSE_WAIT_MS, remainingMs);
   status = await persistRunStatus(redis, runId, {
@@ -290,6 +492,7 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
     last_collection_transport: { attempt, collection_started_at: attemptAt, transport_attempted: "sse", sse_wait_timeout_ms: sseTimeoutMs, sse_result: "WAITING", history_fallback_attempted: false },
     stage_timestamps: stages(status, { last_collection_attempt: attemptAt }),
   });
+  
   let reply = null;
   let replySource = null;
   let sseResult = "timeout";
@@ -312,18 +515,17 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
     sseResult = "sdk_error";
     sseErrorType = String(error?.name || "Error").slice(0, 80);
   }
+  
   const sseWaitDurationMs = Math.max(0, Date.now() - sseStartedMs);
   let rows = [];
   const historyFallbackAttempted = !reply;
   const historyCheckedAt = historyFallbackAttempted ? isoNow() : null;
   if (!reply) {
-    // client-lib >=0.1.4 returns history newest-first and treats cursor/after as
-    // an exclusive `before` cursor (older rows). Fetch the newest page, then
-    // apply the pre-send fingerprint guard locally so current replies remain visible.
     rows = await mindsClient.getHistory(status.conversation_alias, { limit: 50 });
     reply = selectVerifiedHistoryReply(rows, { alias: status.conversation_alias, afterFingerprint: status.pre_send_fingerprint || undefined, submittedPromptHash: status.submitted_prompt_hash, hashText }, isReplyHistoryRow);
     if (reply) replySource = "history";
   }
+  
   status = await persistRunStatus(redis, runId, {
     ...status,
     last_collection_transport: {
@@ -350,11 +552,21 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
       },
     } : {}),
   });
+  
   if (!reply) {
     const afterTransport = new Date(now.getTime() + sseWaitDurationMs);
     if (collectionDeadlinePassed(status.reply_deadline_at, afterTransport)) {
       const failedAt = isoNow(afterTransport);
-      const failed = { ...status, status: "FAILED", completed_at: failedAt, error: "Animoca Mind reply deadline passed without a verified response", reply_diagnostics: buildMindReplyDiagnostics({ timedOut: true }, objective, runId), stage_timestamps: stages(status, { terminal_failure: failedAt }) };
+      const failed = {
+        ...status,
+        status: "FAILED",
+        completed_at: failedAt,
+        error: "Minds personalized interpretation is temporarily unavailable.",
+        minds_status: "DELAYED/UNAVAILABLE",
+        minds_verified: false,
+        reply_diagnostics: buildMindReplyDiagnostics({ timedOut: true }, objective, runId),
+        stage_timestamps: stages(status, { terminal_failure: failedAt })
+      };
       await persistRunStatus(redis, runId, failed);
       return { httpStatus: 200, body: { status: "FAILED", run_id: runId, error: failed.error } };
     }
@@ -362,13 +574,31 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
     await enqueueCollectionWithTelemetry({ redis, runId, status, targetUrl, payload: { run_id: runId, objective }, env, delaySeconds, enqueue });
     return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, collection_attempt: attempt, next_collection_delay_seconds: delaySeconds } };
   }
+  
   const replyFoundAt = status.last_collection_transport.verified_reply_found_at;
   const diagnostics = buildMindReplyDiagnostics({ reply, timedOut: false }, objective, runId);
   try {
     const { text } = normalizeMindReply({ reply, timedOut: false });
-    const parsed = parseMindBriefing(text);
     const completedAt = isoNow();
-    const briefing = buildBriefing({ runId, objective, status, mindBriefing: parsed, mindReplyText: text, completedAt });
+    
+    let briefing;
+    if (status.decision_engine === "MINDS_NATIVE_DECISION") {
+      const parsedPlain = parseMindPlainResponse(text);
+      briefing = buildMindsNativeBriefing({
+        runId,
+        objective,
+        status,
+        parsedWhyItMatters: parsedPlain.why_it_matters,
+        parsedWhatToDoNext: parsedPlain.what_to_do_next,
+        mindReplyText: text,
+        completedAt,
+        evidence: status.evidence_snapshot
+      });
+    } else {
+      const parsed = parseMindBriefing(text);
+      briefing = buildBriefing({ runId, objective, status, mindBriefing: parsed, mindReplyText: text, completedAt });
+    }
+    
     await redis.set(`greenroom:briefing:${runId}`, JSON.stringify(briefing));
     await redis.set("greenroom:latest_briefing", JSON.stringify(briefing));
     await persistRunStatus(redis, runId, { ...status, status: "COMPLETED", completed_at: completedAt, briefing_id: runId, provenance: briefing.provenance, reply_diagnostics: diagnostics, reply_metadata: extractSafeSdkMetadata(reply), submission_to_verified_reply_ms: Math.max(0, Date.parse(replyFoundAt) - Date.parse(status.submitted_at)), submission_to_completion_ms: Math.max(0, Date.parse(completedAt) - Date.parse(status.submitted_at)), stage_timestamps: stages(status, { verified_reply_found: replyFoundAt, parsing_started: replyFoundAt, parsing_completed: completedAt, briefing_persisted: completedAt }) });

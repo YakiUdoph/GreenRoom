@@ -475,3 +475,158 @@ test("Run B completion never reads or returns Run A briefing", async () => {
   assert.equal(result.body.briefing.run_id, "run_b");
   assert.equal(redis.json("greenroom:briefing:run_a").run_id, "run_a");
 });
+
+const NATIVE_EVIDENCE = {
+  source: "Adobe Blog",
+  source_url: "https://blog.adobe.com/en/publish/2026/08/27/adobe-extends-leadership.html",
+  title: "Adobe extends leadership in video",
+  summary: "unleashing new AI-powered creation in Firefly, reinventing color for editors in Premiere.",
+  published_at: "2026-08-27T00:00:00.000Z",
+  retrieved_at: "2026-08-27T12:00:00.000Z"
+};
+
+const mockFetchEvidence = async () => ({
+  evidence: [NATIVE_EVIDENCE],
+  status: "EVIDENCE_READY"
+});
+
+const PLAIN_REPLY = `WHY IT MATTERS
+Adobe's Premiere update reinvents color for editors.
+
+WHAT TO DO NEXT
+Test the Premiere color workflow changes.`;
+
+test("Minds-native live submission returns WAITING_FOR_MINDS and enqueues collection with evidence snapshot", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds([]);
+  const result = await processWorkerPhase({
+    phase: "submit",
+    ...runArgs(redis, minds, {
+      executionPath: undefined,
+      fetchEvidence: mockFetchEvidence
+    })
+  });
+  
+  assert.equal(result.body.status, "WAITING_FOR_MINDS");
+  const status = redis.json("greenroom:run_status:run_b");
+  assert.equal(status.status, "WAITING_FOR_MINDS");
+  assert.equal(status.decision_engine, "MINDS_NATIVE_DECISION");
+  assert.deepEqual(status.evidence_snapshot, NATIVE_EVIDENCE);
+  assert.equal(status.selected_memory.learned_rules[0], "Be practical");
+});
+
+test("Minds-native collection with verified plain reply completes the run and parses sections", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds([]);
+  
+  await processWorkerPhase({
+    phase: "submit",
+    ...runArgs(redis, minds, {
+      executionPath: undefined,
+      fetchEvidence: mockFetchEvidence
+    })
+  });
+  
+  minds.getHistory = async () => [{
+    alias: "greenroom-run_b",
+    fingerprint: "zz_reply",
+    senderType: 0,
+    messageText: PLAIN_REPLY
+  }];
+  
+  const result = await processWorkerPhase({
+    phase: "collect",
+    ...runArgs(redis, minds, {
+      executionPath: undefined,
+      fetchEvidence: mockFetchEvidence
+    })
+  });
+  
+  assert.equal(result.body.status, "COMPLETED");
+  const briefing = redis.json("greenroom:briefing:run_b");
+  assert.equal(briefing.minds_verified, true);
+  assert.equal(briefing.minds_status, "COMPLETED");
+  assert.equal(briefing.decision_engine, "MINDS_NATIVE_DECISION");
+  assert.equal(briefing.items[0].why_it_matters, "Adobe's Premiere update reinvents color for editors.");
+  assert.equal(briefing.items[0].recommended_action, "Test the Premiere color workflow changes.");
+});
+
+test("Minds-native collection rejects non-verified messages during WAITING_FOR_MINDS", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds([]);
+  
+  await processWorkerPhase({
+    phase: "submit",
+    ...runArgs(redis, minds, {
+      executionPath: undefined,
+      fetchEvidence: mockFetchEvidence
+    })
+  });
+  
+  minds.getHistory = async () => [
+    { alias: "wrong-alias", fingerprint: "zz1", senderType: 0, messageText: PLAIN_REPLY },
+    { alias: "greenroom-run_b", fingerprint: "zz2", senderType: 1, messageText: PLAIN_REPLY }
+  ];
+  
+  const result = await processWorkerPhase({
+    phase: "collect",
+    ...runArgs(redis, minds, {
+      executionPath: undefined,
+      fetchEvidence: mockFetchEvidence
+    })
+  });
+  
+  assert.equal(result.body.status, "WAITING_FOR_MINDS");
+  assert.equal(redis.json("greenroom:briefing:run_b"), undefined);
+});
+
+test("Minds-native collection deadline expiry transitions status to FAILED with unavailable error", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds([]);
+  
+  await processWorkerPhase({
+    phase: "submit",
+    ...runArgs(redis, minds, {
+      executionPath: undefined,
+      fetchEvidence: mockFetchEvidence
+    })
+  });
+  
+  const status = redis.json("greenroom:run_status:run_b");
+  
+  const result = await processWorkerPhase({
+    phase: "collect",
+    ...runArgs(redis, minds, {
+      executionPath: undefined,
+      fetchEvidence: mockFetchEvidence,
+      now: new Date(Date.parse(status.reply_deadline_at) + 1000)
+    })
+  });
+  
+  assert.equal(result.body.status, "FAILED");
+  assert.equal(result.body.error, "Minds personalized interpretation is temporarily unavailable.");
+  
+  const finalStatus = redis.json("greenroom:run_status:run_b");
+  assert.equal(finalStatus.status, "FAILED");
+  assert.equal(finalStatus.minds_status, "DELAYED/UNAVAILABLE");
+  assert.equal(finalStatus.minds_verified, false);
+});
+
+test("Minds-native submission fails cleanly if mindsClient is missing", async () => {
+  const redis = initialRedis();
+  
+  const result = await processWorkerPhase({
+    phase: "submit",
+    ...runArgs(redis, null, {
+      executionPath: undefined,
+      fetchEvidence: mockFetchEvidence
+    })
+  });
+  
+  assert.equal(result.body.status, "FAILED");
+  assert.match(result.body.error, /Mind has no active Animoca Minds Builder API client/);
+  
+  const finalStatus = redis.json("greenroom:run_status:run_b");
+  assert.equal(finalStatus.status, "FAILED");
+  assert.deepEqual(finalStatus.evidence_snapshot, NATIVE_EVIDENCE);
+});

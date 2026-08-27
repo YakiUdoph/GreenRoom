@@ -312,7 +312,9 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                   </div>
                   <div className="p-2.5 bg-[#111115] rounded border border-outline-variant">
                     <span className="text-[10px] text-zinc-400 block font-bold">DECISION ENGINE</span>
-                    <span className="text-white font-bold text-[11px]">LIVE CORE</span>
+                    <span className="text-white font-bold text-[11px]">
+                      {runStatusDetails?.decision_engine === 'MINDS_NATIVE_DECISION' ? 'GREENROOM MIND' : 'LIVE CORE'}
+                    </span>
                   </div>
                 </div>
 
@@ -324,8 +326,10 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                   {step === 4 && `QStash worker endpoint /api/briefing-worker triggered via signed webhook.`}
                   {step === 5 && (jobStatus === 'FAILED'
                     ? (errorMessage || `GreenRoom couldn't complete this run.`)
+                    : jobStatus === 'WAITING_FOR_MINDS'
+                    ? `GreenRoom is waiting for a verified response from the GreenRoom Decision Skill.`
                     : `GreenRoom is retrieving and validating current first-party AI-video evidence.`)}
-                  {step === 6 && `Ranking result. Executive Briefing and provenance metadata durably saved to its run-specific Upstash Redis record.`}
+                  {step === 6 && (runStatusDetails?.decision_engine === 'MINDS_NATIVE_DECISION' ? 'Saving Mind-generated decision briefing to durable database.' : 'Ranking result. Executive Briefing and provenance metadata durably saved to Upstash Redis.')}
                   {step === 7 && `Creator re-opens dashboard. Polling confirms job completion.`}
                 </div>
                 {step === 5 && isOfflineRunPending(jobStatus) && <button onClick={handleContinue} className="px-5 py-3 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition self-start">Continue in GreenRoom</button>}
@@ -369,13 +373,26 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
                     </div>
 
                     <span className="font-mono text-[10px] text-emerald-400 font-bold bg-[#142616] px-2.5 py-1 rounded border border-[#234d28]">
-                      GREENROOM LIVE CORE · MINDS NOT USED
+                      {briefingData?.minds_verified ? 'GREENROOM MIND ACTIVE · MINDS VERIFIED' : 'GREENROOM LIVE CORE · MINDS NOT USED'}
                     </span>
                   </div>
 
-                  <p className="font-mono text-xs text-zinc-300 leading-relaxed bg-[#0a0c0e] p-3.5 rounded border border-outline-variant whitespace-pre-wrap">
-                    {briefingData?.items?.[0]?.recommended_action || briefingData?.script_concept?.concept || 'The completed briefing is available on the main dashboard.'}
-                  </p>
+                  {briefingData?.decision_engine === 'MINDS_NATIVE_DECISION' ? (
+                    <div className="space-y-3 bg-[#0a0c0e] p-4 rounded border border-outline-variant font-mono text-xs text-zinc-300">
+                      <div>
+                        <strong className="text-primary-fixed block uppercase mb-1">Why It Matters</strong>
+                        <p className="leading-relaxed">{briefingData?.items?.[0]?.why_it_matters}</p>
+                      </div>
+                      <div className="border-t border-outline-variant/60 pt-2.5">
+                        <strong className="text-cyan-300 block uppercase mb-1">Next Action</strong>
+                        <p className="leading-relaxed">{briefingData?.items?.[0]?.recommended_action}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="font-mono text-xs text-zinc-300 leading-relaxed bg-[#0a0c0e] p-3.5 rounded border border-outline-variant whitespace-pre-wrap">
+                      {briefingData?.items?.[0]?.recommended_action || briefingData?.script_concept?.concept || 'The completed briefing is available on the main dashboard.'}
+                    </p>
+                  )}
 
                   <div className="flex justify-between items-center pt-2 font-mono text-xs">
                     <span className="text-zinc-400">Provenance: Run #{runId} • Stored Durably</span>
