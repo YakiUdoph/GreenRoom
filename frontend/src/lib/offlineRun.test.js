@@ -106,7 +106,7 @@ test('refresh selects only the newest completed authoritative run when no run is
   assert.equal(selectCurrentRunForRefresh({ runs: [completed] }), completed);
   assert.equal(selectCurrentRunForRefresh({ runs: [{ run_id: 'run_failed', status: 'FAILED' }, completed] }), null);
   const restored = { run_id: 'run_remembered', status: 'COMPLETED' };
-  assert.equal(selectCurrentRunForRefresh({ runs: [completed] }, restored), restored);
+  assert.equal(selectCurrentRunForRefresh({ runs: [completed] }, restored), completed);
 });
 
 test('RESULT READY still requires the exact run-specific briefing', () => {

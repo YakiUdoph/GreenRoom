@@ -74,7 +74,7 @@ export function App() {
           latest_offline_run: currentRun,
         });
       }
-      if (restoredRun) setCurrentOfflineRun(restoredRun);
+      if (currentRun) setCurrentOfflineRun(currentRun);
       if (mStatus) {
         const executionVerified = authoritativeBriefing?.minds_verified === true
           && authoritativeBriefing?.provenance?.mind_verified === true;
