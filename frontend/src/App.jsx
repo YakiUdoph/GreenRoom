@@ -325,12 +325,11 @@ export function App() {
         </AnimatePresence>
       </main>
 
-      <footer className="py-6 border-t border-outline-variant/60 font-mono text-[10px] text-zinc-500 text-center space-x-2">
-        <span>GREENROOM POWERED BY ANIMOCA MINDS</span>
-        <span>•</span>
-        <button onClick={() => setActiveTab('docs')} className="underline hover:text-zinc-300">
-          DEVELOPER DOCS & JUDGE PROOF
-        </button>
+      <footer className="site-footer">
+        <button type="button" className="footer-brand" onClick={() => setActiveTab('home')}><span aria-hidden="true" /><strong>GreenRoom</strong></button>
+        <p>GreenRoom watches so you can focus on what you do best.</p>
+        <span>© 2026 GreenRoom</span>
+        <button type="button" onClick={() => setActiveTab('docs')}>Product docs</button>
       </footer>
 
       {/* Payload Modal Inspector */}

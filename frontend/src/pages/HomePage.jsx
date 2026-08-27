@@ -9,9 +9,9 @@ const exampleResult = {
   recommended_action: 'Try it on one short clip and compare the time and quality with your current process.',
 };
 const steps = [
-  ['01', 'Tell us your goal', 'What are you trying to improve?'],
-  ['02', 'Your Mind remembers', 'Useful preferences and previous decisions carry forward.'],
-  ['03', 'Get useful decisions', 'When something relevant changes, GreenRoom tells you what changed, why it matters, and what to do next.'],
+  ['01', '◎', 'Tell us your goal', "Share what you're working toward and what matters to you."],
+  ['02', '◉', 'Your Mind remembers', 'Your preferences and past decisions carry forward.'],
+  ['03', '✦', 'Get useful decisions', 'When something relevant changes, GreenRoom tells you what changed, why it matters, and what to do next.'],
 ];
 const clean = (value = '') => cleanDecisionText(String(value).replace(/ScoutMind detected/i, 'GreenRoom found').replaceAll('_', ' '));
 
@@ -27,12 +27,11 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
   const currentItem = isCurrentBriefing && Array.isArray(briefing?.items) ? briefing.items[0] : null;
   const result = currentItem || exampleResult;
   const isExample = !currentItem;
-  const [editingGoal, setEditingGoal] = useState(!objective);
   const [goal, setGoal] = useState(objective?.title || '');
 
   useEffect(() => {
-    if (!editingGoal) setGoal(objective?.title || '');
-  }, [objective?.title, editingGoal]);
+    setGoal(objective?.title || '');
+  }, [objective?.title]);
 
   const resultState = useMemo(() => {
     if (runStatus === 'UNSUPPORTED_DOMAIN') return 'unsupported';
@@ -47,53 +46,52 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
     const title = goal.trim();
     if (!title) return;
     await onCreateObjective(title);
-    setEditingGoal(false);
+    setTimeout(() => onOpenOfflineModal(), 0);
   };
 
   return <div className="manus-home home-compressed">
     <section className="new-hero home-goal" aria-labelledby="home-title">
       <div className="hero-intro home-goal__content">
-        <p className="hero-overline">GREENROOM</p>
-        <h1 id="home-title">GreenRoom keeps watch <em>while you create.</em></h1>
+        <p className="hero-overline">YOUR CREATIVE COMPANION</p>
+        <h1 id="home-title">GreenRoom<br />keeps <em>watch</em><br />while you create.</h1>
         <p>Tell GreenRoom what you're working toward. It remembers what matters to you, watches for useful changes, and tells you what deserves your attention.</p>
         <form className="goal-form" onSubmit={submitGoal}>
           <label htmlFor="watch-goal">What should GreenRoom keep an eye on for you?</label>
-          {objective && !editingGoal ? <div className="goal-current">
-            <strong>{objective.title}</strong>
-            <button type="button" onClick={() => setEditingGoal(true)}>Edit</button>
-          </div> : <div className="goal-entry">
+          <div className="goal-entry">
             <input id="watch-goal" value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="e.g. Find better tools for making my videos" autoFocus={Boolean(objective)} required />
-            <button type="submit" disabled={isExecuting || !goal.trim()}>Start watching</button>
-          </div>}
+            <button type="submit" disabled={isExecuting || !goal.trim()}>Start watching <span aria-hidden="true">→</span></button>
+          </div>
         </form>
-        <p className="coverage-note">Live monitoring currently supports AI video tools. More creator categories are coming.</p>
+        <p className="coverage-note"><span aria-hidden="true">✓</span> Live monitoring currently supports AI video tools. More creator categories are coming.</p>
       </div>
+      <aside className="hero-result-toast" aria-label="Illustrative product preview">
+        <span>ILLUSTRATIVE PREVIEW</span>
+        <strong>GreenRoom found something</strong>
+        <p>New AI video tools and updates that match your goal.</p>
+        <button type="button" onClick={() => onNavigate('intelligence')}>View example</button>
+      </aside>
     </section>
 
     <section className="process-story home-process" aria-labelledby="process-title">
-      <div className="process-heading"><div><p>HOW IT WORKS</p><h2 id="process-title">One clear thread.</h2></div></div>
-      <ol className="process-strip">{steps.map(([number, title, copy]) => <li key={number}>
-        <span>{number}</span><div><h3>{title}</h3><p>{copy}</p></div>
+      <div className="process-heading"><div><p>HOW IT WORKS</p><h2 id="process-title">Three steps to useful decisions</h2></div></div>
+      <ol className="process-strip">{steps.map(([number, icon, title, copy]) => <li key={number}>
+        <span className="process-number">{number}</span><span className="process-icon" aria-hidden="true">{icon}</span><div><h3>{title}</h3><p>{copy}</p></div>
       </li>)}</ol>
     </section>
 
     <section className="return-story home-result" aria-labelledby="result-title">
-      <div className="home-result__intro">
-        <p>{isExample ? 'EXAMPLE RESULT' : 'LATEST RESULT'}</p>
-        <h2 id="result-title">A change becomes <em>a decision.</em></h2>
-        <p>GreenRoom filters the noise and brings back the part that deserves your attention.</p>
-        {currentItem && <button type="button" onClick={() => onNavigate('intelligence')}>See result</button>}
-      </div>
+      <div className="home-result__visual" role="img" aria-label="Camera beside a creator video-editing workstation" />
       <article className={`result-preview is-${resultState}`}>
+        <header className="result-preview__heading"><span>{isExample ? 'RESULT PREVIEW · EXAMPLE' : 'LATEST RESULT'}</span><h2 id="result-title">A change becomes <em>a decision.</em></h2></header>
         {resultState === 'working' ? <div className="result-message"><span className="watch-pulse" /><strong>GreenRoom is watching</strong><p>Your Mind is deciding whether the latest changes matter to you. You can come back later.</p></div>
         : resultState === 'unsupported' ? <div className="result-message"><strong>GreenRoom can't watch this category live yet.</strong><p>AI video tools are supported now. More creator categories are coming.</p></div>
         : resultState === 'failed' ? <div className="result-message"><strong>This check didn't complete.</strong><p>No older result has been substituted. Try checking again when you're ready.</p><button type="button" onClick={onOpenOfflineModal}>Try again</button></div>
         : resultState === 'no-update' ? <div className="result-message"><strong>Nothing needs your attention right now.</strong><p>GreenRoom checked the current sources and found no relevant update.</p></div>
-        : <><header><span>{isExample ? 'EXAMPLE' : 'CURRENT'}</span><h3>{result.title}</h3></header><dl>
-          <div><dt>WHAT CHANGED</dt><dd>{clean(result.what_changed)}</dd></div>
-          <div><dt>WHY IT MATTERS</dt><dd>{clean(result.why_it_matters)}</dd></div>
-          <div><dt>WHAT TO DO NEXT</dt><dd>{clean(result.recommended_action)}</dd></div>
-        </dl></>}
+        : <><dl>
+          <div><span className="result-icon" aria-hidden="true">↗</span><div><dt>WHAT CHANGED</dt><dd>{clean(result.what_changed)}</dd></div></div>
+          <div><span className="result-icon" aria-hidden="true">◇</span><div><dt>WHY IT MATTERS</dt><dd>{clean(result.why_it_matters)}</dd></div></div>
+          <div><span className="result-icon" aria-hidden="true">✓</span><div><dt>WHAT TO DO NEXT</dt><dd>{clean(result.recommended_action)}</dd></div></div>
+        </dl><footer><span aria-hidden="true">◇</span> Based on verified first-party sources · Powered by Your Mind{isExample ? ' · Example only' : ''}</footer>{currentItem && <button type="button" onClick={() => onNavigate('intelligence')}>See full result</button>}</>}
       </article>
     </section>
   </div>;
