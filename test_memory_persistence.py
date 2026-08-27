@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from memory_engine import GreenroomMemoryEngine
+from memory_engine import GreenroomMemoryEngine, preference_equivalence_key
 from persistence import LocalFileStore
 
 
@@ -153,6 +153,61 @@ class MemoryPreferencePersistenceTests(unittest.TestCase):
             self.assertIn("Prefer practical recommendations.", memory.state["learned_voice_rules"])
             self.assertIn("A strange but potentially legitimate creator note.", memory.state["learned_voice_rules"])
             self.assertTrue(any(node.get("type") == "research_note" for node in memory.state["memory_nodes"]))
+
+    def test_equivalent_future_preferences_are_idempotent(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = LocalFileStore(str(Path(directory) / "creator_profile.json"))
+            memory = GreenroomMemoryEngine(store)
+            first = memory.remember_preference("Keep recommendations concise and practical")
+            duplicate = memory.remember_preference("i prefer concise, practical recommendations")
+            reordered = memory.remember_preference("keep recommendations practical and concise")
+
+            self.assertTrue(first["created"])
+            self.assertFalse(duplicate["created"])
+            self.assertFalse(reordered["created"])
+            self.assertEqual("Keep recommendations concise and practical", duplicate["equivalent_to"])
+            self.assertEqual(1, len(memory.state["learned_voice_rules"]))
+            self.assertEqual(1, len(memory.state["memory_nodes"]))
+
+    def test_historical_duplicate_cleanup_keeps_strongest_representatives(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = LocalFileStore(str(Path(directory) / "creator_profile.json"))
+            state = store.get_creator_profile()
+            state["learned_voice_rules"] = [
+                "Keep recommendations concise and practical",
+                "i prefer concise, practical recommendations",
+                "keep recommendation concise and practical",
+                "keep recommendations practical and concise",
+                "Prefer free or low-cost tools.",
+                "prefer free tools",
+                "Avoid clickbait-style content ideas",
+                "Prioritize creator opportunities with clear monetary value.",
+            ]
+            state["memory_nodes"] = [
+                {"type": "learned_preference", "content": rule}
+                for rule in state["learned_voice_rules"]
+            ]
+            store.save_creator_profile(state)
+
+            memory = GreenroomMemoryEngine(store)
+
+            self.assertEqual([
+                "Keep recommendations concise and practical",
+                "Prefer free or low-cost tools.",
+                "Avoid clickbait-style content ideas",
+                "Prioritize creator opportunities with clear monetary value.",
+            ], memory.state["learned_voice_rules"])
+            self.assertEqual(4, len(memory.state["memory_nodes"]))
+            self.assertEqual(4, len(memory.duplicate_preferences_removed))
+
+    def test_distinct_preferences_remain_separate(self):
+        preferences = [
+            "Keep recommendations concise and practical",
+            "Keep recommendations concise and evidence-led",
+            "Prefer free or low-cost tools.",
+            "Avoid clickbait-style content ideas",
+        ]
+        self.assertEqual(len(preferences), len({preference_equivalence_key(item) for item in preferences}))
 
 
 if __name__ == "__main__":

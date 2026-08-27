@@ -1,9 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
 import { completedHistoryRuns, currentIntelligence, formatCompletedDate, isLiveBriefing, isSimulatedBriefing, shortRunId, verifyHistoricalBriefing } from '../lib/briefingHistory';
+import { cleanDecisionText } from '../lib/decisionText';
 
 function BriefingFields({ briefing }) {
-  const items = Array.isArray(briefing?.items) ? briefing.items : [];
+  const items = Array.isArray(briefing?.items) ? briefing.items.map((item) => ({
+    ...item,
+    title: cleanDecisionText(item.title),
+    what_changed: cleanDecisionText(item.what_changed),
+    summary: cleanDecisionText(item.summary),
+    why_it_matters: cleanDecisionText(item.why_it_matters),
+    recommended_action: cleanDecisionText(item.recommended_action),
+    memory_context_used: cleanDecisionText(item.memory_context_used),
+  })) : [];
   const sources = Array.isArray(briefing?.sources) ? briefing.sources : [];
   return <><div className="decision-briefings">{items.map((item, index) => <article key={item.id || index}><header><span>{String(index + 1).padStart(2, '0')}</span><h2>{item.title}</h2></header><dl><div><dt>WHAT CHANGED</dt><dd>{item.what_changed || item.summary || 'No verified change was supplied.'}</dd></div><div><dt>WHY IT MATTERS</dt><dd>{item.why_it_matters || 'No creator-specific significance was supplied.'}</dd></div><div><dt>WHAT TO DO NEXT</dt><dd>{item.recommended_action || 'No next action was supplied.'}</dd></div>{item.memory_context_used && <div><dt>MEMORY CONSIDERED</dt><dd>{item.memory_context_used}</dd></div>}</dl></article>)}</div>{sources.length > 0 && <section className="briefing-sources" aria-label="Live evidence sources"><header className="intelligence-section-head"><p>SOURCE PROVENANCE</p><span>First-party evidence attached to this run.</span></header>{sources.map((source, index) => <article key={source.source_url || index}><small>SOURCE</small><strong>{source.source}</strong><h3>{source.title}</h3><div><time dateTime={source.published_at}>Published {formatCompletedDate(source.published_at)}</time><time dateTime={source.retrieved_at}>Retrieved {formatCompletedDate(source.retrieved_at)}</time></div><a href={source.source_url} target="_blank" rel="noreferrer">View source ↗</a></article>)}</section>}</>;
 }

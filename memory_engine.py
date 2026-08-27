@@ -1,6 +1,7 @@
 import json
 import time
 import os
+import re
 from typing import Dict, List, Any, Optional
 from minds_integration import minds_manager
 from persistence import get_persistence_store, PersistenceStore
@@ -38,6 +39,41 @@ def is_meaningful_creator_preference(text: str) -> bool:
         return False
     return any(signal in f" {cleaned} " for signal in PREFERENCE_SIGNALS)
 
+
+def _preference_content(value: str) -> str:
+    prefix = "User Feedback Rule: "
+    return value[len(prefix):] if value.startswith(prefix) else value
+
+
+def preference_equivalence_key(text: str) -> str:
+    """Return a conservative key for only high-confidence preference equivalents."""
+    cleaned = _normalized_memory_text(_preference_content(text))
+    cleaned = re.sub(r"^i\s+prefer\s+", "prefer ", cleaned)
+    cleaned = re.sub(r"\brecommendations\b", "recommendation", cleaned)
+    cleaned = re.sub(r"\btools\b", "tool", cleaned)
+    words = set(re.findall(r"[a-z0-9]+", cleaned.replace("low-cost", "low cost")))
+
+    if {"concise", "practical", "recommendation"}.issubset(words):
+        extras = words - {"i", "prefer", "keep", "recommendation", "concise", "practical", "and"}
+        if not extras:
+            return "style:recommendation:concise+practical"
+
+    if "free" in words and "tool" in words:
+        extras = words - {"i", "prefer", "free", "or", "low", "cost", "tool"}
+        if not extras:
+            return "cost:tool:free-or-low-cost"
+
+    return f"literal:{cleaned}"
+
+
+def _preference_strength(text: str) -> tuple:
+    raw = _preference_content(text).strip()
+    cleaned = _normalized_memory_text(raw)
+    words = set(re.findall(r"[a-z0-9]+", cleaned.replace("low-cost", "low cost")))
+    completeness = 2 if {"low", "cost"}.issubset(words) else 0
+    canonical = 2 if raw.startswith(("Keep recommendations", "Prefer ")) else 0
+    return (canonical + completeness + len(words), len(cleaned))
+
 class GreenroomMemoryEngine:
     """
     Persistent Memory Engine for Greenroom.
@@ -47,6 +83,7 @@ class GreenroomMemoryEngine:
         self.store = store or get_persistence_store()
         self.state = self.store.get_creator_profile()
         self.historical_noise_removed = self.clean_historical_noise()
+        self.duplicate_preferences_removed = self.clean_duplicate_preferences()
         self._sync_to_minds_sdk()
 
     @property
@@ -69,6 +106,7 @@ class GreenroomMemoryEngine:
         """Refresh this engine instance from the configured persistence store."""
         self.state = self.store.get_creator_profile()
         self.historical_noise_removed = self.clean_historical_noise()
+        self.duplicate_preferences_removed = self.clean_duplicate_preferences()
         return self.state
 
     def clean_historical_noise(self) -> List[str]:
@@ -106,6 +144,46 @@ class GreenroomMemoryEngine:
             self.state["memory_nodes"] = cleaned_nodes
             self.save_state()
         return list(dict.fromkeys(removed))
+
+    def clean_duplicate_preferences(self) -> List[Dict[str, str]]:
+        """Collapse only high-confidence equivalent rules and their redundant nodes."""
+        rules = self.state.get("learned_voice_rules", [])
+        representatives: Dict[str, str] = {}
+        for rule in rules:
+            if not isinstance(rule, str):
+                continue
+            key = preference_equivalence_key(rule)
+            current = representatives.get(key)
+            if current is None or _preference_strength(rule) > _preference_strength(current):
+                representatives[key] = rule
+
+        kept_rules = []
+        removed = []
+        for rule in rules:
+            if not isinstance(rule, str):
+                kept_rules.append(rule)
+                continue
+            representative = representatives[preference_equivalence_key(rule)]
+            if rule == representative:
+                kept_rules.append(rule)
+            else:
+                removed.append({"removed": rule, "retained": representative})
+
+        kept_nodes = []
+        for node in self.state.get("memory_nodes", []):
+            content = node.get("content", "") if isinstance(node, dict) else ""
+            if isinstance(node, dict) and node.get("type") == "learned_preference" and isinstance(content, str):
+                preference = _preference_content(content)
+                representative = representatives.get(preference_equivalence_key(preference))
+                if representative is not None and preference != representative:
+                    continue
+            kept_nodes.append(node)
+
+        if len(kept_rules) != len(rules) or len(kept_nodes) != len(self.state.get("memory_nodes", [])):
+            self.state["learned_voice_rules"] = kept_rules
+            self.state["memory_nodes"] = kept_nodes
+            self.save_state()
+        return removed
 
 
     def retrieve_relevant_context(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
@@ -236,8 +314,13 @@ class GreenroomMemoryEngine:
         # the latest durable profile instead of an instance's startup snapshot.
         self.reload_state()
         rules = self.state.setdefault("learned_voice_rules", [])
-        if preference in rules:
-            return {"preference": preference, "created": False}
+        preference_key = preference_equivalence_key(preference)
+        equivalent = next(
+            (rule for rule in rules if isinstance(rule, str) and preference_equivalence_key(rule) == preference_key),
+            None,
+        )
+        if equivalent is not None:
+            return {"preference": preference, "created": False, "equivalent_to": equivalent}
 
         node = {
             "node_id": f"mem_{int(time.time()*1000)}",

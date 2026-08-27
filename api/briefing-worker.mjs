@@ -8,6 +8,7 @@ import { buildDeterministicLiveBriefing, retrieveLiveEvidenceForObjective } from
 export const maxDuration = 60;
 export const config = { api: { bodyParser: false } };
 const MIND_ID = "8208493e-f36b-1410-8466-00039ce7df11";
+const DECISION_SKILL_ID = "5483513E-F36B-1410-8466-00039CE7DF11";
 const DEFAULT_REPLY_DEADLINE_MS = 10 * 60 * 1000;
 const MINDS_SSE_WAIT_MS = 15_000;
 const isoNow = (now = new Date()) => now.toISOString();
@@ -153,19 +154,18 @@ async function handleSubmission({ redis, mindsClient, runId, objective, targetUr
   return { httpStatus: 202, body: { status: "WAITING_FOR_MINDS", run_id: runId, submitted_at: submittedAt, reply_deadline_at: replyDeadlineAt } };
 }
 
-function cleanParsedSection(text) {
+export function cleanParsedSection(text) {
   if (typeof text !== "string") return "";
-  let cleaned = text;
-  cleaned = cleaned.replace(/^[\s\S]*?<\/b>/i, "");
-  cleaned = cleaned.replace(/<b>[\s\S]*?$/i, "");
-  cleaned = cleaned
-    .replace(/^[:\s\-*#</b]*|[:\s\-*#</b]*$/gi, "")
+  return text
+    .replace(/<\s*br\s*\/?\s*>/gi, "\n")
+    .replace(/<\s*\/?\s*b\s*>/gi, "")
+    .replace(/<\s*\/?\s*(?:strong|em|i|p|div|span)\b[^>]*>/gi, "")
+    .replace(/<\s*\/?\s*(?:b|br|strong|em|i|p|div|span)\b[^>]*$/gi, "")
+    .replace(/^(?:[:\s\-*#]|<\/?b>)+|(?:[:\s\-*#]|<\/?b>)+$/gi, "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
-  cleaned = cleaned
-    .replace(/^<\/?[a-z0-9]+[^>]*>/gi, "")
-    .replace(/<\/?[a-z0-9]+[^>]*>$/gi, "")
-    .trim();
-  return cleaned;
 }
 
 export function parseMindPlainResponse(text) {
@@ -210,7 +210,7 @@ export function parseMindPlainResponse(text) {
 
 function buildMindsNativeBriefing({ runId, objective, status, parsedWhyItMatters, parsedWhatToDoNext, mindReplyText, completedAt, evidence }) {
   const selectedRules = status.learned_rules_snapshot || [];
-  const selectedNodes = status.selected_memory || [];
+  const selectedNodes = status.selected_memory?.memory_nodes || [];
   const item = {
     id: "live_001",
     priority: "REVIEW",
@@ -259,7 +259,11 @@ function buildMindsNativeBriefing({ runId, objective, status, parsedWhyItMatters
     persistence_mode: "DURABLE",
     execution_mode: "QSTASH_BACKGROUND_JOB",
     continuity_note: selectedRules.length ? `Selected persistent preference: "${selectedRules[0]}".` : null,
-    provenance,
+    provenance: {
+      ...provenance,
+      decision_skill_id: DECISION_SKILL_ID,
+      decision_skill_invocation: "REQUESTED_IN_VERIFIED_PROMPT",
+    },
     sources: [evidence],
     items: [item],
     learned_rules_active: selectedRules,
@@ -404,8 +408,10 @@ ${evidence.summary}
 Instruction: Use the GreenRoom Decision Skill.
 Return only in English:
 WHY IT MATTERS
+[1-3 short sentences explaining the creator-specific relevance]
 WHAT TO DO NEXT
-Keep the response concise. Use only the supplied objective, preference, and verified update. Do not invent facts.`;
+[one short practical action sentence]
+Use only the supplied objective, preferences, and verified update. Do not add unsupported pricing, availability, popularity, performance, subscriptions, workflow facts, or use cases. If a relevant preference cannot be evaluated from the verified update, state that uncertainty naturally. Do not return HTML or Markdown. Do not chain multiple actions.`;
 
   const preparedAt = isoNow();
   status = await persistRunStatus(redis, runId, {
@@ -416,7 +422,9 @@ Keep the response concise. Use only the supplied objective, preference, and veri
     submitted_prompt_hash: hashText(prompt),
     evidence_snapshot: evidence,
     selected_memory: memorySelection.context,
+    learned_rules_snapshot: memorySelection.context.learned_rules,
     memory_selection: memorySelection.provenance,
+    decision_skill: { id: DECISION_SKILL_ID, name: "GreenRoom Decision Skill", invocation: "REQUESTED_IN_VERIFIED_PROMPT" },
     stage_timestamps: stages(status, { submission_prepared: preparedAt }),
   });
 

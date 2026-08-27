@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { cleanDecisionText } from '../lib/decisionText';
 
 const WORKING_STATES = ['QUEUED', 'RUNNING', 'WORKING', 'SUBMITTING', 'WAITING_FOR_MINDS'];
 const exampleResult = {
@@ -12,7 +13,7 @@ const steps = [
   ['02', 'Your Mind remembers', 'Useful preferences and previous decisions carry forward.'],
   ['03', 'Get useful decisions', 'When something relevant changes, GreenRoom tells you what changed, why it matters, and what to do next.'],
 ];
-const clean = (value = '') => String(value).replace(/ScoutMind detected/i, 'GreenRoom found').replaceAll('_', ' ');
+const clean = (value = '') => cleanDecisionText(String(value).replace(/ScoutMind detected/i, 'GreenRoom found').replaceAll('_', ' '));
 
 export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreateObjective, isExecuting }) {
   const objective = memoryState?.creator_objectives?.[0];

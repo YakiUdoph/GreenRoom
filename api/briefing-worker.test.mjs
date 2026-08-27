@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { processWorkerPhase, scheduleCollection } from "./briefing-worker.mjs";
+import { cleanParsedSection, parseMindPlainResponse, processWorkerPhase, scheduleCollection } from "./briefing-worker.mjs";
 
 const OBJECTIVE = Object.freeze({ objective_id: "obj_video", title: "Research emerging AI video creation tools", constraints: "Prioritize video generation and editing. Do not recommend paid sponsorships.", fingerprint: "fp_objective" });
 const VALID = JSON.stringify({ items: [{ id: "sig_1", priority: 1, title: "Video workflow", category: "tool", what_changed: "Drafts are faster", why_it_matters: "It serves the objective", recommended_action: "Compare the workflow", memory_context_used: "Concise", status: "recommended" }] });
@@ -40,6 +40,23 @@ function fakeMinds(history = [], sse = { timedOut: true }) {
 const env = { QSTASH_TOKEN: "test", MINDS_REPLY_DEADLINE_MS: "600000" };
 const targetUrl = "https://example.test/api/briefing-worker";
 const runArgs = (redis, mindsClient, extras = {}) => ({ redis, mindsClient, runId: "run_b", objective: OBJECTIVE, targetUrl, env, executionPath: "legacy_minds", enqueue: async () => ({ messageId: "qstash-safe" }), ...extras });
+
+test("creator decision text removes formatting fragments without changing plain meaning", () => {
+  assert.equal(cleanParsedSection("<b>Useful change</b>"), "Useful change");
+  assert.equal(cleanParsedSection("Useful </b>change"), "Useful change");
+  assert.equal(cleanParsedSection("First<br>Second"), "First\nSecond");
+  assert.equal(cleanParsedSection("First<br/>Second"), "First\nSecond");
+  assert.equal(cleanParsedSection("First<br />Second"), "First\nSecond");
+  assert.equal(cleanParsedSection("First\n\n\n\nSecond"), "First\n\nSecond");
+  assert.equal(cleanParsedSection("Harmless plain text."), "Harmless plain text.");
+  assert.equal(cleanParsedSection("Useful text</b><br><br"), "Useful text");
+});
+
+test("plain Minds sections are sanitized before briefing persistence", () => {
+  const parsed = parseMindPlainResponse("WHY IT MATTERS\n<b>This helps.</b><br><br>Keep context.\n\nWHAT TO DO NEXT\nTry one clip.</b><br />");
+  assert.equal(parsed.why_it_matters, "This helps.\n\nKeep context.");
+  assert.equal(parsed.what_to_do_next, "Try one clip.");
+});
 
 function qstashResponse(status, body = {}) {
   return { ok: status >= 200 && status < 300, status, async text() { return typeof body === "string" ? body : JSON.stringify(body); } };
