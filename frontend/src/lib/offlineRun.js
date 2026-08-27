@@ -69,3 +69,9 @@ export function restoreCurrentOfflineRun(recentRuns, rememberedRunId = null) {
   if (!rememberedRunId) return null;
   return runs.find((run) => run?.run_id === rememberedRunId) || null;
 }
+
+export function selectCurrentRunForRefresh(recentRuns, restoredRun = null) {
+  if (restoredRun?.run_id) return restoredRun;
+  const newestRun = Array.isArray(recentRuns?.runs) ? recentRuns.runs[0] : null;
+  return newestRun?.status === 'COMPLETED' ? newestRun : null;
+}

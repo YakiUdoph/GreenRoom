@@ -1,7 +1,7 @@
 {
   "name": "greenroom",
   "version": "1.0.0",
-  "description": "> Built on Google Antigravity & the **Official Animoca Brands Minds Builder API** ([build.hellominds.ai](https://build.hellominds.ai)).",
+  "description": "Persistent decision intelligence for creators.",
   "main": "index.js",
   "scripts": {
     "dev": "npm --prefix frontend run dev",

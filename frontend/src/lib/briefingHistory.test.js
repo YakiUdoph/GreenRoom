@@ -12,6 +12,12 @@ test('current pending run cannot display historical briefing as current', () => 
   assert.equal(currentIntelligence({ latest_offline_run: { run_id: 'run_current', objective_id: 'obj_current', status: 'WAITING_FOR_MINDS' }, latest_briefing: historical }).currentBriefing, null);
 });
 
+test('live WORKING state remains pending and cannot display stale intelligence', () => {
+  const result = currentIntelligence({ latest_offline_run: { run_id: 'run_live', status: 'WORKING', objective_id: 'obj_current' }, latest_briefing: historical });
+  assert.equal(result.status, 'WORKING');
+  assert.equal(result.currentBriefing, null);
+});
+
 test('current failed run cannot display historical briefing as current', () => {
   assert.equal(currentIntelligence({ latest_offline_run: { run_id: 'run_current', objective_id: 'obj_current', status: 'FAILED' }, latest_briefing: historical }).currentBriefing, null);
 });

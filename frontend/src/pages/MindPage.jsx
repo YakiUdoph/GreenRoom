@@ -20,7 +20,7 @@ export function MindPage({ memoryState, isExecuting }) {
         <article><small>OBJECTIVE HELD / 02</small><h2>{objective ? 'In context' : 'Waiting for an objective'}</h2><p>{objective?.title || 'Set an objective so GreenRoom has a durable thread to hold.'}</p></article>
         <article><small>BACKGROUND READY / 03</small><h2>{objective ? 'Ready when needed' : 'Ready after setup'}</h2><p>Work can continue without requiring the creator to remain in a chat.</p></article>
       </div>
-      <div className="mind-identity-block"><p>VERIFIED PERSISTENT MIND</p><h2>Persistent intelligence</h2><div className="mind-capability-copy">GreenRoom uses a verified persistent Mind to carry creator context across objectives and background work.</div></div>
+      <div className="mind-identity-block"><p>CONNECTED MIND CAPABILITY</p><h2>Udophia, truthfully separated.</h2><div className="mind-capability-copy">Udophia is GreenRoom’s verified persistent Mind integration. Today’s reliable source-backed briefings use the GreenRoom deterministic live core and are not attributed to Udophia. The connected Mind capability remains available separately.</div></div>
     </section>
   </div>;
 }

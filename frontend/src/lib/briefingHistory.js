@@ -1,4 +1,4 @@
-const PENDING_STATUSES = new Set(['QUEUED', 'RUNNING', 'SUBMITTING', 'WAITING_FOR_MINDS']);
+const PENDING_STATUSES = new Set(['QUEUED', 'RUNNING', 'WORKING', 'SUBMITTING', 'WAITING_FOR_MINDS']);
 
 export function currentIntelligence(memoryState) {
   const run = memoryState?.latest_offline_run || null;

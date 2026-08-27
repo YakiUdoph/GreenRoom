@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isOfflineRunPending, isOlderBriefingAfterFailedRun, offlineRunProgressLabel, restoreCurrentOfflineRun, runIndicatorLabel, shouldPollOfflineRun, verifyRunBriefing, verifySavedObjective } from './offlineRun.js';
+import { isOfflineRunPending, isOlderBriefingAfterFailedRun, offlineRunProgressLabel, restoreCurrentOfflineRun, runIndicatorLabel, selectCurrentRunForRefresh, shouldPollOfflineRun, verifyRunBriefing, verifySavedObjective } from './offlineRun.js';
 
 test('verifies the exact durable objective before enqueue', () => {
   const objective = { id: 'obj_b', title: 'Objective B', details: 'Constraint B' };
@@ -90,6 +90,14 @@ test('the browser remembered current terminal run restores without promoting ano
   };
   assert.equal(restoreCurrentOfflineRun(runs, 'run_current').run_id, 'run_current');
   assert.equal(restoreCurrentOfflineRun(runs, 'missing'), null);
+});
+
+test('refresh selects only the newest completed authoritative run when no run is restored', () => {
+  const completed = { run_id: 'run_latest', objective_id: 'obj_latest', status: 'COMPLETED' };
+  assert.equal(selectCurrentRunForRefresh({ runs: [completed] }), completed);
+  assert.equal(selectCurrentRunForRefresh({ runs: [{ run_id: 'run_failed', status: 'FAILED' }, completed] }), null);
+  const restored = { run_id: 'run_remembered', status: 'COMPLETED' };
+  assert.equal(selectCurrentRunForRefresh({ runs: [completed] }, restored), restored);
 });
 
 test('RESULT READY still requires the exact run-specific briefing', () => {

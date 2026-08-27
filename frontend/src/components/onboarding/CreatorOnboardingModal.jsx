@@ -76,7 +76,7 @@ export function CreatorOnboardingModal({ isOpen, onClose, onSave, initialData })
                 Establish Your Creator Context
               </h2>
               <p className="text-xs font-sans text-zinc-300 mt-1 font-medium">
-                Greenroom will persist these identity rules permanently into long-term memory.
+                GreenRoom will persist these identity rules into long-term Memory.
               </p>
             </div>
 

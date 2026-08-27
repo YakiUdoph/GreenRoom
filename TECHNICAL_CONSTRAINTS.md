@@ -42,7 +42,7 @@ Production orchestration has executed through signed QStash delivery. Source and
 
 ## Persistence
 
-Production supports Upstash Redis and compatible KV environment aliases. Local file and ephemeral modes are separately labeled. Run-specific briefings and recent-run status are distinct from the convenience `latest_briefing` pointer.
+Production supports Upstash Redis and compatible KV environment aliases. Local file and ephemeral modes are separately labeled. Run-specific briefings and recent-run status are distinct from the compatibility-only `latest_briefing` pointer. That pointer can lag the newest completed run and must not be used to identify or deliver the current creator-facing result.
 
 ## Run isolation
 

@@ -4,7 +4,7 @@ import { useGreenroomState } from './hooks/useGreenroomState';
 import { useGreenroomSocket } from './hooks/useGreenroomSocket';
 import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
-import { CURRENT_OFFLINE_RUN_STORAGE_KEY, restoreCurrentOfflineRun, shouldPollOfflineRun, verifyRunBriefing } from './lib/offlineRun';
+import { CURRENT_OFFLINE_RUN_STORAGE_KEY, restoreCurrentOfflineRun, selectCurrentRunForRefresh, shouldPollOfflineRun, verifyRunBriefing } from './lib/offlineRun';
 
 import { ManusHeader } from './components/layout/ManusHeader';
 import { PayloadModal } from './components/ui/PayloadModal';
@@ -49,29 +49,36 @@ export function App() {
   // Load Real Data from REST API
   const loadInitialData = async () => {
     try {
-      const [mState, mStatus, impHist, sigs, latestBriefing, recentRuns] = await Promise.all([
+      const [mState, mStatus, impHist, sigs, recentRuns] = await Promise.all([
         api.getMemoryState().catch(() => null),
         api.getMindsStatus().catch(() => null),
         api.getImpHistory().catch(() => null),
         api.getSignals().catch(() => null),
-        api.getLatestBriefing().catch(() => null),
         api.getRecentBriefingRuns().catch(() => null),
       ]);
 
       let rememberedRunId = null;
       try { rememberedRunId = window.localStorage.getItem(CURRENT_OFFLINE_RUN_STORAGE_KEY); } catch { /* storage unavailable */ }
       const restoredRun = restoreCurrentOfflineRun(recentRuns, rememberedRunId);
+      const currentRun = selectCurrentRunForRefresh(recentRuns, restoredRun);
+      let authoritativeBriefing = null;
+      if (currentRun?.status === 'COMPLETED') {
+        try {
+          const response = await api.getRunBriefing(currentRun.run_id);
+          authoritativeBriefing = verifyRunBriefing(response?.briefing, currentRun.run_id, currentRun.objective_id);
+        } catch { /* current results require successful run-specific verification */ }
+      }
       if (mState) {
         greenroomStore.setMemoryState({
           ...mState,
-          latest_briefing: latestBriefing?.briefing || mState.latest_briefing || null,
-          latest_offline_run: restoredRun,
+          latest_briefing: authoritativeBriefing,
+          latest_offline_run: currentRun,
         });
       }
       if (restoredRun) setCurrentOfflineRun(restoredRun);
       if (mStatus) {
-        const executionVerified = latestBriefing?.briefing?.minds_verified === true
-          && latestBriefing?.briefing?.provenance?.mind_verified === true;
+        const executionVerified = authoritativeBriefing?.minds_verified === true
+          && authoritativeBriefing?.provenance?.mind_verified === true;
         greenroomStore.setMindsStatus(executionVerified ? {
           ...mStatus,
           connected: true,
@@ -228,25 +235,6 @@ export function App() {
     }
   };
 
-  const handleRunObjective = async (objectiveId) => {
-    setIsExecuting(true);
-    try {
-      const res = await api.runObjective(objectiveId);
-      if (res.state) greenroomStore.setMemoryState(res.state);
-      if (res.result && res.result.script_concept) {
-        greenroomStore.setActiveCard('script', {
-          trend_name: 'Beginner AI Workflows & Automation',
-          script_concept: res.result.script_concept,
-          is_punchy_voice: true,
-        });
-      }
-    } catch (err) {
-      console.error('[GreenroomApp] Error running objective:', err);
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
   // Render Active Page
   const renderPage = () => {
     switch (activeTab) {
@@ -265,7 +253,6 @@ export function App() {
             onOpenMemoryProofModal={() => setIsMemoryProofModalOpen(true)}
             onOpenNinetySecProof={() => setIsNinetySecProofOpen(true)}
             onCreateObjective={handleCreateObjective}
-            onRunObjective={handleRunObjective}
             isExecuting={isExecuting}
           />
         );
