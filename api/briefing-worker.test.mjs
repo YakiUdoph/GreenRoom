@@ -402,6 +402,24 @@ test("a verified delayed reply after the old 60-second window completes the matc
   assert.equal(redis.json("greenroom:latest_briefing").run_id, "run_b");
 });
 
+test("newest-first history recovery fetches the current page without an older-page cursor", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds([]);
+  await processWorkerPhase({ phase: "submit", ...runArgs(redis, minds) });
+  let historyOptions;
+  minds.getHistory = async (_alias, options) => {
+    historyOptions = options;
+    return [
+      { alias: "greenroom-run_b", fingerprint: "zz_reply", senderType: 0, messageText: VALID },
+      { alias: "greenroom-run_b", fingerprint: "aa_old", senderType: 0, messageText: VALID },
+    ];
+  };
+  const result = await processWorkerPhase({ phase: "collect", ...runArgs(redis, minds) });
+  assert.equal(result.body.status, "COMPLETED");
+  assert.deepEqual(historyOptions, { limit: 50 });
+  assert.equal(redis.json("greenroom:run_status:run_b").last_history_observation.fingerprints[0], "zz_reply");
+});
+
 test("deadline failure is terminal and a late reply cannot resurrect it", async () => {
   const redis = initialRedis();
   const minds = fakeMinds([]);

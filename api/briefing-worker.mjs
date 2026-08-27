@@ -317,7 +317,10 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
   const historyFallbackAttempted = !reply;
   const historyCheckedAt = historyFallbackAttempted ? isoNow() : null;
   if (!reply) {
-    rows = await mindsClient.getHistory(status.conversation_alias, { after: status.pre_send_fingerprint || undefined, limit: 50 });
+    // client-lib >=0.1.4 returns history newest-first and treats cursor/after as
+    // an exclusive `before` cursor (older rows). Fetch the newest page, then
+    // apply the pre-send fingerprint guard locally so current replies remain visible.
+    rows = await mindsClient.getHistory(status.conversation_alias, { limit: 50 });
     reply = selectVerifiedHistoryReply(rows, { alias: status.conversation_alias, afterFingerprint: status.pre_send_fingerprint || undefined, submittedPromptHash: status.submitted_prompt_hash, hashText }, isReplyHistoryRow);
     if (reply) replySource = "history";
   }
@@ -342,7 +345,7 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
       last_history_observation: {
         checked_at: historyCheckedAt,
         row_count: Array.isArray(rows) ? rows.length : 0,
-        fingerprints: Array.isArray(rows) ? rows.map((row) => row?.fingerprint).filter((value) => typeof value === "string").slice(-5) : [],
+        fingerprints: Array.isArray(rows) ? rows.map((row) => row?.fingerprint).filter((value) => typeof value === "string").slice(0, 5) : [],
         sender_types: Array.isArray(rows) ? [...new Set(rows.map((row) => row?.senderType).filter((value) => Number.isInteger(value)))] : [],
       },
     } : {}),
