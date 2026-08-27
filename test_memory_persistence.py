@@ -93,6 +93,67 @@ class MemoryPreferencePersistenceTests(unittest.TestCase):
             finally:
                 server.memory_tool = original_memory
 
+    def test_memory_quality_gate_rejection_and_acceptance(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "creator_profile.json"
+            store = LocalFileStore(str(profile), str(Path(directory) / "latest_briefing.json"))
+            memory = GreenroomMemoryEngine(store)
+
+            # 1. Test conversational noise rejection
+            rejections = [
+                "Hi",
+                "Hello",
+                "Thanks",
+                "Okay",
+                "Test",
+                "What can you do?",
+                "What does GreenRoom know about me that survives between sessions?"
+            ]
+            for item in rejections:
+                with self.assertRaises(ValueError):
+                    memory.remember_preference(item)
+
+            # 2. Test valid preferences acceptance
+            acceptances = [
+                "Prefer free or low-cost tools.",
+                "Keep recommendations practical and concise.",
+                "Avoid clickbait-style content ideas.",
+                "Prioritize creator opportunities with clear monetary value.",
+                "I prefer tools that work without expensive subscriptions."
+            ]
+            for item in acceptances:
+                res = memory.remember_preference(item)
+                self.assertTrue(res["created"])
+                self.assertIn(item, memory.state["learned_voice_rules"])
+
+    def test_historical_cleanup_removes_only_exact_known_noise(self):
+        with tempfile.TemporaryDirectory() as directory:
+            profile = Path(directory) / "creator_profile.json"
+            store = LocalFileStore(str(profile), str(Path(directory) / "latest_briefing.json"))
+            state = store.get_creator_profile()
+            state["learned_voice_rules"] = [
+                "Hi",
+                "What does GreenRoom know about me that survives between sessions?",
+                "Prefer practical recommendations.",
+                "A strange but potentially legitimate creator note.",
+            ]
+            state["memory_nodes"] = [
+                {"type": "learned_preference", "content": "Hello"},
+                {"type": "learned_preference", "content": "Prefer practical recommendations."},
+                {"type": "research_note", "content": "Test"},
+            ]
+            store.save_creator_profile(state)
+
+            memory = GreenroomMemoryEngine(store)
+
+            self.assertEqual(
+                ["Hi", "What does GreenRoom know about me that survives between sessions?", "Hello"],
+                memory.historical_noise_removed,
+            )
+            self.assertIn("Prefer practical recommendations.", memory.state["learned_voice_rules"])
+            self.assertIn("A strange but potentially legitimate creator note.", memory.state["learned_voice_rules"])
+            self.assertTrue(any(node.get("type") == "research_note" for node in memory.state["memory_nodes"]))
+
 
 if __name__ == "__main__":
     unittest.main()

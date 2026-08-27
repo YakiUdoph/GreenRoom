@@ -5,6 +5,39 @@ from typing import Dict, List, Any, Optional
 from minds_integration import minds_manager
 from persistence import get_persistence_store, PersistenceStore
 
+HIGH_CONFIDENCE_MEMORY_NOISE = {
+    "hi",
+    "hello",
+    "thanks",
+    "okay",
+    "test",
+    "what can you do",
+    "what does greenroom know about me that survives between sessions",
+}
+
+PREFERENCE_SIGNALS = (
+    "i prefer ", "prefer ", "please keep ", "keep ", "use ",
+    "avoid ", "do not ", "don't ", "never ", "always ", "only ",
+    "prioritize ", "favour ", "favor ", "i need ", "i want ",
+    "my budget ", "my workflow ", "my style ", "my audience ",
+)
+
+
+def _normalized_memory_text(text: str) -> str:
+    return " ".join(text.strip().lower().rstrip(".!?").split())
+
+
+def is_meaningful_creator_preference(text: str) -> bool:
+    """Conservatively accept explicit, reusable creator context only."""
+    if not isinstance(text, str):
+        return False
+    cleaned = _normalized_memory_text(text)
+    if cleaned in HIGH_CONFIDENCE_MEMORY_NOISE or len(cleaned.split()) < 3:
+        return False
+    if text.strip().endswith("?"):
+        return False
+    return any(signal in f" {cleaned} " for signal in PREFERENCE_SIGNALS)
+
 class GreenroomMemoryEngine:
     """
     Persistent Memory Engine for Greenroom.
@@ -13,6 +46,7 @@ class GreenroomMemoryEngine:
     def __init__(self, store: Optional[PersistenceStore] = None):
         self.store = store or get_persistence_store()
         self.state = self.store.get_creator_profile()
+        self.historical_noise_removed = self.clean_historical_noise()
         self._sync_to_minds_sdk()
 
     @property
@@ -34,7 +68,44 @@ class GreenroomMemoryEngine:
     def reload_state(self) -> Dict[str, Any]:
         """Refresh this engine instance from the configured persistence store."""
         self.state = self.store.get_creator_profile()
+        self.historical_noise_removed = self.clean_historical_noise()
         return self.state
+
+    def clean_historical_noise(self) -> List[str]:
+        """Remove only exact, high-confidence historical noise entries."""
+        rules = self.state.get("learned_voice_rules", [])
+        removed = []
+
+        def is_known_noise(value: Any) -> bool:
+            if not isinstance(value, str):
+                return False
+            candidate = value
+            if candidate.startswith("User Feedback Rule: "):
+                candidate = candidate[len("User Feedback Rule: "):]
+            if _normalized_memory_text(candidate) in HIGH_CONFIDENCE_MEMORY_NOISE:
+                removed.append(candidate.strip())
+                return True
+            return False
+
+        cleaned_rules = [rule for rule in rules if not is_known_noise(rule)]
+
+        nodes = self.state.get("memory_nodes", [])
+        cleaned_nodes = []
+        for node in nodes:
+            content = node.get("content", "")
+            if node.get("type") == "learned_preference":
+                pref_text = content
+                if content.startswith("User Feedback Rule: "):
+                    pref_text = content[len("User Feedback Rule: "):]
+                if is_known_noise(pref_text):
+                    continue
+            cleaned_nodes.append(node)
+
+        if len(cleaned_rules) != len(rules) or len(cleaned_nodes) != len(nodes):
+            self.state["learned_voice_rules"] = cleaned_rules
+            self.state["memory_nodes"] = cleaned_nodes
+            self.save_state()
+        return list(dict.fromkeys(removed))
 
 
     def retrieve_relevant_context(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
@@ -157,6 +228,9 @@ class GreenroomMemoryEngine:
         """Persist an explicit creator preference and confirm it can be read back."""
         if not isinstance(preference, str) or not preference.strip():
             raise ValueError("Preference must not be empty")
+
+        if not is_meaningful_creator_preference(preference):
+            raise ValueError("Preferences must be meaningful creator rules or criteria, not conversational chatter.")
 
         # Serverless instances can outlive one another. Always merge this write into
         # the latest durable profile instead of an instance's startup snapshot.

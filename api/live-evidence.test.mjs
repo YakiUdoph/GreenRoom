@@ -211,23 +211,32 @@ function liveRun(profile = { learned_voice_rules: [], memory_nodes: [] }) {
   return { objective, redis };
 }
 
-test("normal live worker completes without simulated evidence or Minds attribution", async () => {
+test("normal live worker submits verified evidence to Minds without deterministic completion", async () => {
   const { objective, redis } = liveRun({ learned_voice_rules: ["Prefer free or low-cost tools."], memory_nodes: [] });
+  const mindsClient = {
+    async ensureConversation(alias) { return { conversationId: "conversation-safe", alias }; },
+    async getLatestHistoryFingerprint() { return "fp-before"; },
+    async sendMessage({ messageText }) {
+      assert.match(messageText, /Use the GreenRoom Decision Skill/);
+      assert.match(messageText, /Prefer free or low-cost tools/);
+      return { messageId: "message-safe" };
+    },
+  };
   const result = await processWorkerPhase({
-    phase: "submit", redis, runId: "run_live", objective, now: NOW,
+    phase: "submit", redis, mindsClient, runId: "run_live", objective, now: NOW,
+    targetUrl: "https://example.test/api/briefing-worker",
+    env: { MINDS_REPLY_DEADLINE_MS: "600000" },
+    enqueue: async () => ({ messageId: "qstash-safe" }),
     fetchEvidence: async () => ({ domain: LIVE_DOMAIN_AI_VIDEO, provider_ids: ["ADOBE_BLOG"], candidate_count: 2, fresh_count: 2, relevant_count: 1, deduplicated_count: 1, request_count: 1, evidence: [normalizeAdobeItem(currentVideo, { now: NOW })], retrieval_latency_ms: 12, retrieved_at: NOW.toISOString() }),
   });
-  assert.equal(result.body.status, "COMPLETED");
+  assert.equal(result.body.status, "WAITING_FOR_MINDS");
   const status = redis.json("greenroom:run_status:run_live");
-  const briefing = redis.json("greenroom:briefing:run_live");
   assert.equal(status.objective_snapshot.fingerprint, "fp_live");
   assert.equal(status.memory_selection.selected_rule_count, 1);
-  assert.equal(status.evidence_retrieval.domain, LIVE_DOMAIN_AI_VIDEO);
-  assert.deepEqual(status.evidence_retrieval.provider_ids, ["ADOBE_BLOG"]);
-  assert.equal(status.evidence_retrieval.request_count, 1);
-  assert.equal(briefing.evidence_mode, "LIVE");
-  assert.equal(briefing.minds_verified, false);
-  assert.equal(JSON.stringify(briefing).includes("Demo Dataset"), false);
+  assert.equal(status.evidence_snapshot.evidence_mode, "LIVE");
+  assert.equal(status.decision_engine, "MINDS_NATIVE_DECISION");
+  assert.equal(redis.json("greenroom:briefing:run_live"), undefined);
+  assert.equal(JSON.stringify(status).includes("Demo Dataset"), false);
 });
 
 test("no relevant live evidence is terminal without overwriting an old briefing", async () => {
