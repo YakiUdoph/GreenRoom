@@ -630,3 +630,54 @@ test("Minds-native submission fails cleanly if mindsClient is missing", async ()
   assert.equal(finalStatus.status, "FAILED");
   assert.deepEqual(finalStatus.evidence_snapshot, NATIVE_EVIDENCE);
 });
+
+test("Minds-native reload lifecycle (queued -> pending -> reload -> completed -> reload)", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds([]);
+
+  // 1. First submission (returns WAITING_FOR_MINDS)
+  const res1 = await processWorkerPhase({
+    phase: "submit",
+    ...runArgs(redis, minds, { executionPath: undefined, fetchEvidence: mockFetchEvidence })
+  });
+  assert.equal(res1.body.status, "WAITING_FOR_MINDS");
+  assert.equal(minds.calls.send, 1);
+
+  // 2. Creator reloads/polls (idempotent submission check, returns WAITING_FOR_MINDS and does NOT resend)
+  const res2 = await processWorkerPhase({
+    phase: "submit",
+    ...runArgs(redis, minds, { executionPath: undefined, fetchEvidence: mockFetchEvidence })
+  });
+  assert.equal(res2.body.status, "WAITING_FOR_MINDS");
+  assert.equal(minds.calls.send, 1); // remains 1, no duplicate message sent!
+
+  // 3. QStash collector triggers collection (still waiting, no reply yet)
+  minds.getHistory = async () => [];
+  const res3 = await processWorkerPhase({
+    phase: "collect",
+    ...runArgs(redis, minds, { executionPath: undefined, fetchEvidence: mockFetchEvidence })
+  });
+  assert.equal(res3.body.status, "WAITING_FOR_MINDS");
+
+  // 4. Collector runs again and finds the reply (transitions to COMPLETED)
+  minds.getHistory = async () => [{
+    alias: "greenroom-run_b",
+    fingerprint: "zz_reply",
+    senderType: 0,
+    messageText: PLAIN_REPLY
+  }];
+  const res4 = await processWorkerPhase({
+    phase: "collect",
+    ...runArgs(redis, minds, { executionPath: undefined, fetchEvidence: mockFetchEvidence })
+  });
+  assert.equal(res4.body.status, "COMPLETED");
+
+  // 5. Creator reloads/polls again (completed run returns the briefing immediately)
+  const res5 = await processWorkerPhase({
+    phase: "submit",
+    ...runArgs(redis, minds, { executionPath: undefined, fetchEvidence: mockFetchEvidence })
+  });
+  assert.equal(res5.body.status, "COMPLETED");
+  assert.equal(res5.body.briefing.run_id, "run_b");
+  assert.equal(res5.body.briefing.items[0].why_it_matters, "Adobe's Premiere update reinvents color for editors.");
+});

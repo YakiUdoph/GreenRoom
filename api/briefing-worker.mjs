@@ -402,7 +402,7 @@ ${evidence.title}
 ${evidence.summary}
 
 Instruction: Use the GreenRoom Decision Skill.
-Return only:
+Return only in English:
 WHY IT MATTERS
 WHAT TO DO NEXT
 Keep the response concise. Use only the supplied objective, preference, and verified update. Do not invent facts.`;
