@@ -12,8 +12,8 @@ GreenRoom keeps creator goals, preferences, feedback, and prior decisions connec
 
 ## What works live
 
-- Domains: `AI_VIDEO` creator-tool intelligence and `PLATFORM_CHANGES`
-- Providers: `ADOBE_BLOG` and `YOUTUBE_OFFICIAL_BLOG`
+- Domains: `AI_VIDEO`, `PLATFORM_CHANGES`, and `CREATOR_OPPORTUNITIES`
+- Providers: `ADOBE_BLOG`, `YOUTUBE_OFFICIAL_BLOG`, and `TWITCH_OFFICIAL_BLOG`
 - First-party evidence with publication and retrieval provenance
 - Durable objective-bound runs, Memory, feedback, and result history
 
@@ -59,7 +59,7 @@ npm --prefix frontend run build
 
 ## Limitations
 
-- Live coverage currently supports AI-video creator tools through Adobe Blog and selected platform changes through the YouTube Official Blog.
+- Live coverage currently supports AI-video creator tools through Adobe Blog, selected platform changes through the YouTube Official Blog, and selected creator opportunities through the Twitch Official Blog.
 - Unsupported creator domains have no live provider yet.
 - Source and Minds availability remain external dependencies.
 - GreenRoom does not infer pricing, availability, adoption, or performance without evidence.

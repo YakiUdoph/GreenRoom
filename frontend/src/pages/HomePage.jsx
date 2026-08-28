@@ -62,7 +62,7 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
             <button type="submit" disabled={isExecuting || !goal.trim()}>Start watching <span aria-hidden="true">→</span></button>
           </div>
         </form>
-        <p className="coverage-note"><span aria-hidden="true">✓</span><span><strong>Live monitoring currently supports creator AI-video tools and selected platform changes.</strong><small>Starting with first-party Adobe and YouTube updates. Built for the decisions around your whole creative work.</small></span></p>
+        <p className="coverage-note"><span aria-hidden="true">✓</span><span><strong>Live monitoring currently supports creator tools, selected platform changes, and selected creator opportunities.</strong><small>Monitoring bounded first-party Adobe, YouTube, and Twitch sources.</small></span></p>
       </div>
       <aside className="hero-result-toast" aria-label="Illustrative product preview">
         <span>ILLUSTRATIVE PREVIEW</span>

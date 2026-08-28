@@ -6,7 +6,9 @@ import {
   classifyLiveDomain,
   fetchAdobeLiveEvidence,
   fetchYouTubePlatformChanges,
+  fetchTwitchCreatorOpportunities,
   LIVE_DOMAIN_AI_VIDEO,
+  LIVE_DOMAIN_CREATOR_OPPORTUNITIES,
   LIVE_DOMAIN_PLATFORM_CHANGES,
   LIVE_DOMAIN_UNSUPPORTED,
   normalizeAdobeItem,
@@ -14,6 +16,9 @@ import {
   parseAdobeQueryIndex,
   parseYouTubeOfficialBlogRss,
   normalizeYouTubeBlogItem,
+  normalizeTwitchBlogItem,
+  parseTwitchOfficialBlogHtml,
+  TWITCH_BLOG_MAX_BYTES,
   YOUTUBE_RSS_MAX_BYTES,
   retrieveLiveEvidenceForObjective,
 } from "./live-evidence.mjs";
@@ -111,6 +116,73 @@ test("platform-change classification requires monitoring intent and creator impa
     title: "Tell me when YouTube changes something that could affect my channel.",
     constraints: "Use first-party platform updates only. Do not substitute AI-video evidence.",
   }), LIVE_DOMAIN_PLATFORM_CHANGES);
+});
+
+test("creator-opportunity classification is concrete and independent", () => {
+  for (const title of [
+    "Watch for opportunities I could make money from.",
+    "Find creator programs I might qualify for.",
+    "Tell me when new sponsorship opportunities open for creators.",
+    "Watch for new ways I could earn as a creator.",
+    "Tell me when platforms open new monetization opportunities.",
+  ]) assert.equal(classifyLiveDomain({ title }), LIVE_DOMAIN_CREATOR_OPPORTUNITIES, title);
+  assert.equal(classifyLiveDomain({ title: "Track financial market news and revenue forecasts." }), LIVE_DOMAIN_UNSUPPORTED);
+  assert.equal(classifyLiveDomain({ title: "Tell me when YouTube changes its channel interface." }), LIVE_DOMAIN_PLATFORM_CHANGES);
+  assert.equal(classifyLiveDomain({ title: "Track new AI video generation tools." }), LIVE_DOMAIN_AI_VIDEO);
+});
+
+const twitchHtml = `<!doctype html><html><head><title>Twitch Blog</title></head><body>
+  <a href=/en/2026/08/20/sponsorships-are-now-available-to-affiliates/ class="absolute" aria-label="Sponsorships Are Now Available to Affiliates, Aug 20, 2026. Sponsorships are expanding, and getting discovered by brands just got better.">Post</a>
+  <a href=/en/2026/08/24/pokemon-chat-badges-are-now-on-twitch/ aria-label="Pokémon Chat Badges Are Now on Twitch!, Aug 24, 2026. The first set to collect is here.">Post</a>
+</body></html>`;
+
+test("Twitch official HTML discovers real opportunities without hardcoded results", () => {
+  const parsed = parseTwitchOfficialBlogHtml(twitchHtml, { now: NOW });
+  assert.equal(parsed.candidate_count, 2);
+  assert.equal(parsed.relevant_count, 1);
+  assert.equal(parsed.evidence[0].title, "Sponsorships Are Now Available to Affiliates");
+  assert.equal(parsed.evidence[0].source, "Twitch Official Blog");
+  assert.equal(parsed.evidence[0].source_url, "https://blog.twitch.tv/en/2026/08/20/sponsorships-are-now-available-to-affiliates/");
+  assert.equal(parsed.evidence[0].published_at, "2026-08-20T00:00:00.000Z");
+  assert.equal(parsed.evidence[0].evidence_mode, "LIVE");
+  assert.throws(() => parseTwitchOfficialBlogHtml("not twitch"), /recognizable HTML/);
+  assert.throws(() => parseTwitchOfficialBlogHtml(`<title>Twitch Blog</title>${"x".repeat(TWITCH_BLOG_MAX_BYTES + 1)}`), /size limit/);
+});
+
+test("Twitch opportunity normalization rejects generic, unofficial, stale, and future items", () => {
+  const base = { title: "Sponsorships are available to Affiliates", description: "Affiliates can access paid brand campaigns.", published: "Aug 20, 2026", path: "/en/2026/08/20/sponsorships/" };
+  assert.ok(normalizeTwitchBlogItem(base, { now: NOW }));
+  assert.equal(normalizeTwitchBlogItem({ ...base, title: "New chat badges", description: "Creators can collect badges." }, { now: NOW }), null);
+  assert.equal(normalizeTwitchBlogItem({ ...base, path: "https://example.com/opportunity" }, { now: NOW }), null);
+  assert.equal(normalizeTwitchBlogItem({ ...base, published: "Aug 27, 2026" }, { now: NOW }), null);
+  assert.equal(normalizeTwitchBlogItem({ ...base, published: "Jan 1, 2024" }, { now: NOW }), null);
+});
+
+test("Twitch provider is one bounded request with no fallback", async () => {
+  let calls = 0;
+  const result = await fetchTwitchCreatorOpportunities({ now: NOW, fetchImpl: async (url, options) => {
+    calls++;
+    assert.equal(url, "https://blog.twitch.tv/en/");
+    assert.ok(options.signal);
+    return { ok: true, async text() { return twitchHtml; } };
+  } });
+  assert.equal(calls, 1);
+  assert.equal(result.request_count, 1);
+  assert.equal(result.relevant_count, 1);
+  await assert.rejects(fetchTwitchCreatorOpportunities({ fetchImpl: async () => ({ ok: false, status: 503 }) }), (error) => error.code === "SOURCE_UNAVAILABLE");
+});
+
+test("creator opportunities use the shared registry lifecycle", async () => {
+  const evidence = parseTwitchOfficialBlogHtml(twitchHtml, { now: NOW }).evidence;
+  const result = await retrieveLiveEvidenceForObjective({
+    objective: { title: "Watch for new sponsorship or earning opportunities for creators." },
+    now: NOW,
+    registry: { [LIVE_DOMAIN_CREATOR_OPPORTUNITIES]: [{ provider_id: "TWITCH_TEST", retrieve: async () => ({ candidate_count: 2, fresh_count: 2, request_count: 1, evidence }) }] },
+  });
+  assert.equal(result.domain, LIVE_DOMAIN_CREATOR_OPPORTUNITIES);
+  assert.equal(result.status, "EVIDENCE_READY");
+  assert.deepEqual(result.provider_ids, ["TWITCH_TEST"]);
+  assert.equal(result.evidence[0].category, "creator_opportunity");
 });
 
 const youtubeRss = `<?xml version="1.0"?><rss><channel><title>YouTube Official Blog</title>

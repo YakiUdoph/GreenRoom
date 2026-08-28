@@ -20,7 +20,7 @@ const faqs = [
   ['How is it different from a normal chatbot?', 'GreenRoom is organized around durable context, immutable objective-bound runs, and feedback across sessions—not a single conversation.'],
   ['Does work continue after I leave?', 'When background execution is configured, the run persists independently of the open interface. The UI reports working, result ready, no relevant update, or run failed without inventing progress.'],
   ['Which platform Mind is verified?', 'Udophia at udophia@hellominds.ai, UUID 8208493e-f36b-1410-8466-00039ce7df11, is the only verified platform Mind.'],
-  ['Is the current evidence live research?', 'Yes for supported AI-video and selected platform-change objectives. GreenRoom retrieves and validates first-party Adobe Blog and YouTube Official Blog metadata. Unsupported creator domains truthfully report that no live provider exists. Historical demo briefings remain labeled simulated.'],
+  ['Is the current evidence live research?', 'Yes for supported AI-video, selected platform-change, and selected creator-opportunity objectives. GreenRoom validates first-party Adobe, YouTube, and Twitch Blog metadata. Unsupported creator domains truthfully report that no live provider exists. Historical demo briefings remain labeled simulated.'],
   ['What happens when execution fails?', 'The run is shown as failed. A timeout, missing reply, identity mismatch, or invalid response is never presented as a completed briefing.'],
 ];
 

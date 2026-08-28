@@ -2,6 +2,8 @@ const ADOBE_ORIGIN = "https://blog.adobe.com";
 export const ADOBE_QUERY_INDEX_URL = `${ADOBE_ORIGIN}/en/query-index.json`;
 const YOUTUBE_BLOG_ORIGIN = "https://blog.youtube";
 export const YOUTUBE_OFFICIAL_BLOG_RSS_URL = `${YOUTUBE_BLOG_ORIGIN}/rss/`;
+const TWITCH_BLOG_ORIGIN = "https://blog.twitch.tv";
+export const TWITCH_OFFICIAL_BLOG_URL = `${TWITCH_BLOG_ORIGIN}/en/`;
 export const LIVE_EVIDENCE_FRESHNESS_DAYS = 365;
 export const ADOBE_PAGE_SIZE = 1000;
 export const ADOBE_MAX_RECORDS = 2000;
@@ -9,8 +11,11 @@ export const LIVE_EVIDENCE_REQUEST_TIMEOUT_MS = 7000;
 export const LIVE_EVIDENCE_TOTAL_BUDGET_MS = 20000;
 export const YOUTUBE_RSS_MAX_BYTES = 1_000_000;
 export const YOUTUBE_RSS_MAX_ITEMS = 100;
+export const TWITCH_BLOG_MAX_BYTES = 1_000_000;
+export const TWITCH_BLOG_MAX_ITEMS = 100;
 export const LIVE_DOMAIN_AI_VIDEO = "AI_VIDEO";
 export const LIVE_DOMAIN_PLATFORM_CHANGES = "PLATFORM_CHANGES";
+export const LIVE_DOMAIN_CREATOR_OPPORTUNITIES = "CREATOR_OPPORTUNITIES";
 export const LIVE_DOMAIN_UNSUPPORTED = "UNSUPPORTED";
 
 export class LiveEvidenceError extends Error {
@@ -33,9 +38,15 @@ export function classifyLiveDomain(objective) {
   const platformTarget = /\b(?:youtube|creator platform|platform changes?|platform updates?)\b/i;
   const creatorImpact = /\b(?:creator|channel|growth|monetization|algorithm|policy|feature|platform)\b/i;
   const isPlatformChange = (value) => watchIntent.test(value) && platformTarget.test(value) && creatorImpact.test(value);
+  const opportunityIntent = /\b(?:watch|monitor|track|find|tell me|keep an eye|notify|alert)\b/i;
+  const opportunity = /\b(?:sponsorship|earning|earn|monetization|make money|paid opportunit|creator program|revenue opportunit)\w*\b/i;
+  const creatorOpportunityContext = /\b(?:creator|channel|streamer|platform|sponsorship|creator program)\w*\b|\bopportunit\w*.{0,40}\bmake money\b/i;
+  const isCreatorOpportunity = (value) => opportunityIntent.test(value) && opportunity.test(value) && creatorOpportunityContext.test(value);
   if (aiVideo.test(title)) return LIVE_DOMAIN_AI_VIDEO;
+  if (isCreatorOpportunity(title)) return LIVE_DOMAIN_CREATOR_OPPORTUNITIES;
   if (isPlatformChange(title)) return LIVE_DOMAIN_PLATFORM_CHANGES;
   if (aiVideo.test(text)) return LIVE_DOMAIN_AI_VIDEO;
+  if (isCreatorOpportunity(text)) return LIVE_DOMAIN_CREATOR_OPPORTUNITIES;
   return isPlatformChange(text) ? LIVE_DOMAIN_PLATFORM_CHANGES : LIVE_DOMAIN_UNSUPPORTED;
 }
 
@@ -90,6 +101,105 @@ function decodeXmlText(value) {
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
     .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
     .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'"));
+}
+
+function decodeHtmlText(value) {
+  return cleanText(String(value || "")
+    .replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&#(\d+);/g, (_match, code) => String.fromCodePoint(Number(code)))
+    .replace(/&#x([0-9a-f]+);/gi, (_match, code) => String.fromCodePoint(parseInt(code, 16))));
+}
+
+export function isConcreteCreatorOpportunity(item) {
+  const text = [item?.title, item?.description].filter(Boolean).join(" ").toLowerCase();
+  const value = /\b(?:sponsor\w*|monetiz\w*|earn\w*|revenue|affiliate\w*|partner program|creator program|paid|reward\w*|gift subs?)\b/i;
+  const access = /\b(?:available|open|access|new|expand\w*|launch\w*|offer\w*|campaign\w*|program|eligible|eligibility|qualif\w*|opportunit\w*|earn\w*|paid)\b/i;
+  return value.test(text) && access.test(text);
+}
+
+function parseTwitchDate(value) {
+  if (typeof value !== "string" || !value.trim()) return null;
+  const date = new Date(`${value.trim()} 00:00:00 GMT`);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+export function normalizeTwitchBlogItem(item, { now = new Date(), freshnessDays = LIVE_EVIDENCE_FRESHNESS_DAYS } = {}) {
+  const title = cleanText(item?.title);
+  const summary = cleanText(item?.description) || title;
+  const published = parseTwitchDate(item?.published);
+  if (!title || !summary || !published || !isConcreteCreatorOpportunity(item)) return null;
+  if (published.getTime() > now.getTime() || now.getTime() - published.getTime() > freshnessDays * 86_400_000) return null;
+  let sourceUrl;
+  try {
+    const url = new URL(item.path, TWITCH_BLOG_ORIGIN);
+    if (url.origin !== TWITCH_BLOG_ORIGIN || !/^\/en\/\d{4}\/\d{2}\/\d{2}\//.test(url.pathname)) return null;
+    url.hash = "";
+    sourceUrl = url.toString();
+  } catch {
+    return null;
+  }
+  return {
+    source: "Twitch Official Blog",
+    source_url: sourceUrl,
+    published_at: published.toISOString(),
+    retrieved_at: now.toISOString(),
+    title,
+    summary,
+    evidence_mode: "LIVE",
+    category: "creator_opportunity",
+    relevance_score: /sponsor/i.test(`${title} ${summary}`) ? 7 : /monetiz|revenue|paid/i.test(`${title} ${summary}`) ? 6 : 5,
+  };
+}
+
+export function parseTwitchOfficialBlogHtml(html, options = {}) {
+  if (typeof html !== "string" || !/Twitch Blog/i.test(html)) {
+    throw new LiveEvidenceError("MALFORMED_SOURCE", "Twitch Official Blog did not return recognizable HTML");
+  }
+  if (Buffer.byteLength(html, "utf8") > TWITCH_BLOG_MAX_BYTES) {
+    throw new LiveEvidenceError("MALFORMED_SOURCE", "Twitch Official Blog exceeded the response size limit");
+  }
+  const articles = [];
+  const anchorPattern = /<a\s+href=(?:"([^"]+)"|([^\s>]+))[^>]*aria-label="([^"]+)"[^>]*>/gi;
+  for (const match of html.matchAll(anchorPattern)) {
+    if (articles.length >= TWITCH_BLOG_MAX_ITEMS) break;
+    const path = match[1] || match[2];
+    const label = decodeHtmlText(match[3]);
+    const metadata = label?.match(/^([\s\S]+), ([A-Z][a-z]{2,8} \d{1,2}, \d{4})(?:\. ([\s\S]*))?$/);
+    if (!metadata) continue;
+    articles.push({ path, title: metadata[1], published: metadata[2], description: metadata[3] || metadata[1] });
+  }
+  const uniqueCandidates = [...new Map(articles.map((item) => [item.path, item])).values()];
+  const evidence = uniqueCandidates.map((item) => normalizeTwitchBlogItem(item, options)).filter(Boolean)
+    .sort((a, b) => b.relevance_score - a.relevance_score || Date.parse(b.published_at) - Date.parse(a.published_at) || a.source_url.localeCompare(b.source_url));
+  const now = options.now || new Date();
+  const freshnessDays = options.freshnessDays ?? LIVE_EVIDENCE_FRESHNESS_DAYS;
+  const freshCount = uniqueCandidates.filter((item) => {
+    const date = parseTwitchDate(item.published);
+    return date && date <= now && now - date <= freshnessDays * 86_400_000;
+  }).length;
+  return { candidate_count: uniqueCandidates.length, fresh_count: freshCount, relevant_count: evidence.length, evidence };
+}
+
+export async function fetchTwitchCreatorOpportunities({ fetchImpl = fetch, now = new Date(), requestTimeoutMs = LIVE_EVIDENCE_REQUEST_TIMEOUT_MS } = {}) {
+  const started = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+  try {
+    const response = await fetchImpl(TWITCH_OFFICIAL_BLOG_URL, { method: "GET", headers: { Accept: "text/html", "User-Agent": "GreenRoom-Live-Core/1.0" }, signal: controller.signal });
+    if (!response.ok) throw new LiveEvidenceError("SOURCE_UNAVAILABLE", `Twitch Official Blog returned HTTP ${response.status}`);
+    let html;
+    try { html = await response.text(); }
+    catch { throw new LiveEvidenceError("MALFORMED_SOURCE", "Twitch Official Blog response could not be read"); }
+    const parsed = parseTwitchOfficialBlogHtml(html, { now });
+    return { ...parsed, deduplicated_count: parsed.evidence.length, request_count: 1, retrieval_latency_ms: Date.now() - started, retrieved_at: now.toISOString() };
+  } catch (error) {
+    if (error instanceof LiveEvidenceError) throw error;
+    if (error?.name === "AbortError") throw new LiveEvidenceError("SOURCE_TIMEOUT", "Twitch Official Blog timed out");
+    throw new LiveEvidenceError("SOURCE_UNAVAILABLE", "Twitch Official Blog could not be reached");
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 function rssField(xml, name) {
@@ -326,6 +436,9 @@ export const LIVE_SOURCE_REGISTRY = Object.freeze({
   ]),
   [LIVE_DOMAIN_PLATFORM_CHANGES]: Object.freeze([
     Object.freeze({ provider_id: "YOUTUBE_OFFICIAL_BLOG", retrieve: fetchYouTubePlatformChanges }),
+  ]),
+  [LIVE_DOMAIN_CREATOR_OPPORTUNITIES]: Object.freeze([
+    Object.freeze({ provider_id: "TWITCH_OFFICIAL_BLOG", retrieve: fetchTwitchCreatorOpportunities }),
   ]),
 });
 
