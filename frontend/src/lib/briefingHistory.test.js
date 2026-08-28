@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { completedHistoryRuns, currentIntelligence, isLiveBriefing, isSimulatedBriefing, verifyHistoricalBriefing } from './briefingHistory.js';
+import { completedHistoryRuns, creatorResultHeadline, currentIntelligence, isLiveBriefing, isSimulatedBriefing, recentHistoryRuns, verifyHistoricalBriefing, verifyHistoricalRunRecord } from './briefingHistory.js';
 
 const historical = { run_id: 'run_history', objective_id: 'obj_history', items: [{ what_changed: 'A', why_it_matters: 'B', recommended_action: 'C' }] };
 const current = { run_id: 'run_current', objective_id: 'obj_current', items: [] };
@@ -70,6 +70,44 @@ test('historical objective mismatch is rejected', () => {
 test('history list shows only completed runs', () => {
   const result = completedHistoryRuns({ runs: [record, { run_id: 'run_waiting', status: 'WAITING_FOR_MINDS' }, { run_id: 'run_failed', status: 'FAILED' }] });
   assert.deepEqual(result.map(run => run.run_id), ['run_history']);
+});
+
+test('multiple sequential runs appear newest-first regardless of input order', () => {
+  const runs = recentHistoryRuns({ runs: [
+    { run_id: 'run_first', status: 'COMPLETED', queued_at: '2026-01-01T00:00:00Z' },
+    { run_id: 'run_third', status: 'FAILED', queued_at: '2026-01-03T00:00:00Z' },
+    { run_id: 'run_second', status: 'COMPLETED', queued_at: '2026-01-02T00:00:00Z' },
+  ] });
+  assert.deepEqual(runs.map(run => run.run_id), ['run_third', 'run_second', 'run_first']);
+});
+
+test('the current run is excluded from history without hiding another completed run', () => {
+  const runs = recentHistoryRuns({ runs: [
+    { run_id: 'run_new', status: 'COMPLETED', queued_at: '2026-01-02T00:00:00Z' },
+    { run_id: 'run_old', status: 'COMPLETED', queued_at: '2026-01-01T00:00:00Z' },
+  ] }, 'run_new');
+  assert.deepEqual(runs.map(run => run.run_id), ['run_old']);
+});
+
+test('non-completed history records retain exact run and objective boundaries', () => {
+  const pending = { run_id: 'run_pending', objective_id: 'obj_pending', objective_fingerprint: 'fp_pending', status: 'WAITING_FOR_MINDS' };
+  const pendingStatus = { ...pending, objective_snapshot: { objective_id: 'obj_pending', fingerprint: 'fp_pending', title: 'Pending objective' } };
+  assert.equal(verifyHistoricalRunRecord(pending, pendingStatus).status, 'WAITING_FOR_MINDS');
+  assert.throws(() => verifyHistoricalRunRecord(pending, { ...pendingStatus, run_id: 'run_other' }), /run ID mismatch/);
+});
+
+test('creator-first Adobe headline is grounded without changing provenance', () => {
+  const briefing = {
+    sources: [{ source: 'Adobe Blog', title: 'Original Adobe article', source_url: 'https://blog.adobe.com/example' }],
+    items: [{
+      what_changed: 'Adobe announced new AI video tools.',
+      why_it_matters: 'The supplied update does not establish cost or availability.',
+      recommended_action: 'Check pricing before changing your workflow.',
+    }],
+  };
+  const before = structuredClone(briefing.sources);
+  assert.equal(creatorResultHeadline(briefing), 'Adobe unveiled new video tools — but pricing still needs checking.');
+  assert.deepEqual(briefing.sources, before);
 });
 
 test('current completed run is not duplicated in previous history', () => {

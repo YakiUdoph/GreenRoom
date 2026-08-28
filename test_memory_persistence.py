@@ -180,6 +180,7 @@ class MemoryPreferencePersistenceTests(unittest.TestCase):
                 "keep recommendations practical and concise",
                 "Prefer free or low-cost tools.",
                 "prefer free tools",
+                "prefer free or lowcost tools",
                 "Avoid clickbait-style content ideas",
                 "Prioritize creator opportunities with clear monetary value.",
             ]
@@ -194,17 +195,27 @@ class MemoryPreferencePersistenceTests(unittest.TestCase):
             self.assertEqual([
                 "Keep recommendations concise and practical",
                 "Prefer free or low-cost tools.",
+                "prefer free tools",
                 "Avoid clickbait-style content ideas",
                 "Prioritize creator opportunities with clear monetary value.",
             ], memory.state["learned_voice_rules"])
-            self.assertEqual(4, len(memory.state["memory_nodes"]))
+            self.assertEqual(5, len(memory.state["memory_nodes"]))
             self.assertEqual(4, len(memory.duplicate_preferences_removed))
+
+    def test_low_cost_spacing_and_hyphen_variants_are_equivalent(self):
+        variants = [
+            "Prefer free or low-cost tools.",
+            "prefer free or low cost tools",
+            "prefer free or lowcost tools",
+        ]
+        self.assertEqual(1, len({preference_equivalence_key(item) for item in variants}))
 
     def test_distinct_preferences_remain_separate(self):
         preferences = [
             "Keep recommendations concise and practical",
             "Keep recommendations concise and evidence-led",
             "Prefer free or low-cost tools.",
+            "Prefer free tools.",
             "Avoid clickbait-style content ideas",
         ]
         self.assertEqual(len(preferences), len({preference_equivalence_key(item) for item in preferences}))

@@ -5,6 +5,7 @@ import { useGreenroomSocket } from './hooks/useGreenroomSocket';
 import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
 import { CURRENT_OFFLINE_RUN_STORAGE_KEY, restoreCurrentOfflineRun, selectCurrentRunForRefresh, shouldPollOfflineRun, verifyRunBriefing } from './lib/offlineRun';
+import { createAndStartObjective } from './lib/objectiveRun';
 
 import { ManusHeader } from './components/layout/ManusHeader';
 import { PayloadModal } from './components/ui/PayloadModal';
@@ -226,9 +227,18 @@ export function App() {
   const handleCreateObjective = async (title, details = '') => {
     setIsExecuting(true);
     try {
-      const res = await api.createObjective(title, details);
-      if (res.state) greenroomStore.setMemoryState(res.state);
-      return res;
+      const result = await createAndStartObjective(api, title, details);
+      const { created, run } = result;
+      if (created.state) {
+        greenroomStore.setMemoryState({
+          ...created.state,
+          latest_briefing: null,
+          latest_offline_run: run,
+        });
+      }
+      try { window.localStorage.setItem(CURRENT_OFFLINE_RUN_STORAGE_KEY, run.run_id); } catch { /* storage unavailable */ }
+      setCurrentOfflineRun(run);
+      return result;
     } finally {
       setIsExecuting(false);
     }
@@ -248,7 +258,7 @@ export function App() {
             onNavigate={(tab) => setActiveTab(tab)}
             onRunFullDemo={handleRunFullDemo}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
-            onOpenOfflineModal={() => { setResumeOfflineRun(null); setIsOfflineModalOpen(true); }}
+            onOpenOfflineModal={(run = null) => { setResumeOfflineRun(run); setIsOfflineModalOpen(true); }}
             onOpenMemoryProofModal={() => setIsMemoryProofModalOpen(true)}
             onOpenNinetySecProof={() => setIsNinetySecProofOpen(true)}
             onCreateObjective={handleCreateObjective}

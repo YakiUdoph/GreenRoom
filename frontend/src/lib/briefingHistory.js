@@ -35,6 +35,33 @@ export function completedHistoryRuns(recentRuns, currentBriefing = null) {
     && run.run_id !== currentBriefing?.run_id);
 }
 
+function runTimestamp(run) {
+  return Date.parse(run?.completed_at || run?.started_at || run?.queued_at || '') || 0;
+}
+
+export function recentHistoryRuns(recentRuns, currentRunId = null) {
+  const runs = Array.isArray(recentRuns?.runs) ? recentRuns.runs : [];
+  return runs
+    .filter(run => run?.run_id && run.run_id !== currentRunId)
+    .map((run, index) => ({ run, index }))
+    .sort((left, right) => runTimestamp(right.run) - runTimestamp(left.run) || left.index - right.index)
+    .map(({ run }) => run);
+}
+
+export function verifyHistoricalRunRecord(record, statusResponse) {
+  const snapshot = statusResponse?.objective_snapshot;
+  if (!record?.run_id || statusResponse?.run_id !== record.run_id) {
+    throw new Error('Historical run ID mismatch.');
+  }
+  if (record.objective_id && snapshot?.objective_id !== record.objective_id) {
+    throw new Error('Historical objective binding mismatch.');
+  }
+  if (record.objective_fingerprint && snapshot?.fingerprint !== record.objective_fingerprint) {
+    throw new Error('Historical objective fingerprint mismatch.');
+  }
+  return { status: statusResponse.status, objectiveSnapshot: snapshot };
+}
+
 export function verifyHistoricalBriefing(record, statusResponse, briefingResponse) {
   const briefing = briefingResponse?.briefing;
   const snapshot = briefingResponse?.objective_snapshot || statusResponse?.objective_snapshot;
@@ -71,6 +98,23 @@ export function isSimulatedBriefing(briefing) {
 
 export function isLiveBriefing(briefing) {
   return briefing?.evidence_mode === 'LIVE' || briefing?.provenance?.evidence_mode === 'LIVE';
+}
+
+export function creatorResultHeadline(briefing) {
+  const item = Array.isArray(briefing?.items) ? briefing.items[0] : null;
+  if (!item) return 'Your latest creator decision.';
+  const source = briefing?.sources?.[0]?.source || '';
+  const grounding = [item.what_changed, item.why_it_matters, item.recommended_action].filter(Boolean).join(' ');
+  const pricingNeedsChecking = /\b(pricing|price|cost)\b/i.test(grounding)
+    && /\b(not|does not|isn't|is not|verify|check|without)\b/i.test(grounding);
+  if (/adobe/i.test(source) && /\bvideo\b/i.test(grounding)) {
+    return pricingNeedsChecking
+      ? 'Adobe unveiled new video tools — but pricing still needs checking.'
+      : 'Adobe unveiled new video tools worth reviewing.';
+  }
+  const changed = String(item.what_changed || '').trim();
+  const firstSentence = changed.match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim() || changed;
+  return firstSentence || 'A relevant change deserves your attention.';
 }
 
 export function shortRunId(runId = '') {

@@ -45,8 +45,8 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
     event.preventDefault();
     const title = goal.trim();
     if (!title) return;
-    await onCreateObjective(title);
-    setTimeout(() => onOpenOfflineModal(), 0);
+    const result = await onCreateObjective(title);
+    setTimeout(() => onOpenOfflineModal(result.run), 0);
   };
 
   return <div className="manus-home home-compressed">
@@ -62,7 +62,7 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
             <button type="submit" disabled={isExecuting || !goal.trim()}>Start watching <span aria-hidden="true">→</span></button>
           </div>
         </form>
-        <p className="coverage-note"><span aria-hidden="true">✓</span> Live monitoring currently supports AI video tools. More creator categories are coming.</p>
+        <p className="coverage-note"><span aria-hidden="true">✓</span><span><strong>Live monitoring currently supports AI video tools. More creator categories are coming.</strong><small>Starting with creator tools. Built for the decisions around your whole creative work.</small></span></p>
       </div>
       <aside className="hero-result-toast" aria-label="Illustrative product preview">
         <span>ILLUSTRATIVE PREVIEW</span>

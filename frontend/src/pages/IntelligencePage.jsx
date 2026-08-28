@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
-import { completedHistoryRuns, currentIntelligence, formatCompletedDate, isLiveBriefing, isSimulatedBriefing, shortRunId, verifyHistoricalBriefing } from '../lib/briefingHistory';
+import { creatorResultHeadline, currentIntelligence, formatCompletedDate, isLiveBriefing, isSimulatedBriefing, recentHistoryRuns, shortRunId, verifyHistoricalBriefing, verifyHistoricalRunRecord } from '../lib/briefingHistory';
 import { cleanDecisionText } from '../lib/decisionText';
 
 function BriefingFields({ briefing }) {
@@ -14,7 +14,7 @@ function BriefingFields({ briefing }) {
     memory_context_used: cleanDecisionText(item.memory_context_used),
   })) : [];
   const sources = Array.isArray(briefing?.sources) ? briefing.sources : [];
-  return <><div className="decision-briefings">{items.map((item, index) => <article key={item.id || index}><header><span>{String(index + 1).padStart(2, '0')}</span><h2>{item.title}</h2></header><dl><div><dt>WHAT CHANGED</dt><dd>{item.what_changed || item.summary || 'No verified change was supplied.'}</dd></div><div><dt>WHY IT MATTERS</dt><dd>{item.why_it_matters || 'No creator-specific significance was supplied.'}</dd></div><div><dt>WHAT TO DO NEXT</dt><dd>{item.recommended_action || 'No next action was supplied.'}</dd></div>{item.memory_context_used && <div><dt>MEMORY CONSIDERED</dt><dd>{item.memory_context_used}</dd></div>}</dl></article>)}</div>{sources.length > 0 && <section className="briefing-sources" aria-label="Live evidence sources"><header className="intelligence-section-head"><p>SOURCE PROVENANCE</p><span>First-party evidence attached to this run.</span></header>{sources.map((source, index) => <article key={source.source_url || index}><small>SOURCE</small><strong>{source.source}</strong><h3>{source.title}</h3><div><time dateTime={source.published_at}>Published {formatCompletedDate(source.published_at)}</time><time dateTime={source.retrieved_at}>Retrieved {formatCompletedDate(source.retrieved_at)}</time></div><a href={source.source_url} target="_blank" rel="noreferrer">View source ↗</a></article>)}</section>}</>;
+  return <><div className="decision-briefings">{items.map((item, index) => <article key={item.id || index}><header><span>{String(index + 1).padStart(2, '0')}</span><h2>{creatorResultHeadline({ ...briefing, items: [item] })}</h2></header><dl><div><dt>WHAT CHANGED</dt><dd>{item.what_changed || item.summary || 'No verified change was supplied.'}</dd></div><div><dt>WHY IT MATTERS TO YOU</dt><dd>{item.why_it_matters || 'No creator-specific significance was supplied.'}</dd></div><div><dt>WHAT TO DO NEXT</dt><dd>{item.recommended_action || 'No next action was supplied.'}</dd></div>{item.memory_context_used && <div><dt>MEMORY USED</dt><dd>{item.memory_context_used}</dd></div>}</dl></article>)}</div>{sources.length > 0 && <section className="briefing-sources" aria-label="Live evidence sources"><header className="intelligence-section-head"><p>SOURCE</p><span>Verified first-party provenance for this decision.</span></header>{sources.map((source, index) => <article key={source.source_url || index}><small>SOURCE</small><strong>{source.source}</strong><h3>{source.title}</h3><div><time dateTime={source.published_at}>Published {formatCompletedDate(source.published_at)}</time><time dateTime={source.retrieved_at}>Retrieved {formatCompletedDate(source.retrieved_at)}</time></div><a href={source.source_url} target="_blank" rel="noreferrer">View source ↗</a></article>)}</section>}</>;
 }
 
 export function IntelligencePage({ memoryState }) {
@@ -33,24 +33,26 @@ export function IntelligencePage({ memoryState }) {
     let disposed = false;
     setHistoryStatus('loading');
     api.getRecentBriefingRuns().then(async recent => {
-      const completed = completedHistoryRuns(recent, currentBriefing);
-      const resolved = await Promise.allSettled(completed.map(async record => {
-        const [statusResponse, briefingResponse] = await Promise.all([
-          api.getBriefingStatus(record.run_id),
-          api.getRunBriefing(record.run_id),
-        ]);
-        const verified = verifyHistoricalBriefing(record, statusResponse, briefingResponse);
-        return { ...record, title: verified.objectiveSnapshot.title, completed_at: statusResponse.completed_at || record.completed_at };
+      const records = recentHistoryRuns(recent, currentRun?.run_id);
+      const resolved = await Promise.allSettled(records.map(async record => {
+        const statusResponse = await api.getBriefingStatus(record.run_id);
+        const verifiedRun = verifyHistoricalRunRecord(record, statusResponse);
+        if (statusResponse.status === 'COMPLETED') {
+          const briefingResponse = await api.getRunBriefing(record.run_id);
+          const verified = verifyHistoricalBriefing(record, statusResponse, briefingResponse);
+          return { ...record, title: verified.objectiveSnapshot.title, completed_at: statusResponse.completed_at || record.completed_at };
+        }
+        return { ...record, status: verifiedRun.status, title: verifiedRun.objectiveSnapshot?.title || 'Creator objective', completed_at: statusResponse.completed_at || record.completed_at };
       }));
       if (disposed) return;
       const valid = resolved.filter(result => result.status === 'fulfilled').map(result => result.value);
       setHistoryRuns(valid);
-      setHistoryStatus(completed.length > 0 && valid.length === 0 ? 'error' : 'ready');
+      setHistoryStatus(records.length > 0 && valid.length === 0 ? 'error' : 'ready');
     }).catch(() => {
       if (!disposed) setHistoryStatus('error');
     });
     return () => { disposed = true; };
-  }, [currentBriefing?.run_id]);
+  }, [currentBriefing?.run_id, currentRun?.run_id]);
 
   const selectHistoricalRun = async record => {
     setSelectedHistoricalRunId(record.run_id);
@@ -83,11 +85,11 @@ export function IntelligencePage({ memoryState }) {
       {currentBriefing ? <BriefingFields briefing={currentBriefing}/> : <div className="density-empty">{currentStatus === 'WORKING' ? 'GreenRoom is checking live evidence in the background. You can leave this screen and return later.' : currentStatus === 'RUN FAILED' ? 'This run failed. GreenRoom will not show an older briefing as the current result.' : currentStatus === 'NO RELEVANT UPDATE' ? 'No relevant live update was found. Previous briefings remain available below but are not this run’s result.' : currentStatus === 'NO LIVE PROVIDER' ? 'This objective is saved, but GreenRoom does not yet have a live provider for its domain. No faked update was substituted.' : 'No current result is ready. Completed historical results remain available below.'}</div>}
 
       <section className="briefing-history" aria-labelledby="previous-briefings-heading">
-        <header className="intelligence-section-head"><p id="previous-briefings-heading">PREVIOUS RESULTS</p><span>Completed results from earlier objectives.</span></header>
-        {historyStatus === 'loading' && <div className="history-message" role="status">Loading previous results…</div>}
-        {historyStatus === 'error' && <div className="history-message" role="alert">Previous results are temporarily unavailable.</div>}
-        {historyStatus === 'ready' && historyRuns.length === 0 && <div className="history-message">No completed results yet.</div>}
-        {historyStatus === 'ready' && historyRuns.length > 0 && <div className="history-list">{historyRuns.map(record => <button type="button" key={record.run_id} className={selectedHistoricalRunId === record.run_id ? 'is-selected' : ''} onClick={() => selectHistoricalRun(record)}><time dateTime={record.completed_at}>{formatCompletedDate(record.completed_at)}</time><span>{record.title || 'Completed creator briefing'}</span><small>COMPLETED</small></button>)}</div>}
+        <header className="intelligence-section-head"><p id="previous-briefings-heading">RUN HISTORY</p><span>Previous checks, newest first, with their real completion state.</span></header>
+        {historyStatus === 'loading' && <div className="history-message" role="status">Loading run history…</div>}
+        {historyStatus === 'error' && <div className="history-message" role="alert">Run history is temporarily unavailable.</div>}
+        {historyStatus === 'ready' && historyRuns.length === 0 && <div className="history-message">No previous runs yet.</div>}
+        {historyStatus === 'ready' && historyRuns.length > 0 && <div className="history-list">{historyRuns.map(record => <button type="button" key={record.run_id} disabled={record.status !== 'COMPLETED'} className={selectedHistoricalRunId === record.run_id ? 'is-selected' : ''} onClick={() => record.status === 'COMPLETED' && selectHistoricalRun(record)}><time dateTime={record.completed_at || record.queued_at}>{formatCompletedDate(record.completed_at || record.queued_at)}</time><span>{record.title || 'Creator objective'}</span><small>{record.status.replaceAll('_', ' ')}</small></button>)}</div>}
 
         {historicalSelectionStatus === 'loading' && <div className="history-message" role="status">Loading previous result…</div>}
         {historicalSelectionStatus === 'error' && <div className="history-message" role="alert">This previous result could not be verified.</div>}

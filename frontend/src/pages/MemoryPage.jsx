@@ -25,7 +25,7 @@ export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, is
   };
 
   return <div className="rich-route memory-route">
-    <section className="route-visual-hero"><img src="/assets/greenroom-creator-night.png" alt="Creator at work"/><div className="route-visual-copy"><p>MY MEMORY</p><h1>What helps GreenRoom decide for you.</h1><span>Your useful preferences, constraints, and feedback carry forward to make later decisions more relevant.</span></div><div className="route-visual-meta"><span>Remembers {memories.length} preference{memories.length === 1 ? '' : 's'}</span><span>Your Mind ✓ Connected</span></div></section>
+    <section className="route-visual-hero"><img src="/assets/greenroom-creator-night.png" alt="Creator at work"/><div className="route-visual-copy"><p>MY MEMORY</p><h1>What GreenRoom remembers about you.</h1><span>These preferences help Your Mind make future recommendations more personal.</span></div><div className="route-visual-meta"><span>Remembers {memories.length} preference{memories.length === 1 ? '' : 's'}</span><span>Your Mind ✓ Connected</span></div></section>
     <section className="density-shell">
       <div className="density-band is-three">
         <article><small>OBJECTIVE / 01</small><h2>{objective?.title || 'No objective is active.'}</h2><p>The outcome GreenRoom currently keeps in view.</p></article>
@@ -33,7 +33,7 @@ export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, is
         <article><small>YOUR MIND / 03</small><h2>✓ Connected</h2><p>Relevant saved context can inform your next decision.</p></article>
       </div>
       <div className="route-image-ribbon"><img src="/assets/greenroom-away-workspace.png" alt="Creator workspace"/><span>Context is the input to better decisions</span></div>
-      {memories.length ? <ul className="density-list">{memories.map((memory, index) => <li key={index}><span>{String(index + 1).padStart(2,'0')}</span><p>{memory}</p><small>CAN INFORM A RELEVANT FUTURE DECISION</small></li>)}</ul> : <div className="density-empty">No learned Memory yet. Add a preference below or edit creator context.</div>}
+      {memories.length ? <ul className="density-list memory-preference-list">{memories.map((memory, index) => <li key={index}><span>{String(index + 1).padStart(2,'0')}</span><p>{memory}</p></li>)}</ul> : <div className="density-empty">No learned Memory yet. Add a preference below or edit creator context.</div>}
       <form className="memory-teach" onSubmit={submit}><p>ADD A PREFERENCE</p><div className="memory-teach-field"><input value={feedback} onChange={event => { setFeedback(event.target.value); setSaveStatus(null); }} placeholder="e.g. Prefer free or low-cost tools." disabled={submitting}/>{saveStatus && <span className={`memory-save-status is-${saveStatus.type}`} role={saveStatus.type === 'error' ? 'alert' : 'status'}>{saveStatus.message}</span>}</div><button disabled={isExecuting || submitting || !feedback.trim()}>{submitting ? 'Remembering…' : 'Remember this'}</button></form>
       <div className="route-cta-row"><div><p>PROFILE FACTS</p><span>Edit the creator and audience context that persists between sessions.</span></div><button onClick={onOpenOnboarding}>Edit creator context</button></div>
     </section>

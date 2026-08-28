@@ -51,14 +51,15 @@ def preference_equivalence_key(text: str) -> str:
     cleaned = re.sub(r"^i\s+prefer\s+", "prefer ", cleaned)
     cleaned = re.sub(r"\brecommendations\b", "recommendation", cleaned)
     cleaned = re.sub(r"\btools\b", "tool", cleaned)
-    words = set(re.findall(r"[a-z0-9]+", cleaned.replace("low-cost", "low cost")))
+    cleaned = re.sub(r"\blow[\s-]*cost\b", "low cost", cleaned)
+    words = set(re.findall(r"[a-z0-9]+", cleaned))
 
     if {"concise", "practical", "recommendation"}.issubset(words):
         extras = words - {"i", "prefer", "keep", "recommendation", "concise", "practical", "and"}
         if not extras:
             return "style:recommendation:concise+practical"
 
-    if "free" in words and "tool" in words:
+    if {"free", "low", "cost", "tool"}.issubset(words):
         extras = words - {"i", "prefer", "free", "or", "low", "cost", "tool"}
         if not extras:
             return "cost:tool:free-or-low-cost"
@@ -69,7 +70,8 @@ def preference_equivalence_key(text: str) -> str:
 def _preference_strength(text: str) -> tuple:
     raw = _preference_content(text).strip()
     cleaned = _normalized_memory_text(raw)
-    words = set(re.findall(r"[a-z0-9]+", cleaned.replace("low-cost", "low cost")))
+    cleaned = re.sub(r"\blow[\s-]*cost\b", "low cost", cleaned)
+    words = set(re.findall(r"[a-z0-9]+", cleaned))
     completeness = 2 if {"low", "cost"}.issubset(words) else 0
     canonical = 2 if raw.startswith(("Keep recommendations", "Prefer ")) else 0
     return (canonical + completeness + len(words), len(cleaned))
