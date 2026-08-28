@@ -1,25 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useGreenroomState } from './hooks/useGreenroomState';
-import { useGreenroomSocket } from './hooks/useGreenroomSocket';
 import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
 import { CURRENT_OFFLINE_RUN_STORAGE_KEY, restoreCurrentOfflineRun, selectCurrentRunForRefresh, shouldPollOfflineRun, verifyRunBriefing } from './lib/offlineRun';
 import { createAndStartObjective } from './lib/objectiveRun';
 
 import { ManusHeader } from './components/layout/ManusHeader';
-import { PayloadModal } from './components/ui/PayloadModal';
 import { CreatorOnboardingModal } from './components/onboarding/CreatorOnboardingModal';
 import { OfflineLifecycleModal } from './components/activity/OfflineLifecycleModal';
-import { MemoryBehaviorProofModal } from './components/memory/MemoryBehaviorProofModal';
-import { NinetySecondProofModal } from './components/memory/NinetySecondProofModal';
 
 
 import { HomePage } from './pages/HomePage';
 import { MemoryPage } from './pages/MemoryPage';
 import { IntelligencePage } from './pages/IntelligencePage';
-import { ActionsPage } from './pages/ActionsPage';
-import { SystemPage } from './pages/SystemPage';
 import { DocsPage } from './pages/DocsPage';
 
 export function App() {
@@ -27,33 +21,21 @@ export function App() {
   const [isExecuting, setIsExecuting] = useState(false);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
-  const [isMemoryProofModalOpen, setIsMemoryProofModalOpen] = useState(false);
-  const [isNinetySecProofOpen, setIsNinetySecProofOpen] = useState(false);
   const [currentOfflineRun, setCurrentOfflineRun] = useState(null);
   const [resumeOfflineRun, setResumeOfflineRun] = useState(null);
-
-  // Initialize Real WebSocket Gateway
-  useGreenroomSocket();
 
   // Subscribe to Centralized Store State
   const {
     mindsStatus,
     memoryState,
-    impMessages,
-    selectedPayload,
-    isModalOpen,
-    activeCards,
-    signals,
   } = useGreenroomState();
 
   // Load Real Data from REST API
   const loadInitialData = async () => {
     try {
-      const [mState, mStatus, impHist, sigs, recentRuns] = await Promise.all([
+      const [mState, mStatus, recentRuns] = await Promise.all([
         api.getMemoryState().catch(() => null),
         api.getMindsStatus().catch(() => null),
-        api.getImpHistory().catch(() => null),
-        api.getSignals().catch(() => null),
         api.getRecentBriefingRuns().catch(() => null),
       ]);
 
@@ -85,8 +67,6 @@ export function App() {
           verification_state: 'VERIFIED_BY_COMPLETED_RUN',
         } : mStatus);
       }
-      if (impHist) greenroomStore.setImpHistory(impHist);
-      if (sigs && sigs.signals) greenroomStore.setSignals(sigs.signals);
     } catch (err) {
       console.warn('[GreenroomApp] REST fetch error:', err);
     }
@@ -152,66 +132,6 @@ export function App() {
     }
   };
 
-  // Step Runner
-  const handleRunStep = async (stepId, feedback = null) => {
-    setIsExecuting(true);
-    greenroomStore.setDemoProgress(stepId, true);
-
-    try {
-      const response = await api.runDemoStep(stepId, feedback);
-      if (response.state) greenroomStore.setMemoryState(response.state);
-      if (response.minds_status) greenroomStore.setMindsStatus(response.minds_status);
-
-      setTimeout(() => {
-        greenroomStore.clearDemoProgress();
-        setIsExecuting(false);
-      }, 600);
-    } catch (err) {
-      console.error(`[GreenroomApp] Step ${stepId} error:`, err);
-      greenroomStore.clearDemoProgress();
-      setIsExecuting(false);
-    }
-  };
-
-  // Full Demo Runner
-  const handleRunFullDemo = async () => {
-    setIsExecuting(true);
-    try {
-      for (let i = 1; i <= 5; i++) {
-        await handleRunStep(i);
-        await new Promise((r) => setTimeout(r, 600));
-      }
-    } catch (err) {
-      console.error('[GreenroomApp] Error running full demo:', err);
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
-  // Reset State
-  const handleResetState = async () => {
-    setIsExecuting(true);
-    try {
-      const res = await api.resetDemoState();
-      greenroomStore.resetStoreState(res.state);
-      if (res.minds_status) greenroomStore.setMindsStatus(res.minds_status);
-    } catch (err) {
-      console.error('[GreenroomApp] Error resetting state:', err);
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
-  // Action Approval
-  const handleApproveSponsorship = async (sponsorName = 'TechBrand Inc.') => {
-    try {
-      const actionName = `Sponsorship Outreach Pitch for ${sponsorName}`;
-      await api.approveAction(actionName);
-    } catch (err) {
-      console.error('[GreenroomApp] Error approving sponsorship:', err);
-    }
-  };
-
   // User Feedback / Learning Handler
   const handleSubmitFeedback = async (feedbackText) => {
     setIsExecuting(true);
@@ -253,14 +173,9 @@ export function App() {
             key="home"
             memoryState={memoryState}
             mindsStatus={mindsStatus}
-            activeCards={activeCards}
-            signals={signals}
             onNavigate={(tab) => setActiveTab(tab)}
-            onRunFullDemo={handleRunFullDemo}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
             onOpenOfflineModal={(run = null) => { setResumeOfflineRun(run); setIsOfflineModalOpen(true); }}
-            onOpenMemoryProofModal={() => setIsMemoryProofModalOpen(true)}
-            onOpenNinetySecProof={() => setIsNinetySecProofOpen(true)}
             onCreateObjective={handleCreateObjective}
             isExecuting={isExecuting}
           />
@@ -283,30 +198,6 @@ export function App() {
             memoryState={memoryState}
           />
         );
-      case 'actions':
-        return (
-          <ActionsPage
-            key="actions"
-            memoryState={memoryState}
-            activeCards={activeCards}
-            onApproveSponsorship={handleApproveSponsorship}
-            isExecuting={isExecuting}
-          />
-        );
-      case 'system':
-        return (
-          <SystemPage
-            key="system"
-            mindsStatus={mindsStatus}
-            memoryState={memoryState}
-            impMessages={impMessages}
-            onInspectPayload={(msg) => greenroomStore.openPayloadModal(msg)}
-            onRunStep={handleRunStep}
-            onRunFullDemo={handleRunFullDemo}
-            onResetState={handleResetState}
-            isExecuting={isExecuting}
-          />
-        );
       case 'docs':
         return <DocsPage key="docs" />;
       default:
@@ -315,10 +206,7 @@ export function App() {
             key="home"
             memoryState={memoryState}
             mindsStatus={mindsStatus}
-            activeCards={activeCards}
-            signals={signals}
             onNavigate={(tab) => setActiveTab(tab)}
-            onRunFullDemo={handleRunFullDemo}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
             isExecuting={isExecuting}
           />
@@ -341,13 +229,6 @@ export function App() {
         <span>© 2026 GreenRoom</span>
         <button type="button" onClick={() => setActiveTab('docs')}>Product docs</button>
       </footer>
-
-      {/* Payload Modal Inspector */}
-      <PayloadModal
-        isOpen={isModalOpen}
-        message={selectedPayload}
-        onClose={() => greenroomStore.closePayloadModal()}
-      />
 
       {/* Real Creator Onboarding Modal */}
       <CreatorOnboardingModal
@@ -383,23 +264,6 @@ export function App() {
         }}
       />
 
-      {/* Memory Behavioral Adaptation Proof Modal */}
-      <MemoryBehaviorProofModal
-        isOpen={isMemoryProofModalOpen}
-        onClose={() => setIsMemoryProofModalOpen(false)}
-        onMemoryUpdated={() => {
-          loadInitialData();
-        }}
-      />
-
-      {/* 90-Second Unavoidable Memory Proof Modal */}
-      <NinetySecondProofModal
-        isOpen={isNinetySecProofOpen}
-        onClose={() => setIsNinetySecProofOpen(false)}
-        onMemoryUpdated={() => {
-          loadInitialData();
-        }}
-      />
     </div>
   );
 }

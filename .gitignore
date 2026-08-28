@@ -17,6 +17,7 @@ creator_profile.json
 latest_briefing.json
 run_statuses.json
 run_briefings.json
+recent_runs.json
 *.log
 logs/
 *.tmp

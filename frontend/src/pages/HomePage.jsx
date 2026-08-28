@@ -13,7 +13,7 @@ const steps = [
   ['02', '◉', 'Your Mind remembers', 'Your preferences and past decisions carry forward.'],
   ['03', '✦', 'Get useful decisions', 'When something relevant changes, GreenRoom tells you what changed, why it matters, and what to do next.'],
 ];
-const clean = (value = '') => cleanDecisionText(String(value).replace(/ScoutMind detected/i, 'GreenRoom found').replaceAll('_', ' '));
+const clean = (value = '') => cleanDecisionText(String(value).replaceAll('_', ' '));
 
 export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreateObjective, isExecuting }) {
   const objective = memoryState?.creator_objectives?.[0];
