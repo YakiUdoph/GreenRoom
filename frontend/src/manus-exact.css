@@ -72,3 +72,4 @@
 .home-goal .coverage-note>span:last-child{display:grid;gap:2px}.home-goal .coverage-note strong{color:#9ba49d;font-weight:400}.home-goal .coverage-note small{color:#77827a;font-size:9px}
 .history-list button:disabled{cursor:default;opacity:.68}.history-list button:disabled:hover{color:var(--cream)}
 @media(max-width:430px){.home-goal .hero-intro>h1{font-size:44px}.home-goal .coverage-note>span:last-child{min-width:0}.home-goal .coverage-note strong,.home-goal .coverage-note small{overflow-wrap:anywhere}}
+.attention-verdict{display:inline-block;margin:28px 0 18px;padding:7px 11px;border:1px solid var(--line);border-radius:999px;color:var(--pale);font-size:9px;letter-spacing:.16em;font-weight:600}.attention-act-now{border-color:rgba(214,255,119,.55)}.attention-keep-watching{border-color:rgba(255,216,119,.5)}.attention-ignore-for-now{border-color:rgba(255,255,255,.2);color:var(--muted)}

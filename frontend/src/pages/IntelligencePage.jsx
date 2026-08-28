@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { api } from '../lib/api';
-import { creatorResultHeadline, currentIntelligence, formatCompletedDate, isLiveBriefing, isSimulatedBriefing, recentHistoryRuns, shortRunId, verifyHistoricalBriefing, verifyHistoricalRunRecord } from '../lib/briefingHistory';
+import { attentionVerdictLabel, creatorResultHeadline, currentIntelligence, formatCompletedDate, isLiveBriefing, isSimulatedBriefing, recentHistoryRuns, shortRunId, verifyHistoricalBriefing, verifyHistoricalRunRecord } from '../lib/briefingHistory';
 import { cleanDecisionText } from '../lib/decisionText';
 
 function BriefingFields({ briefing }) {
@@ -15,6 +15,13 @@ function BriefingFields({ briefing }) {
   })) : [];
   const sources = Array.isArray(briefing?.sources) ? briefing.sources : [];
   return <><div className="decision-briefings">{items.map((item, index) => <article key={item.id || index}><header><span>{String(index + 1).padStart(2, '0')}</span><h2>{creatorResultHeadline({ ...briefing, items: [item] })}</h2></header><dl><div><dt>WHAT CHANGED</dt><dd>{item.what_changed || item.summary || 'No verified change was supplied.'}</dd></div><div><dt>WHY IT MATTERS TO YOU</dt><dd>{item.why_it_matters || 'No creator-specific significance was supplied.'}</dd></div><div><dt>WHAT TO DO NEXT</dt><dd>{item.recommended_action || 'No next action was supplied.'}</dd></div>{item.memory_context_used && <div><dt>MEMORY USED</dt><dd>{item.memory_context_used}</dd></div>}</dl></article>)}</div>{sources.length > 0 && <section className="briefing-sources" aria-label="Live evidence sources"><header className="intelligence-section-head"><p>SOURCE</p><span>Verified first-party provenance for this decision.</span></header>{sources.map((source, index) => <article key={source.source_url || index}><small>SOURCE</small><strong>{source.source}</strong><h3>{source.title}</h3><div><time dateTime={source.published_at}>Published {formatCompletedDate(source.published_at)}</time><time dateTime={source.retrieved_at}>Retrieved {formatCompletedDate(source.retrieved_at)}</time></div><a href={source.source_url} target="_blank" rel="noreferrer">View source ↗</a></article>)}</section>}</>;
+}
+
+function AttentionVerdict({ briefing }) {
+  const label = attentionVerdictLabel(briefing?.attention_verdict);
+  if (!label) return null;
+  const modifier = briefing.attention_verdict.toLowerCase().replaceAll('_', '-');
+  return <strong className={`attention-verdict attention-${modifier}`}>{label}</strong>;
 }
 
 export function IntelligencePage({ memoryState }) {
@@ -40,7 +47,8 @@ export function IntelligencePage({ memoryState }) {
         if (statusResponse.status === 'COMPLETED') {
           const briefingResponse = await api.getRunBriefing(record.run_id);
           const verified = verifyHistoricalBriefing(record, statusResponse, briefingResponse);
-          return { ...record, title: verified.objectiveSnapshot.title, completed_at: statusResponse.completed_at || record.completed_at };
+          const verdict = attentionVerdictLabel(verified.briefing.attention_verdict);
+          return { ...record, title: verdict ? `${verdict} — ${verified.objectiveSnapshot.title}` : verified.objectiveSnapshot.title, completed_at: statusResponse.completed_at || record.completed_at };
         }
         return { ...record, status: verifiedRun.status, title: verifiedRun.objectiveSnapshot?.title || 'Creator objective', completed_at: statusResponse.completed_at || record.completed_at };
       }));
@@ -81,6 +89,7 @@ export function IntelligencePage({ memoryState }) {
     <section className="density-shell">
       <header className="intelligence-section-head"><p>CURRENT RESULT</p><span>The active run is authoritative. Previous results never complete it.</span></header>
       <div className="density-band is-three"><article><small>CURRENT OBJECTIVE / 01</small><h3>{currentObjective?.title || currentRun?.objective_snapshot?.title || 'No current objective is active.'}</h3><p>Only a matching completed run can supply the current result.</p></article><article><small>CURRENT STATUS / 02</small><strong>{currentStatus}</strong><p>{currentStatus === 'WORKING' ? 'GreenRoom is checking first-party evidence in the background.' : currentStatus === 'RUN FAILED' ? 'The current run did not produce a result.' : currentStatus === 'NO RELEVANT UPDATE' ? 'No sufficiently relevant current evidence passed the live filters.' : currentStatus === 'NO LIVE PROVIDER' ? 'This creator objective does not have a live evidence provider yet.' : currentStatus === 'RESULT READY' ? 'This run has its own source-backed briefing.' : 'No current result is ready.'}</p></article><article><small>EVIDENCE / 03</small><h3>{currentBriefing && isSimulatedBriefing(currentBriefing) ? 'DEMO DATASET — SIMULATED' : currentBriefing && isLiveBriefing(currentBriefing) ? 'LIVE EVIDENCE' : 'AWAITING COMPLETED EVIDENCE'}</h3><p>{currentBriefing ? 'Evidence provenance stays attached to this run.' : 'No historical evidence is presented as current.'}</p></article></div>
+      {currentBriefing && <AttentionVerdict briefing={currentBriefing}/>}
       <div className="route-image-ribbon"><img src="/assets/greenroom-living-network.png" alt="Signal network"/><span>The current decision, with its reasoning attached</span></div>
       {currentBriefing ? <BriefingFields briefing={currentBriefing}/> : <div className="density-empty">{currentStatus === 'WORKING' ? 'GreenRoom is checking live evidence in the background. You can leave this screen and return later.' : currentStatus === 'RUN FAILED' ? 'This run failed. GreenRoom will not show an older briefing as the current result.' : currentStatus === 'NO RELEVANT UPDATE' ? 'No relevant live update was found. Previous briefings remain available below but are not this run’s result.' : currentStatus === 'NO LIVE PROVIDER' ? 'This objective is saved, but GreenRoom does not yet have a live provider for its domain. No faked update was substituted.' : 'No current result is ready. Completed historical results remain available below.'}</div>}
 

@@ -1,4 +1,13 @@
 const PENDING_STATUSES = new Set(['QUEUED', 'RUNNING', 'WORKING', 'SUBMITTING', 'WAITING_FOR_MINDS']);
+const ATTENTION_LABELS = Object.freeze({
+  ACT_NOW: 'ACT NOW',
+  KEEP_WATCHING: 'KEEP WATCHING',
+  IGNORE_FOR_NOW: 'IGNORE FOR NOW',
+});
+
+export function attentionVerdictLabel(verdict) {
+  return ATTENTION_LABELS[verdict] || null;
+}
 
 export function currentIntelligence(memoryState) {
   const run = memoryState?.latest_offline_run || null;

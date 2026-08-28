@@ -172,6 +172,12 @@ export function parseMindPlainResponse(text) {
   if (typeof text !== "string" || !text.trim()) {
     throw new Error("Animoca Mind briefing response was empty");
   }
+  const attentionMatch = text.match(/ATTENTION\s*:?\s*([A-Z][A-Z_ ]*)/i);
+  const attentionVerdict = attentionMatch?.[1]?.trim().replace(/\s+/g, "_").toUpperCase();
+  const allowedVerdicts = new Set(["ACT_NOW", "KEEP_WATCHING", "IGNORE_FOR_NOW"]);
+  if (!attentionVerdict || !allowedVerdicts.has(attentionVerdict)) {
+    throw new Error("Animoca Mind attention verdict was missing or invalid");
+  }
   const whyMatch = text.match(/WHY\s+IT\s+MATTERS[\s\S]*?(?=WHAT\s+TO\s+DO\s+NEXT|$)/i);
   const whatMatch = text.match(/WHAT\s+TO\s+DO\s+NEXT[\s\S]*$/i);
   
@@ -192,23 +198,17 @@ export function parseMindPlainResponse(text) {
   }
   
   if (!whyItMatters || !whatToDoNext) {
-    const paragraphs = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
-    if (paragraphs.length >= 2) {
-      whyItMatters = cleanParsedSection(paragraphs[0]);
-      whatToDoNext = cleanParsedSection(paragraphs.slice(1).join("\n\n"));
-    } else {
-      whyItMatters = cleanParsedSection(text);
-      whatToDoNext = "Review the verified update.";
-    }
+    throw new Error("Animoca Mind attention decision sections were missing or invalid");
   }
   
   return {
+    attention_verdict: attentionVerdict,
     why_it_matters: whyItMatters,
     what_to_do_next: whatToDoNext
   };
 }
 
-function buildMindsNativeBriefing({ runId, objective, status, parsedWhyItMatters, parsedWhatToDoNext, mindReplyText, completedAt, evidence }) {
+function buildMindsNativeBriefing({ runId, objective, status, attentionVerdict, parsedWhyItMatters, parsedWhatToDoNext, mindReplyText, completedAt, evidence }) {
   const selectedRules = status.learned_rules_snapshot || [];
   const selectedNodes = status.selected_memory?.memory_nodes || [];
   const item = {
@@ -233,6 +233,7 @@ function buildMindsNativeBriefing({ runId, objective, status, parsedWhyItMatters
     completed_at: completedAt,
     status: "COMPLETED",
     evidence_mode: "LIVE",
+    attention_verdict: attentionVerdict,
     signal_source: evidence.source,
     decision_engine: "MINDS_NATIVE_DECISION",
     analysis_status: "AVAILABLE",
@@ -252,6 +253,7 @@ function buildMindsNativeBriefing({ runId, objective, status, parsedWhyItMatters
     memory_nodes_used_count: selectedNodes.length,
     signal_source_label: "LIVE EVIDENCE",
     evidence_mode: "LIVE",
+    attention_verdict: attentionVerdict,
     decision_engine: provenance.decision_engine,
     analysis_provider: "Animoca Minds via GreenRoom Decision Skill",
     minds_status: "COMPLETED",
@@ -407,11 +409,13 @@ ${evidence.summary}
 
 Instruction: Use the GreenRoom Decision Skill.
 Return only in English:
+ATTENTION: ACT_NOW | KEEP_WATCHING | IGNORE_FOR_NOW
 WHY IT MATTERS
 [1-3 short sentences explaining the creator-specific relevance]
 WHAT TO DO NEXT
 [one short practical action sentence]
-Use only the supplied objective, preferences, and verified update. Do not add unsupported pricing, availability, popularity, performance, subscriptions, workflow facts, or use cases. If a relevant preference cannot be evaluated from the verified update, state that uncertainty naturally. Do not return HTML or Markdown. Do not chain multiple actions.`;
+Choose exactly one ATTENTION value using the supplied objective, relevant preferences, and verified update. Do not use a fixed domain, provider, or keyword mapping. ACT_NOW requires a justified concrete action now. KEEP_WATCHING means potentially relevant but unresolved, premature, uncertain, unavailable, or not yet actionable. IGNORE_FOR_NOW means the verified update is currently low-value for this creator; it does not mean the source is bad.
+Use only the supplied objective, preferences, and verified update. Do not add unsupported pricing, availability, eligibility, country, creator status, audience size, popularity, performance, subscriptions, workflow facts, or use cases. If a relevant preference cannot be evaluated from the verified update, state that uncertainty naturally. Do not return HTML or Markdown. Do not chain multiple actions.`;
 
   const preparedAt = isoNow();
   status = await persistRunStatus(redis, runId, {
@@ -596,6 +600,7 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
         runId,
         objective,
         status,
+        attentionVerdict: parsedPlain.attention_verdict,
         parsedWhyItMatters: parsedPlain.why_it_matters,
         parsedWhatToDoNext: parsedPlain.what_to_do_next,
         mindReplyText: text,

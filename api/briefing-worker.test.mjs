@@ -25,13 +25,13 @@ function initialRedis(runId = "run_b") {
 }
 
 function fakeMinds(history = [], sse = { timedOut: true }) {
-  const calls = { send: 0, history: 0, wait: 0, waitOptions: [] };
+  const calls = { send: 0, history: 0, wait: 0, waitOptions: [], messages: [] };
   return {
     calls,
     async getMind() { return { mindId: "8208493e-f36b-1410-8466-00039ce7df11", email: "udophia@hellominds.ai", walletAddress: "0xB675Ec9857776678aE540cF3248d898f015987Cb", isEnabled: true }; },
     async ensureConversation(alias) { return { conversationId: "conversation-safe", alias }; },
     async getLatestHistoryFingerprint() { return "fp_before"; },
-    async sendMessage() { calls.send++; return { messageId: "message-safe", ignoredSecret: "no-store" }; },
+    async sendMessage(options) { calls.send++; calls.messages.push(options?.messageText); return { messageId: "message-safe", ignoredSecret: "no-store" }; },
     async waitForReply(options) { calls.wait++; calls.waitOptions.push(options); return typeof sse === "function" ? sse(calls.wait) : sse; },
     async getHistory() { calls.history++; return typeof history === "function" ? history(calls.history) : history; },
   };
@@ -53,9 +53,19 @@ test("creator decision text removes formatting fragments without changing plain 
 });
 
 test("plain Minds sections are sanitized before briefing persistence", () => {
-  const parsed = parseMindPlainResponse("WHY IT MATTERS\n<b>This helps.</b><br><br>Keep context.\n\nWHAT TO DO NEXT\nTry one clip.</b><br />");
+  const parsed = parseMindPlainResponse("ATTENTION: KEEP_WATCHING\nWHY IT MATTERS\n<b>This helps.</b><br><br>Keep context.\n\nWHAT TO DO NEXT\nTry one clip.</b><br />");
+  assert.equal(parsed.attention_verdict, "KEEP_WATCHING");
   assert.equal(parsed.why_it_matters, "This helps.\n\nKeep context.");
   assert.equal(parsed.what_to_do_next, "Try one clip.");
+});
+
+test("all attention verdicts parse and invalid verdicts fail strictly", () => {
+  for (const verdict of ["ACT_NOW", "KEEP_WATCHING", "IGNORE_FOR_NOW"]) {
+    assert.equal(parseMindPlainResponse(`ATTENTION: ${verdict}\nWHY IT MATTERS\nRelevant.\nWHAT TO DO NEXT\nReview it.`).attention_verdict, verdict);
+  }
+  assert.throws(() => parseMindPlainResponse("ATTENTION: URGENT\nWHY IT MATTERS\nRelevant.\nWHAT TO DO NEXT\nReview it."), /verdict was missing or invalid/);
+  assert.throws(() => parseMindPlainResponse("ATTENTION: ACT_NOW"), /sections were missing or invalid/);
+  assert.throws(() => parseMindPlainResponse("WHY IT MATTERS\nRelevant.\nWHAT TO DO NEXT\nReview it."), /verdict was missing or invalid/);
 });
 
 function qstashResponse(status, body = {}) {
@@ -507,7 +517,8 @@ const mockFetchEvidence = async () => ({
   status: "EVIDENCE_READY"
 });
 
-const PLAIN_REPLY = `WHY IT MATTERS
+const PLAIN_REPLY = `ATTENTION: KEEP_WATCHING
+WHY IT MATTERS
 Adobe's Premiere update reinvents color for editors.
 
 WHAT TO DO NEXT
@@ -530,6 +541,9 @@ test("Minds-native live submission returns WAITING_FOR_MINDS and enqueues collec
   assert.equal(status.decision_engine, "MINDS_NATIVE_DECISION");
   assert.deepEqual(status.evidence_snapshot, NATIVE_EVIDENCE);
   assert.equal(status.selected_memory.learned_rules[0], "Be practical");
+  assert.match(minds.calls.messages[0], /ATTENTION: ACT_NOW \| KEEP_WATCHING \| IGNORE_FOR_NOW/);
+  assert.match(minds.calls.messages[0], /Choose exactly one ATTENTION value using the supplied objective/);
+  assert.doesNotMatch(minds.calls.messages[0], /if sponsorship|if pricing unknown|provider scoring|domain scoring/i);
 });
 
 test("Minds-native collection with verified plain reply completes the run and parses sections", async () => {
@@ -564,6 +578,8 @@ test("Minds-native collection with verified plain reply completes the run and pa
   assert.equal(briefing.minds_verified, true);
   assert.equal(briefing.minds_status, "COMPLETED");
   assert.equal(briefing.decision_engine, "MINDS_NATIVE_DECISION");
+  assert.equal(briefing.attention_verdict, "KEEP_WATCHING");
+  assert.equal(briefing.provenance.attention_verdict, "KEEP_WATCHING");
   assert.equal(briefing.items[0].why_it_matters, "Adobe's Premiere update reinvents color for editors.");
   assert.equal(briefing.items[0].recommended_action, "Test the Premiere color workflow changes.");
 });

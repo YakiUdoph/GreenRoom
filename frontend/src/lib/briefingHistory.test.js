@@ -1,12 +1,20 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { completedHistoryRuns, creatorResultHeadline, currentIntelligence, isLiveBriefing, isSimulatedBriefing, recentHistoryRuns, verifyHistoricalBriefing, verifyHistoricalRunRecord } from './briefingHistory.js';
+import { attentionVerdictLabel, completedHistoryRuns, creatorResultHeadline, currentIntelligence, isLiveBriefing, isSimulatedBriefing, recentHistoryRuns, verifyHistoricalBriefing, verifyHistoricalRunRecord } from './briefingHistory.js';
 
 const historical = { run_id: 'run_history', objective_id: 'obj_history', items: [{ what_changed: 'A', why_it_matters: 'B', recommended_action: 'C' }] };
 const current = { run_id: 'run_current', objective_id: 'obj_current', items: [] };
 const record = { run_id: 'run_history', objective_id: 'obj_history', objective_fingerprint: 'fp_history', status: 'COMPLETED' };
 const status = { status: 'COMPLETED', objective_snapshot: { objective_id: 'obj_history', title: 'Creator workflow', fingerprint: 'fp_history' } };
 const response = { briefing: { ...historical, objective_snapshot: { fingerprint: 'fp_history' } }, objective_snapshot: status.objective_snapshot };
+
+test('attention verdict labels support all allowed values and historical null', () => {
+  assert.equal(attentionVerdictLabel('ACT_NOW'), 'ACT NOW');
+  assert.equal(attentionVerdictLabel('KEEP_WATCHING'), 'KEEP WATCHING');
+  assert.equal(attentionVerdictLabel('IGNORE_FOR_NOW'), 'IGNORE FOR NOW');
+  assert.equal(attentionVerdictLabel(null), null);
+  assert.equal(attentionVerdictLabel('URGENT'), null);
+});
 
 test('current pending run cannot display historical briefing as current', () => {
   assert.equal(currentIntelligence({ latest_offline_run: { run_id: 'run_current', objective_id: 'obj_current', status: 'WAITING_FOR_MINDS' }, latest_briefing: historical }).currentBriefing, null);
