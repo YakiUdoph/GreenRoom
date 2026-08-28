@@ -5,11 +5,16 @@ import {
   buildDeterministicLiveBriefing,
   classifyLiveDomain,
   fetchAdobeLiveEvidence,
+  fetchYouTubePlatformChanges,
   LIVE_DOMAIN_AI_VIDEO,
+  LIVE_DOMAIN_PLATFORM_CHANGES,
   LIVE_DOMAIN_UNSUPPORTED,
   normalizeAdobeItem,
   parseAdobeDate,
   parseAdobeQueryIndex,
+  parseYouTubeOfficialBlogRss,
+  normalizeYouTubeBlogItem,
+  YOUTUBE_RSS_MAX_BYTES,
   retrieveLiveEvidenceForObjective,
 } from "./live-evidence.mjs";
 import { processWorkerPhase } from "./briefing-worker.mjs";
@@ -94,6 +99,69 @@ test("query parser reports candidate and relevant counts without fallback", () =
 test("objective classification routes AI video only to its first live vertical", () => {
   assert.equal(classifyLiveDomain({ title: "Keep me updated on important AI video tools that could improve my workflow." }), LIVE_DOMAIN_AI_VIDEO);
   assert.equal(classifyLiveDomain({ title: "Improve my long-form writing workflow." }), LIVE_DOMAIN_UNSUPPORTED);
+});
+
+test("platform-change classification requires monitoring intent and creator impact", () => {
+  assert.equal(classifyLiveDomain({ title: "Tell me when YouTube changes something that could affect my channel." }), LIVE_DOMAIN_PLATFORM_CHANGES);
+  assert.equal(classifyLiveDomain({ title: "Watch for important platform changes that might affect creators." }), LIVE_DOMAIN_PLATFORM_CHANGES);
+  assert.equal(classifyLiveDomain({ title: "Keep an eye on YouTube updates that could impact growth." }), LIVE_DOMAIN_PLATFORM_CHANGES);
+  assert.equal(classifyLiveDomain({ title: "Write a YouTube video about growth." }), LIVE_DOMAIN_UNSUPPORTED);
+  assert.equal(classifyLiveDomain({ title: "Track AI video generation updates on YouTube." }), LIVE_DOMAIN_AI_VIDEO);
+});
+
+const youtubeRss = `<?xml version="1.0"?><rss><channel><title>YouTube Official Blog</title>
+  <item><title>New opportunities to earn and changes to the YouTube Partner Program</title><link>https://blog.youtube/news-and-events/youtube-partner-program-updates/</link><description>Important monetization changes for creators and their channels.</description><pubDate>Thu, 20 Aug 2026 16:00:00 +0000</pubDate><category>Creators</category><category>Monetization</category></item>
+  <item><title>A creator celebrates ten years on YouTube</title><link>https://blog.youtube/creator-and-artist-stories/ten-years/</link><description>A profile of a creator's career.</description><pubDate>Wed, 19 Aug 2026 16:00:00 +0000</pubDate><category>Creators</category></item>
+</channel></rss>`;
+
+test("YouTube official RSS normalizes only relevant platform changes", () => {
+  const parsed = parseYouTubeOfficialBlogRss(youtubeRss, { now: NOW });
+  assert.equal(parsed.candidate_count, 2);
+  assert.equal(parsed.fresh_count, 2);
+  assert.equal(parsed.relevant_count, 1);
+  assert.equal(parsed.evidence[0].source, "YouTube Official Blog");
+  assert.equal(parsed.evidence[0].evidence_mode, "LIVE");
+  assert.equal(parsed.evidence[0].published_at, "2026-08-20T16:00:00.000Z");
+  assert.equal(parsed.evidence[0].retrieved_at, NOW.toISOString());
+  assert.match(parsed.evidence[0].source_url, /^https:\/\/blog\.youtube\//);
+  assert.throws(() => parseYouTubeOfficialBlogRss("not rss", { now: NOW }), /valid RSS channel/);
+  assert.throws(() => parseYouTubeOfficialBlogRss(`<rss><channel>${"x".repeat(YOUTUBE_RSS_MAX_BYTES + 1)}</channel></rss>`, { now: NOW }), /size limit/);
+});
+
+test("YouTube normalization rejects unofficial, future, stale, and unrelated items", () => {
+  const base = { title: "YouTube changes creator monetization eligibility", description: "A new Partner Program policy for creator channels.", pubDate: "2026-08-20T00:00:00Z", link: "https://blog.youtube/news-and-events/ypp-update/", categories: ["Creators", "Monetization"] };
+  assert.ok(normalizeYouTubeBlogItem(base, { now: NOW }));
+  assert.equal(normalizeYouTubeBlogItem({ ...base, link: "https://example.com/ypp-update" }, { now: NOW }), null);
+  assert.equal(normalizeYouTubeBlogItem({ ...base, pubDate: "2026-08-27T00:00:00Z" }, { now: NOW }), null);
+  assert.equal(normalizeYouTubeBlogItem({ ...base, pubDate: "2024-01-01T00:00:00Z" }, { now: NOW }), null);
+  assert.equal(normalizeYouTubeBlogItem({ ...base, title: "A creator profile", description: "An interview about a career.", categories: ["Creators"] }, { now: NOW }), null);
+});
+
+test("YouTube provider is bounded and fails without fallback", async () => {
+  let calls = 0;
+  const result = await fetchYouTubePlatformChanges({ now: NOW, fetchImpl: async (url, options) => {
+    calls++;
+    assert.equal(url, "https://blog.youtube/rss/");
+    assert.ok(options.signal);
+    return { ok: true, async text() { return youtubeRss; } };
+  } });
+  assert.equal(calls, 1);
+  assert.equal(result.request_count, 1);
+  assert.equal(result.relevant_count, 1);
+  await assert.rejects(fetchYouTubePlatformChanges({ fetchImpl: async () => ({ ok: false, status: 503 }) }), (error) => error.code === "SOURCE_UNAVAILABLE");
+  await assert.rejects(fetchYouTubePlatformChanges({ fetchImpl: async () => ({ ok: true, async text() { return "bad"; } }) }), (error) => error.code === "MALFORMED_SOURCE");
+});
+
+test("platform changes use the shared provider registry lifecycle", async () => {
+  const result = await retrieveLiveEvidenceForObjective({
+    objective: { title: "Tell me when YouTube changes something that could affect my channel." },
+    now: NOW,
+    registry: { [LIVE_DOMAIN_PLATFORM_CHANGES]: [{ provider_id: "YOUTUBE_TEST", retrieve: async () => ({ candidate_count: 2, fresh_count: 2, request_count: 1, evidence: parseYouTubeOfficialBlogRss(youtubeRss, { now: NOW }).evidence }) }] },
+  });
+  assert.equal(result.domain, LIVE_DOMAIN_PLATFORM_CHANGES);
+  assert.equal(result.status, "EVIDENCE_READY");
+  assert.deepEqual(result.provider_ids, ["YOUTUBE_TEST"]);
+  assert.equal(result.evidence[0].category, "platform_change");
 });
 
 test("AI video retrieval uses the registered provider and returns generic live evidence", async () => {

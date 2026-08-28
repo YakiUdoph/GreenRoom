@@ -12,12 +12,12 @@ GreenRoom keeps creator goals, preferences, feedback, and prior decisions connec
 
 ## What works live
 
-- Domain: `AI_VIDEO` creator-tool intelligence
-- Provider: `ADOBE_BLOG`
+- Domains: `AI_VIDEO` creator-tool intelligence and `PLATFORM_CHANGES`
+- Providers: `ADOBE_BLOG` and `YOUTUBE_OFFICIAL_BLOG`
 - First-party evidence with publication and retrieval provenance
 - Durable objective-bound runs, Memory, feedback, and result history
 
-AI video is the first live vertical, not GreenRoom's identity. Unsupported categories return a truthful no-provider state.
+These are bounded live verticals, not GreenRoom's identity. Unsupported categories return a truthful no-provider state.
 
 ## How it works
 
@@ -59,7 +59,7 @@ npm --prefix frontend run build
 
 ## Limitations
 
-- Live coverage currently supports AI-video creator tools through Adobe Blog only.
+- Live coverage currently supports AI-video creator tools through Adobe Blog and selected platform changes through the YouTube Official Blog.
 - Unsupported creator domains have no live provider yet.
 - Source and Minds availability remain external dependencies.
 - GreenRoom does not infer pricing, availability, adoption, or performance without evidence.

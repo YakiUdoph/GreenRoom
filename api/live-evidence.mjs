@@ -1,11 +1,16 @@
 const ADOBE_ORIGIN = "https://blog.adobe.com";
 export const ADOBE_QUERY_INDEX_URL = `${ADOBE_ORIGIN}/en/query-index.json`;
+const YOUTUBE_BLOG_ORIGIN = "https://blog.youtube";
+export const YOUTUBE_OFFICIAL_BLOG_RSS_URL = `${YOUTUBE_BLOG_ORIGIN}/rss/`;
 export const LIVE_EVIDENCE_FRESHNESS_DAYS = 365;
 export const ADOBE_PAGE_SIZE = 1000;
 export const ADOBE_MAX_RECORDS = 2000;
 export const LIVE_EVIDENCE_REQUEST_TIMEOUT_MS = 7000;
 export const LIVE_EVIDENCE_TOTAL_BUDGET_MS = 20000;
+export const YOUTUBE_RSS_MAX_BYTES = 1_000_000;
+export const YOUTUBE_RSS_MAX_ITEMS = 100;
 export const LIVE_DOMAIN_AI_VIDEO = "AI_VIDEO";
+export const LIVE_DOMAIN_PLATFORM_CHANGES = "PLATFORM_CHANGES";
 export const LIVE_DOMAIN_UNSUPPORTED = "UNSUPPORTED";
 
 export class LiveEvidenceError extends Error {
@@ -22,7 +27,13 @@ export function classifyLiveDomain(objective) {
     .replace(/[-_/]+/g, " ")
     .replace(/\s+/g, " ");
   const aiVideo = /\bai\b.{0,50}\bvideo\b|\bvideo\b.{0,50}\bai\b|\bgenerative video\b|\bvideo generation\b|\bai video editing\b|\bai animation\b|\bai filmmaking\b/i;
-  return aiVideo.test(text) ? LIVE_DOMAIN_AI_VIDEO : LIVE_DOMAIN_UNSUPPORTED;
+  if (aiVideo.test(text)) return LIVE_DOMAIN_AI_VIDEO;
+  const watchIntent = /\b(?:watch|monitor|track|tell me|keep an eye|notify|alert|update(?:d|s)?)\b/i;
+  const platformTarget = /\b(?:youtube|creator platform|platform changes?|platform updates?)\b/i;
+  const creatorImpact = /\b(?:creator|channel|growth|monetization|algorithm|policy|feature|platform)\b/i;
+  return watchIntent.test(text) && platformTarget.test(text) && creatorImpact.test(text)
+    ? LIVE_DOMAIN_PLATFORM_CHANGES
+    : LIVE_DOMAIN_UNSUPPORTED;
 }
 
 export function parseAdobeDate(value) {
@@ -69,6 +80,107 @@ function cleanText(value) {
   if (typeof value !== "string") return null;
   const cleaned = value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
   return cleaned || null;
+}
+
+function decodeXmlText(value) {
+  return cleanText(String(value || "")
+    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
+    .replace(/&quot;/g, '"').replace(/&#39;|&apos;/g, "'"));
+}
+
+function rssField(xml, name) {
+  const match = xml.match(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)<\\/${name}>`, "i"));
+  return match ? decodeXmlText(match[1]) : null;
+}
+
+export function isRelevantYouTubePlatformChange(item) {
+  const text = [item?.title, item?.description, ...(item?.categories || [])].filter(Boolean).join(" ").toLowerCase();
+  const change = /\b(?:update|updates|updated|change|changes|changing|rollout|rolling out|new (?:feature|tool|opportunit|way)|introduc\w* (?:a |an |the )?(?:feature|tool|program))\w*\b/i;
+  const platformMechanism = /\b(?:feature|tool|youtube partner program|ypp|policy|eligib|monetiz|revenue|analytics|algorithm|copyright|shorts|live stream|studio|interface)\w*\b/i;
+  const creatorImpact = /\b(?:creator|channel|youtube partner program|ypp|monetiz|revenue|growth|shorts|studio|subscriber|viewer|video|live stream|copyright)\w*\b/i;
+  return change.test(text) && platformMechanism.test(text) && creatorImpact.test(text);
+}
+
+export function normalizeYouTubeBlogItem(item, { now = new Date(), freshnessDays = LIVE_EVIDENCE_FRESHNESS_DAYS } = {}) {
+  const title = cleanText(item?.title);
+  const summary = cleanText(item?.description) || title;
+  const published = item?.pubDate ? new Date(item.pubDate) : null;
+  if (!title || !summary || !published || Number.isNaN(published.getTime()) || !isRelevantYouTubePlatformChange(item)) return null;
+  if (published.getTime() > now.getTime() || now.getTime() - published.getTime() > freshnessDays * 86_400_000) return null;
+  let sourceUrl;
+  try {
+    const url = new URL(item.link);
+    if (url.origin !== YOUTUBE_BLOG_ORIGIN || !url.pathname.startsWith("/")) return null;
+    url.hash = "";
+    sourceUrl = url.toString();
+  } catch {
+    return null;
+  }
+  return {
+    source: "YouTube Official Blog",
+    source_url: sourceUrl,
+    published_at: published.toISOString(),
+    retrieved_at: now.toISOString(),
+    title,
+    summary,
+    evidence_mode: "LIVE",
+    category: "platform_change",
+    relevance_score: 4 + Math.min(3, (item.categories || []).filter((category) => /creator|monetization|youtube news|creation/i.test(category)).length),
+  };
+}
+
+export function parseYouTubeOfficialBlogRss(xml, options = {}) {
+  if (typeof xml !== "string" || !/<channel[\s>]/i.test(xml)) {
+    throw new LiveEvidenceError("MALFORMED_SOURCE", "YouTube Official Blog did not return a valid RSS channel");
+  }
+  if (Buffer.byteLength(xml, "utf8") > YOUTUBE_RSS_MAX_BYTES) {
+    throw new LiveEvidenceError("MALFORMED_SOURCE", "YouTube Official Blog RSS exceeded the response size limit");
+  }
+  const rawItems = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].slice(0, YOUTUBE_RSS_MAX_ITEMS).map((match) => {
+    const body = match[1];
+    return {
+      title: rssField(body, "title"),
+      link: rssField(body, "link"),
+      description: rssField(body, "description"),
+      pubDate: rssField(body, "pubDate"),
+      categories: [...body.matchAll(/<category(?:\s[^>]*)?>([\s\S]*?)<\/category>/gi)].map((category) => decodeXmlText(category[1])).filter(Boolean),
+    };
+  });
+  const evidence = rawItems.map((item) => normalizeYouTubeBlogItem(item, options)).filter(Boolean)
+    .sort((a, b) => b.relevance_score - a.relevance_score || Date.parse(b.published_at) - Date.parse(a.published_at) || a.source_url.localeCompare(b.source_url));
+  const now = options.now || new Date();
+  const freshnessDays = options.freshnessDays ?? LIVE_EVIDENCE_FRESHNESS_DAYS;
+  const freshCount = rawItems.filter((item) => {
+    const date = new Date(item.pubDate);
+    return !Number.isNaN(date.getTime()) && date <= now && now - date <= freshnessDays * 86_400_000;
+  }).length;
+  return { candidate_count: rawItems.length, fresh_count: freshCount, relevant_count: evidence.length, evidence };
+}
+
+export async function fetchYouTubePlatformChanges({ fetchImpl = fetch, now = new Date(), requestTimeoutMs = LIVE_EVIDENCE_REQUEST_TIMEOUT_MS } = {}) {
+  const started = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+  try {
+    const response = await fetchImpl(YOUTUBE_OFFICIAL_BLOG_RSS_URL, {
+      method: "GET",
+      headers: { Accept: "application/rss+xml, application/xml", "User-Agent": "GreenRoom-Live-Core/1.0" },
+      signal: controller.signal,
+    });
+    if (!response.ok) throw new LiveEvidenceError("SOURCE_UNAVAILABLE", `YouTube Official Blog returned HTTP ${response.status}`);
+    let xml;
+    try { xml = await response.text(); }
+    catch { throw new LiveEvidenceError("MALFORMED_SOURCE", "YouTube Official Blog response could not be read"); }
+    const parsed = parseYouTubeOfficialBlogRss(xml, { now });
+    return { ...parsed, deduplicated_count: parsed.evidence.length, request_count: 1, retrieval_latency_ms: Date.now() - started, retrieved_at: now.toISOString() };
+  } catch (error) {
+    if (error instanceof LiveEvidenceError) throw error;
+    if (error?.name === "AbortError") throw new LiveEvidenceError("SOURCE_TIMEOUT", "YouTube Official Blog timed out");
+    throw new LiveEvidenceError("SOURCE_UNAVAILABLE", "YouTube Official Blog could not be reached");
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export function normalizeAdobeItem(item, { now = new Date(), freshnessDays = LIVE_EVIDENCE_FRESHNESS_DAYS } = {}) {
@@ -208,6 +320,9 @@ export async function fetchAdobeLiveEvidence({
 export const LIVE_SOURCE_REGISTRY = Object.freeze({
   [LIVE_DOMAIN_AI_VIDEO]: Object.freeze([
     Object.freeze({ provider_id: "ADOBE_BLOG", retrieve: fetchAdobeLiveEvidence }),
+  ]),
+  [LIVE_DOMAIN_PLATFORM_CHANGES]: Object.freeze([
+    Object.freeze({ provider_id: "YOUTUBE_OFFICIAL_BLOG", retrieve: fetchYouTubePlatformChanges }),
   ]),
 });
 
