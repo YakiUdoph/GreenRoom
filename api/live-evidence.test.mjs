@@ -107,6 +107,10 @@ test("platform-change classification requires monitoring intent and creator impa
   assert.equal(classifyLiveDomain({ title: "Keep an eye on YouTube updates that could impact growth." }), LIVE_DOMAIN_PLATFORM_CHANGES);
   assert.equal(classifyLiveDomain({ title: "Write a YouTube video about growth." }), LIVE_DOMAIN_UNSUPPORTED);
   assert.equal(classifyLiveDomain({ title: "Track AI video generation updates on YouTube." }), LIVE_DOMAIN_AI_VIDEO);
+  assert.equal(classifyLiveDomain({
+    title: "Tell me when YouTube changes something that could affect my channel.",
+    constraints: "Use first-party platform updates only. Do not substitute AI-video evidence.",
+  }), LIVE_DOMAIN_PLATFORM_CHANGES);
 });
 
 const youtubeRss = `<?xml version="1.0"?><rss><channel><title>YouTube Official Blog</title>

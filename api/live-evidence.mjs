@@ -22,18 +22,21 @@ export class LiveEvidenceError extends Error {
 }
 
 export function classifyLiveDomain(objective) {
-  const text = `${objective?.title || ""} ${objective?.constraints || ""}`
+  const normalize = (value) => String(value || "")
     .toLowerCase()
     .replace(/[-_/]+/g, " ")
     .replace(/\s+/g, " ");
+  const title = normalize(objective?.title);
+  const text = `${title} ${normalize(objective?.constraints)}`;
   const aiVideo = /\bai\b.{0,50}\bvideo\b|\bvideo\b.{0,50}\bai\b|\bgenerative video\b|\bvideo generation\b|\bai video editing\b|\bai animation\b|\bai filmmaking\b/i;
-  if (aiVideo.test(text)) return LIVE_DOMAIN_AI_VIDEO;
   const watchIntent = /\b(?:watch|monitor|track|tell me|keep an eye|notify|alert|update(?:d|s)?)\b/i;
   const platformTarget = /\b(?:youtube|creator platform|platform changes?|platform updates?)\b/i;
   const creatorImpact = /\b(?:creator|channel|growth|monetization|algorithm|policy|feature|platform)\b/i;
-  return watchIntent.test(text) && platformTarget.test(text) && creatorImpact.test(text)
-    ? LIVE_DOMAIN_PLATFORM_CHANGES
-    : LIVE_DOMAIN_UNSUPPORTED;
+  const isPlatformChange = (value) => watchIntent.test(value) && platformTarget.test(value) && creatorImpact.test(value);
+  if (aiVideo.test(title)) return LIVE_DOMAIN_AI_VIDEO;
+  if (isPlatformChange(title)) return LIVE_DOMAIN_PLATFORM_CHANGES;
+  if (aiVideo.test(text)) return LIVE_DOMAIN_AI_VIDEO;
+  return isPlatformChange(text) ? LIVE_DOMAIN_PLATFORM_CHANGES : LIVE_DOMAIN_UNSUPPORTED;
 }
 
 export function parseAdobeDate(value) {
