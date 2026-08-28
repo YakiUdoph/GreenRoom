@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npm --prefix frontend run dev",
     "build": "npm --prefix frontend install && npm --prefix frontend run build",
-    "test": "python3 test_greenroom.py && node --test api/worker-guards.test.mjs",
+    "test": "python -m unittest test_greenroom.py test_memory_persistence.py test_objective_bound_runs.py && node --test api/worker-guards.test.mjs api/live-evidence.test.mjs api/briefing-worker.test.mjs",
     "start": "python3 server.py"
   },
   "repository": {
