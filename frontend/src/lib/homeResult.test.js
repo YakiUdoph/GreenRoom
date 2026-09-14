@@ -14,8 +14,8 @@ test('homepage has an honest empty state without a completed current briefing', 
 test('homepage component contains no fabricated intelligence fallback', async () => {
   const source = await readFile(new URL('../pages/HomePage.jsx', import.meta.url), 'utf8');
   assert.doesNotMatch(source, /exampleResult|GreenRoom found something|currentItem\s*\|\|/);
-  assert.match(source, /Nothing to review yet\./);
-  assert.match(source, /Decision by verified persistent Mind: Udophia/);
+  assert.match(source, /Nothing needs your attention yet\./);
+  assert.match(source, /decision\.verified \? ' · Decision by Udophia'/);
   assert.doesNotMatch(source, /illustrative result|example recommendation/i);
 });
 
@@ -24,7 +24,7 @@ test('supported chips have concise labels, exact values, and never submit', asyn
   assert.match(source, /\['YouTube changes', 'Tell me when YouTube changes something that could affect my channel\.'\]/);
   assert.match(source, /\['AI video tools', 'Watch for meaningful AI video-tool updates\.'\]/);
   assert.match(source, /\['Twitch opportunities', 'Watch for Twitch creator earning or sponsorship opportunities\.'\]/);
-  assert.match(source, /<button type="button"[^\n]+populateSupportedExample\(setGoal, example\)/);
+  assert.match(source, /<button type="button"[^\n]+setGoal\(example\)/);
   assert.doesNotMatch(source, /populateSupportedExample\([^)]*submitGoal/);
 });
 
@@ -36,12 +36,11 @@ test('mobile CSS contains viewport containment and usable controls', async () =>
   assert.match(css, /\.fixed\.inset-0\{align-items:flex-start!important;overflow-y:auto/);
 });
 
-test('Udophia and readable Memory proof are gated by genuine briefing data', async () => {
+test('history exposes provenance only for genuine verified data', async () => {
   const source = await readFile(new URL('../pages/IntelligencePage.jsx', import.meta.url), 'utf8');
-  assert.match(source, /briefing\.minds_verified && provenance\.minds_verified && <p className="verified-mind-line">/);
-  assert.match(source, /selected_rule_count \|\| 0/);
-  assert.match(source, /selected_memory_node_count \|\| 0/);
-  assert.match(source, /rememberedContext\.join/);
+  assert.match(source, /isSimulatedBriefing\(verified\.briefing\)/);
+  assert.match(source, /decision\.verified \? ' Decision by verified Udophia\.'/);
+  assert.match(source, /<details><summary>Evidence and provenance<\/summary>/);
 });
 
 test('homepage renders only the exact completed run and objective fingerprint', () => {

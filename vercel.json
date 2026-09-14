@@ -5,6 +5,10 @@
       "use": "@vercel/node"
     },
     {
+      "src": "api/v2-decision-read.mjs",
+      "use": "@vercel/node"
+    },
+    {
       "src": "server.py",
       "use": "@vercel/python"
     },
@@ -20,6 +24,10 @@
     {
       "src": "/api/briefing-worker",
       "dest": "api/briefing-worker.mjs"
+    },
+    {
+      "src": "/api/v2-decision",
+      "dest": "api/v2-decision-read.mjs"
     },
     {
       "src": "/api/(.*)",

@@ -47,6 +47,8 @@ export const api = {
 
   getRunBriefing: (runId) => request(`/api/briefing/run/${encodeURIComponent(runId)}`),
 
+  getV2Decision: (runId) => request(`/api/v2-decision?run_id=${encodeURIComponent(runId)}`),
+
   getBriefingStatus: (runId) =>
     request(runId ? `/api/briefing/status?run_id=${runId}` : '/api/briefing/status'),
 

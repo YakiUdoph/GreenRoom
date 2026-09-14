@@ -2,42 +2,20 @@ import React, { useState } from 'react';
 import { getDisplayMemories } from '../lib/memoryPresentation';
 
 export function MemoryPage({ memoryState, onSubmitFeedback, onOpenOnboarding, isExecuting }) {
-  const [feedback, setFeedback] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [saveStatus, setSaveStatus] = useState(null);
-  const memories = getDisplayMemories(memoryState);
-  const objective = memoryState?.creator_objectives?.[0];
-  const submit = async (event) => {
-    event.preventDefault();
-    if (!feedback.trim() || submitting) return;
-    const submitted = feedback;
-    setSubmitting(true);
-    setSaveStatus(null);
-    try {
-      const result = await onSubmitFeedback(submitted);
-      setFeedback('');
-      setSaveStatus({ type: 'success', message: result.created === false ? 'Already remembered.' : 'Preference remembered.' });
-    } catch (error) {
-      setSaveStatus({ type: 'error', message: error.message || 'Could not save this preference.' });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return <div className="rich-route memory-route">
-    <section className="route-visual-hero"><img src="/assets/greenroom-creator-night.png" alt="Creator at work"/><div className="route-visual-copy"><p>MY MEMORY</p><h1>What GreenRoom remembers about you.</h1><span>These preferences help Your Mind make future recommendations more personal.</span></div><div className="route-visual-meta"><span>Remembers {memories.length} preference{memories.length === 1 ? '' : 's'}</span><span>Your Mind ✓ Connected</span></div></section>
-    <section className="density-shell">
-      <div className="density-band is-three">
-        <article><small>OBJECTIVE / 01</small><h2>{objective?.title || 'No objective is active.'}</h2><p>The outcome GreenRoom currently keeps in view.</p></article>
-        <article><small>LEARNED PREFERENCES / 02</small><strong>{String(memories.length).padStart(2,'0')}</strong><p>{memories.length ? 'Human-readable preferences are active.' : 'No preferences saved yet.'}</p></article>
-        <article><small>YOUR MIND / 03</small><h2>✓ Connected</h2><p>Relevant saved context can inform your next decision.</p></article>
-      </div>
-      <div className="route-image-ribbon"><img src="/assets/greenroom-away-workspace.png" alt="Creator workspace"/><span>Context is the input to better decisions</span></div>
-      {memories.length ? <ul className="density-list memory-preference-list">{memories.map((memory, index) => <li key={index}><span>{String(index + 1).padStart(2,'0')}</span><p>{memory}</p></li>)}</ul> : <div className="density-empty">No learned Memory yet. Add a preference below or edit creator context.</div>}
-      <form className="memory-teach" onSubmit={submit}><p>ADD A PREFERENCE</p><div className="memory-teach-field"><input value={feedback} onChange={event => { setFeedback(event.target.value); setSaveStatus(null); }} placeholder="e.g. Prefer free or low-cost tools." disabled={submitting}/>{saveStatus && <span className={`memory-save-status is-${saveStatus.type}`} role={saveStatus.type === 'error' ? 'alert' : 'status'}>{saveStatus.message}</span>}</div><button disabled={isExecuting || submitting || !feedback.trim()}>{submitting ? 'Remembering…' : 'Remember this'}</button></form>
-      <div className="route-cta-row"><div><p>PROFILE FACTS</p><span>Edit the creator and audience context that persists between sessions.</span></div><button onClick={onOpenOnboarding}>Edit creator context</button></div>
-    </section>
+  const [feedback, setFeedback] = useState(''); const [status, setStatus] = useState(null);
+  const memories = getDisplayMemories(memoryState); const objective = memoryState?.creator_objectives?.[0];
+  const profile = memoryState?.creator_profile || memoryState?.profile || {};
+  const channelFacts = [profile.channel_name, profile.creator_type, profile.audience].filter(Boolean);
+  const submit = async event => { event.preventDefault(); if (!feedback.trim()) return; setStatus('Saving…'); try { const result = await onSubmitFeedback(feedback.trim()); setFeedback(''); setStatus(result.created === false ? 'Already saved.' : 'Saved.'); } catch { setStatus('Could not save this preference.'); } };
+  return <div className="creator-desk business-page">
+    <header className="desk-heading"><p>YOUR BUSINESS</p><h1>The context behind better decisions.</h1><span>You can see and correct what GreenRoom carries forward.</span></header>
+    <div className="business-grid">
+      <section><div className="section-label"><p>Goal</p><span>Told by you</span></div><h2>{objective?.title || 'No goal has been added yet.'}</h2>{objective?.details && <p>{objective.details}</p>}</section>
+      <section><div className="section-label"><p>Constraints & preferences</p><span>Told by you</span></div>{memories.length ? <ul>{memories.map((item, index) => <li key={`${item}-${index}`}>{item}</li>)}</ul> : <p className="soft-empty">No constraints or preferences saved yet.</p>}</section>
+      <section><div className="section-label"><p>Channel & audience</p><span>Told by you</span></div>{channelFacts.length ? <ul>{channelFacts.map(item => <li key={item}>{item}</li>)}</ul> : <p className="soft-empty">No channel details are available yet.</p>}<button className="text-button" onClick={onOpenOnboarding}>Edit your context</button></section>
+      <section><div className="section-label"><p>Observed patterns</p><span>Observed from analytics</span></div><p className="soft-empty">No analytics observations are available in this experience yet.</p></section>
+    </div>
+    <form className="preference-form" onSubmit={submit}><div><label htmlFor="preference">Add a preference</label><span>Something GreenRoom should remember when weighing future decisions.</span></div><div><input id="preference" value={feedback} onChange={event => { setFeedback(event.target.value); setStatus(null); }} placeholder="For example: Prefer low-cost tools"/><button disabled={isExecuting || !feedback.trim()}>Remember</button></div>{status && <small role="status">{status}</small>}</form>
   </div>;
 }
-
 export default MemoryPage;

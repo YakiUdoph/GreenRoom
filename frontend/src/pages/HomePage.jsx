@@ -1,89 +1,34 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { cleanDecisionText } from '../lib/decisionText';
 import { currentHomeResult, homeResultState } from '../lib/homeResult';
+import { normalizeCreatorDecision } from '../lib/creatorDecision';
 
-export const supportedExamples = [
-  ['YouTube changes', 'Tell me when YouTube changes something that could affect my channel.'],
-  ['AI video tools', 'Watch for meaningful AI video-tool updates.'],
-  ['Twitch opportunities', 'Watch for Twitch creator earning or sponsorship opportunities.'],
-];
+export const supportedExamples = [['YouTube changes', 'Tell me when YouTube changes something that could affect my channel.'], ['AI video tools', 'Watch for meaningful AI video-tool updates.'], ['Twitch opportunities', 'Watch for Twitch creator earning or sponsorship opportunities.']];
 export const populateSupportedExample = (setGoal, example) => setGoal(example);
-const steps = [
-  ['01', '◎', 'Tell us your goal', "Share what you're working toward and what matters to you."],
-  ['02', '◉', 'Your Mind remembers', 'Your preferences and past decisions carry forward.'],
-  ['03', '✦', 'Get useful decisions', 'When something relevant changes, GreenRoom tells you what changed, why it matters, and what to do next.'],
-];
-const clean = (value = '') => cleanDecisionText(String(value).replaceAll('_', ' '));
+const verdict = value => ({ ACT_NOW: 'Act now', KEEP_WATCHING: 'Keep watching', IGNORE_FOR_NOW: 'Ignore for now' }[value] || 'Worth your attention');
 
-export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreateObjective, isExecuting }) {
+export function HomePage({ memoryState, onOpenOfflineModal, onCreateObjective, isExecuting }) {
   const objective = memoryState?.creator_objectives?.[0];
   const run = memoryState?.latest_offline_run;
   const briefing = memoryState?.latest_briefing;
-  const runStatus = run?.status;
-  const currentItem = currentHomeResult(run, briefing);
   const [goal, setGoal] = useState(objective?.title || '');
-
-  useEffect(() => {
-    setGoal(objective?.title || '');
-  }, [objective?.title]);
-
-  const resultState = useMemo(() => homeResultState(run, briefing), [run, briefing]);
-
-  const submitGoal = async (event) => {
-    event.preventDefault();
-    const title = goal.trim();
-    if (!title) return;
-    const result = await onCreateObjective(title);
-    setTimeout(() => onOpenOfflineModal(result.run), 0);
-  };
-
-  return <div className="manus-home home-compressed">
-    <section className="new-hero home-goal" aria-labelledby="home-title">
-      <div className="hero-intro home-goal__content">
-        <p className="hero-overline">FOR INDEPENDENT CREATORS</p>
-        <h1 id="home-title">You create.<br />GreenRoom<br /><em>keeps watch.</em></h1>
-        <p>GreenRoom remembers what matters to you and checks supported creator sources when you ask. Your persistent Mind uses what GreenRoom remembers about you to decide whether verified evidence deserves your attention.</p>
-        <form className="goal-form" onSubmit={submitGoal}>
-          <label htmlFor="watch-goal">What should GreenRoom keep watch on?</label>
-          <div className="goal-entry">
-            <input id="watch-goal" value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="e.g. Find better tools for making my videos" autoFocus={Boolean(objective)} required />
-            <button type="submit" disabled={isExecuting || !goal.trim()}>Keep watch <span aria-hidden="true">→</span></button>
-          </div>
-        </form>
-        <div className="supported-examples" aria-label="Supported objective examples">{supportedExamples.map(([label, example]) => <button type="button" key={label} onClick={() => populateSupportedExample(setGoal, example)}>{label}</button>)}</div>
-        <p className="coverage-note"><span aria-hidden="true">✓</span><span><strong>User-triggered checks currently support AI-video tools, selected YouTube platform changes, and selected Twitch creator opportunities.</strong><small>Checks official Adobe, YouTube, and Twitch sources.</small></span></p>
-      </div>
-      <aside className="hero-result-toast" aria-label="Current product status">
-        <span>CURRENT STATUS</span>
-        <strong>{resultState === 'working' ? 'CHECKING LIVE SOURCES' : resultState === 'result' ? 'DECISION READY' : resultState === 'failed' ? 'CHECK FAILED' : resultState === 'no-update' ? 'NOTHING NEEDS ATTENTION' : resultState === 'unsupported' ? 'NO LIVE COVERAGE' : 'READY TO WATCH'}</strong>
-        <p>{resultState === 'working' ? 'GreenRoom is checking supported first-party sources.' : resultState === 'result' ? 'A verified result is ready to review.' : resultState === 'failed' ? 'No result was created or substituted.' : resultState === 'no-update' ? 'The latest check found no relevant fresh evidence.' : resultState === 'unsupported' ? 'Choose one of the supported examples to run a live check.' : 'Start with a supported goal above.'}</p>
-      </aside>
+  useEffect(() => setGoal(objective?.title || ''), [objective?.title]);
+  const state = useMemo(() => homeResultState(run, briefing), [run, briefing]);
+  const decision = useMemo(() => normalizeCreatorDecision(currentHomeResult(run, briefing) ? briefing : null), [run, briefing]);
+  const submit = async event => { event.preventDefault(); if (!goal.trim()) return; const result = await onCreateObjective(goal.trim()); setTimeout(() => onOpenOfflineModal(result.run), 0); };
+  return <div className="creator-desk today-page">
+    <header className="desk-heading"><p>TODAY</p><h1>What deserves your attention.</h1><span>One current decision, grounded in what GreenRoom can verify.</span></header>
+    <section className={`attention-card state-${state}`} aria-live="polite">
+      {state === 'result' && decision ? <><div className="attention-topline"><strong>{verdict(decision.attention)}</strong>{decision.connection && <span>Connection: {decision.connection.toLowerCase()}</span>}</div><h2>{decision.headline}</h2><div className="decision-sections">
+        {decision.noticed && <section><p>What I noticed</p><div>{decision.noticed}</div></section>}{decision.why && <section><p>Why this matters to you</p><div>{decision.why}</div></section>}{decision.action && <section className="next-action"><p>What I’d do next</p><div>{decision.action}</div></section>}{decision.uncertainty && <section className="uncertainty"><p>What’s uncertain</p><div>{decision.uncertainty}</div></section>}
+      </div><footer>{decision.live ? 'Verified live evidence' : 'Verified run evidence'}{decision.verified ? ' · Decision by Udophia' : ''}</footer></> : <div className="attention-empty">
+        {state === 'working' && <><span className="watch-pulse"/><h2>GreenRoom is checking what changed.</h2><p>You can leave and come back. An older decision will not replace this check.</p></>}
+        {state === 'no-update' && <><h2>Nothing needs your attention right now.</h2><p>GreenRoom checked the supported evidence and found no reason to change what you’re doing.</p></>}
+        {state === 'failed' && <><h2>This check didn’t complete.</h2><p>No older result has been substituted.</p><button onClick={onOpenOfflineModal}>Try again</button></>}
+        {state === 'unsupported' && <><h2>GreenRoom can’t watch this area live yet.</h2><p>Try one of the supported areas below. GreenRoom will not manufacture an update.</p></>}
+        {state === 'empty' && <><h2>Nothing needs your attention yet.</h2><p>Tell GreenRoom what to watch. A decision appears only after a genuine check completes.</p></>}
+      </div>}
     </section>
-
-    <section className="process-story home-process" aria-labelledby="process-title">
-      <div className="process-heading"><div><p>HOW IT WORKS</p><h2 id="process-title">Three steps to useful decisions</h2></div></div>
-      <ol className="process-strip">{steps.map(([number, icon, title, copy]) => <li key={number}>
-        <span className="process-number">{number}</span><span className="process-icon" aria-hidden="true">{icon}</span><div><h3>{title}</h3><p>{copy}</p></div>
-      </li>)}</ol>
-    </section>
-
-    <section className="return-story home-result" aria-labelledby="result-title">
-      <div className="home-result__visual" role="img" aria-label="Camera beside a creator video-editing workstation" />
-      <article className={`result-preview is-${resultState}`}>
-        <header className="result-preview__heading"><span>{currentItem ? 'LATEST RESULT' : 'YOUR RESULTS'}</span><h2 id="result-title">A change becomes <em>a decision.</em></h2></header>
-        {resultState === 'working' ? <div className="result-message"><span className="watch-pulse" /><strong>GreenRoom is watching</strong><p>Your Mind is deciding whether the latest changes matter to you. You can come back later.</p></div>
-        : resultState === 'unsupported' ? <div className="result-message"><strong>GreenRoom can't watch this category live yet.</strong><p>Try AI-video tools, selected YouTube platform changes, or selected Twitch creator opportunities.</p></div>
-        : resultState === 'failed' ? <div className="result-message"><strong>This check didn't complete.</strong><p>No older result has been substituted. Try checking again when you're ready.</p><button type="button" onClick={onOpenOfflineModal}>Try again</button></div>
-        : resultState === 'no-update' ? <div className="result-message"><strong>Nothing needs your attention right now.</strong><p>GreenRoom checked the current sources and found no relevant update.</p></div>
-        : resultState === 'empty' ? <div className="result-message"><strong>Nothing to review yet.</strong><p>Tell GreenRoom what matters to you and run your first live check. No recommendation appears until a genuine run completes.</p></div>
-        : <><dl>
-          <div><span className="result-icon" aria-hidden="true">↗</span><div><dt>WHAT CHANGED</dt><dd>{clean(currentItem.what_changed)}</dd></div></div>
-          <div><span className="result-icon" aria-hidden="true">◇</span><div><dt>WHY IT MATTERS TO YOU</dt><dd>{clean(currentItem.why_it_matters)}</dd></div></div>
-          <div><span className="result-icon" aria-hidden="true">✓</span><div><dt>WHAT TO DO NEXT</dt><dd>{clean(currentItem.recommended_action)}</dd></div></div>
-        </dl><footer><span aria-hidden="true">◇</span> Based on verified first-party sources · Decision by verified persistent Mind: Udophia</footer><button type="button" onClick={() => onNavigate('intelligence')}>See full result</button></>}
-      </article>
-    </section>
+    <section className="watch-panel"><div><p>YOUR WATCH</p><h2>Keep an eye on something specific.</h2><span>Checks run only when you ask, across the supported first-party sources below.</span></div><form onSubmit={submit}><label htmlFor="watch-goal">What should GreenRoom watch?</label><div><input id="watch-goal" value={goal} onChange={event => setGoal(event.target.value)} placeholder="A creator change that matters to you" required/><button disabled={isExecuting || !goal.trim()}>{isExecuting ? 'Starting…' : 'Check now'}</button></div></form><div className="supported-examples">{supportedExamples.map(([label, example]) => <button type="button" key={label} onClick={() => setGoal(example)}>{label}</button>)}</div><small>Current coverage: selected official Adobe AI-video, YouTube platform, and Twitch creator updates.</small></section>
   </div>;
 }
-
 export default HomePage;
