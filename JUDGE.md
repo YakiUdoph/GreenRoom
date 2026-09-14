@@ -40,6 +40,8 @@ The Mind chooses; provider/domain code does not.
 
 A live briefing must say `evidence_mode: LIVE`, retain an allowlisted first-party URL, and include publication/retrieval timestamps. The UI links to that exact source. Historical simulated records remain labeled and are not current live proof.
 
+GreenRoom does not substitute simulated intelligence when live execution fails. Homepage empty states contain no fabricated recommendations.
+
 ## Relevant source files
 
 - `api/live-evidence.mjs` — provider registry and validation.

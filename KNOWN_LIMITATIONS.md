@@ -11,4 +11,6 @@
 - The frontend has no configured lint/type-check command or automated browser/mobile test suite. Responsive CSS exists, but visual coverage is manual.
 - The target user, demand, willingness to pay, and product-market fit have not been validated by repository evidence.
 - Local file and ephemeral persistence modes are not equivalent to production durability and are labeled separately.
-- Legacy simulated helpers remain for explicit demo/tests. `Demo Dataset (Simulated)` never constitutes live research.
+- Historical persisted briefings may predate the live-provider architecture and remain visibly labeled in history. They can never become the current run's result.
+
+GreenRoom does not substitute simulated intelligence when live execution fails. Homepage empty states contain no fabricated recommendations.

@@ -40,7 +40,9 @@ Udophia (`udophia@hellominds.ai`, UUID `8208493e-f36b-1410-8466-00039ce7df11`) i
 | `PLATFORM_CHANGES` | `YOUTUBE_OFFICIAL_BLOG` | YouTube Official Blog RSS |
 | `CREATOR_OPPORTUNITIES` | `TWITCH_OFFICIAL_BLOG` | Twitch Official Blog |
 
-Also live when production dependencies are configured: durable objectives and Memory, signed QStash background runs, relevant-Memory selection, Udophia identity/reply verification, run-specific results, feedback, and history. Unsupported objectives return an honest no-provider state. The explicitly labeled `Demo Dataset (Simulated)` path and test fixtures are not live evidence.
+Also live when production dependencies are configured: durable objectives and Memory, signed QStash background runs, relevant-Memory selection, Udophia identity/reply verification, run-specific results, feedback, and history. Unsupported objectives return an honest no-provider state.
+
+GreenRoom does not substitute simulated intelligence when live execution fails. Homepage empty states contain no fabricated recommendations.
 
 ## Example flow
 
@@ -73,7 +75,7 @@ python server.py
 npm --prefix frontend run dev
 ```
 
-Copy `.env.example` to an ignored local file only when exercising configured integrations. Production execution requires QStash, durable Upstash Redis/KV, and Minds Builder credentials. `DEMO_MODE=true` is simulated and must never be represented as live.
+Copy `.env.example` to an ignored local file only when exercising configured integrations. Production execution requires QStash, durable Upstash Redis/KV, and Minds Builder credentials. Local test configuration must never be represented as live execution.
 
 ## Tests
 

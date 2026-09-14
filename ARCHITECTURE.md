@@ -37,4 +37,4 @@ FEEDBACK → MEMORY
 
 GreenRoom controls binding, provider allowlists, evidence validation, Memory selection, orchestration, parsing, persistence, and delivery. First-party publishers control source availability; QStash controls delivery timing; Upstash provides production durability; Udophia supplies the personalized verdict and explanation. Any unavailable, mismatched, malformed, or late outcome remains non-success.
 
-The legacy simulated path remains explicitly labeled and separate from normal live evidence execution. See [CURRENT_STATE_AUDIT.md](CURRENT_STATE_AUDIT.md).
+The production worker has one submission path: supported live evidence to the verified persistent Mind. It has no simulated or deterministic briefing fallback. See [CURRENT_STATE_AUDIT.md](CURRENT_STATE_AUDIT.md).

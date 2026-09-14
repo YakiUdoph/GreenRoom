@@ -27,11 +27,11 @@ Live capability depends on valid production configuration and the availability o
 
 ## 3. What is simulated, mock, or test-only
 
-- `classifyObjectiveSignals` and its `Demo Dataset (Simulated)` candidates remain in `api/worker-guards.mjs` for the explicitly simulated/legacy path.
-- `buildDeterministicLiveBriefing` exists as a provider-neutral deterministic helper and is exercised by tests; the normal live worker submits live evidence to Minds and does not use deterministic completion as a hidden production fallback.
 - Tests use fake Redis, fake Minds clients, fixed source payloads, and controlled clocks. These validate behavior but are not live product runs.
-- The homepage result preview is illustrative and labeled as an example; it is not a persisted result.
+- Historical persisted briefings may contain explicitly labeled pre-live evidence and remain historical only.
 - The untracked `greenroom-redesign/` tree is not part of the tracked production application or root build.
+
+The executable simulated-candidate classifier, simulated Minds prompt, legacy worker branch, deterministic briefing generator, and fabricated homepage result were removed in the real-product pass. GreenRoom does not substitute simulated intelligence when live execution fails. Homepage empty states contain no fabricated recommendations.
 
 ## 4. Current supported evidence domains and providers
 
@@ -90,7 +90,7 @@ The live prompt forbids fixed provider/domain verdict mappings and unsupported a
 
 ## 10. Judge-readiness weaknesses
 
-- The homepage promise and primary question are close to the desired framing but not exact, and the illustrative preview competes with the real golden path.
+- The homepage now uses the desired promise, a single primary action, supported objective examples, and a truthful current-status card. It contains no fabricated result preview.
 - A judge has no single repository guide with an exact, low-risk verification flow.
 - Proof is split across the Intelligence page rather than presented as a compact expandable verification block.
 - The lifecycle modal exposes transport and implementation jargon and includes stale scripted claims (including a `$45 CPM benchmark`) that are unrelated to current state.

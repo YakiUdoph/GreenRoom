@@ -1,13 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { cleanDecisionText } from '../lib/decisionText';
+import { currentHomeResult, homeResultState } from '../lib/homeResult';
 
-const WORKING_STATES = ['QUEUED', 'RUNNING', 'WORKING', 'SUBMITTING', 'WAITING_FOR_MINDS'];
-const exampleResult = {
-  title: 'A useful tool update, interpreted for your workflow',
-  what_changed: 'An AI video tool added a faster way to clean up dialogue and prepare clips for editing.',
-  why_it_matters: 'It could shorten a repetitive part of your workflow without forcing you to change your whole setup.',
-  recommended_action: 'Try it on one short clip and compare the time and quality with your current process.',
-};
+const supportedExamples = [
+  'Tell me when YouTube changes something that could affect my channel.',
+  'Watch for meaningful AI video-tool updates.',
+  'Watch for Twitch creator earning or sponsorship opportunities.',
+];
 const steps = [
   ['01', '◎', 'Tell us your goal', "Share what you're working toward and what matters to you."],
   ['02', '◉', 'Your Mind remembers', 'Your preferences and past decisions carry forward.'],
@@ -20,26 +19,14 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
   const run = memoryState?.latest_offline_run;
   const briefing = memoryState?.latest_briefing;
   const runStatus = run?.status;
-  const isWorking = WORKING_STATES.includes(runStatus);
-  const isCurrentBriefing = runStatus === 'COMPLETED'
-    && briefing?.run_id === run?.run_id
-    && briefing?.objective_id === run?.objective_id;
-  const currentItem = isCurrentBriefing && Array.isArray(briefing?.items) ? briefing.items[0] : null;
-  const result = currentItem || exampleResult;
-  const isExample = !currentItem;
+  const currentItem = currentHomeResult(run, briefing);
   const [goal, setGoal] = useState(objective?.title || '');
 
   useEffect(() => {
     setGoal(objective?.title || '');
   }, [objective?.title]);
 
-  const resultState = useMemo(() => {
-    if (runStatus === 'UNSUPPORTED_DOMAIN') return 'unsupported';
-    if (runStatus === 'FAILED') return 'failed';
-    if (runStatus === 'NO_RELEVANT_UPDATE') return 'no-update';
-    if (isWorking) return 'working';
-    return 'result';
-  }, [isWorking, runStatus]);
+  const resultState = useMemo(() => homeResultState(run, briefing), [run, briefing]);
 
   const submitGoal = async (event) => {
     event.preventDefault();
@@ -62,13 +49,13 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
             <button type="submit" disabled={isExecuting || !goal.trim()}>Keep watch <span aria-hidden="true">→</span></button>
           </div>
         </form>
-        <p className="coverage-note"><span aria-hidden="true">✓</span><span><strong>Live monitoring currently supports creator tools, selected platform changes, and selected creator opportunities.</strong><small>Monitoring bounded first-party Adobe, YouTube, and Twitch sources.</small></span></p>
+        <div className="supported-examples" aria-label="Supported objective examples">{supportedExamples.map(example => <button type="button" key={example} onClick={() => setGoal(example)}>{example}</button>)}</div>
+        <p className="coverage-note"><span aria-hidden="true">✓</span><span><strong>Live coverage currently includes selected Adobe creator-tool updates, YouTube platform changes, and Twitch creator opportunities.</strong><small>Each user-triggered check uses supported first-party sources.</small></span></p>
       </div>
-      <aside className="hero-result-toast" aria-label="Illustrative product preview">
-        <span>ILLUSTRATIVE PREVIEW</span>
-        <strong>GreenRoom found something</strong>
-        <p>New AI video tools and updates that match your goal.</p>
-        <span>Example only — submit your objective for a live check.</span>
+      <aside className="hero-result-toast" aria-label="Current product status">
+        <span>CURRENT STATUS</span>
+        <strong>{resultState === 'working' ? 'CHECKING LIVE SOURCES' : resultState === 'result' ? 'DECISION READY' : resultState === 'failed' ? 'CHECK FAILED' : resultState === 'no-update' ? 'NOTHING NEEDS ATTENTION' : resultState === 'unsupported' ? 'NO LIVE COVERAGE' : 'READY TO WATCH'}</strong>
+        <p>{resultState === 'working' ? 'GreenRoom is checking supported first-party sources.' : resultState === 'result' ? 'A verified result is ready to review.' : resultState === 'failed' ? 'No result was created or substituted.' : resultState === 'no-update' ? 'The latest check found no relevant fresh evidence.' : resultState === 'unsupported' ? 'Choose one of the supported examples to run a live check.' : 'Start with a supported goal above.'}</p>
       </aside>
     </section>
 
@@ -82,16 +69,17 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
     <section className="return-story home-result" aria-labelledby="result-title">
       <div className="home-result__visual" role="img" aria-label="Camera beside a creator video-editing workstation" />
       <article className={`result-preview is-${resultState}`}>
-        <header className="result-preview__heading"><span>{isExample ? 'RESULT PREVIEW · EXAMPLE' : 'LATEST RESULT'}</span><h2 id="result-title">A change becomes <em>a decision.</em></h2></header>
+        <header className="result-preview__heading"><span>{currentItem ? 'LATEST RESULT' : 'YOUR RESULTS'}</span><h2 id="result-title">A change becomes <em>a decision.</em></h2></header>
         {resultState === 'working' ? <div className="result-message"><span className="watch-pulse" /><strong>GreenRoom is watching</strong><p>Your Mind is deciding whether the latest changes matter to you. You can come back later.</p></div>
         : resultState === 'unsupported' ? <div className="result-message"><strong>GreenRoom can't watch this category live yet.</strong><p>Try AI-video tools, selected YouTube platform changes, or selected Twitch creator opportunities.</p></div>
         : resultState === 'failed' ? <div className="result-message"><strong>This check didn't complete.</strong><p>No older result has been substituted. Try checking again when you're ready.</p><button type="button" onClick={onOpenOfflineModal}>Try again</button></div>
         : resultState === 'no-update' ? <div className="result-message"><strong>Nothing needs your attention right now.</strong><p>GreenRoom checked the current sources and found no relevant update.</p></div>
+        : resultState === 'empty' ? <div className="result-message"><strong>Nothing to review yet.</strong><p>Tell GreenRoom what matters to you and run your first live check. No recommendation appears until a genuine run completes.</p></div>
         : <><dl>
-          <div><span className="result-icon" aria-hidden="true">↗</span><div><dt>WHAT CHANGED</dt><dd>{clean(result.what_changed)}</dd></div></div>
-          <div><span className="result-icon" aria-hidden="true">◇</span><div><dt>WHY IT MATTERS TO YOU</dt><dd>{clean(result.why_it_matters)}</dd></div></div>
-          <div><span className="result-icon" aria-hidden="true">✓</span><div><dt>WHAT TO DO NEXT</dt><dd>{clean(result.recommended_action)}</dd></div></div>
-        </dl><footer><span aria-hidden="true">◇</span> Based on verified first-party sources · Powered by Your Mind{isExample ? ' · Example only' : ''}</footer>{currentItem && <button type="button" onClick={() => onNavigate('intelligence')}>See full result</button>}</>}
+          <div><span className="result-icon" aria-hidden="true">↗</span><div><dt>WHAT CHANGED</dt><dd>{clean(currentItem.what_changed)}</dd></div></div>
+          <div><span className="result-icon" aria-hidden="true">◇</span><div><dt>WHY IT MATTERS TO YOU</dt><dd>{clean(currentItem.why_it_matters)}</dd></div></div>
+          <div><span className="result-icon" aria-hidden="true">✓</span><div><dt>WHAT TO DO NEXT</dt><dd>{clean(currentItem.recommended_action)}</dd></div></div>
+        </dl><footer><span aria-hidden="true">◇</span> Based on verified first-party sources · Decision by your verified persistent Mind</footer><button type="button" onClick={() => onNavigate('intelligence')}>See full result</button></>}
       </article>
     </section>
   </div>;

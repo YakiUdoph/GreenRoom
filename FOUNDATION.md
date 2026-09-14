@@ -32,6 +32,10 @@ Use the setup and commands in `README.md`. Tests use fixtures/mocks; do not add 
 
 See `KNOWN_LIMITATIONS.md`. No lint/type-check script or automated visual/mobile test exists in the tracked frontend.
 
+The executable simulated-candidate and deterministic-briefing helpers were removed in the real-product pass. The production worker now has only the supported live-evidence → Memory → verified Mind path. GreenRoom does not substitute simulated intelligence when live execution fails, and homepage empty states contain no fabricated recommendations.
+
+Real-product pass verification: Python `23/23` passed, Node/API/frontend `101/101` passed, and the Vite production build passed with 436 modules transformed. These tests use controlled fixtures and made no external Minds or provider call.
+
 ## Final status
 
 **CONDITIONAL PASS** — the implemented contracts are strongly covered by automated tests, but external Minds reliability, live deployment state, browser/mobile behavior, and product demand require separate evidence.

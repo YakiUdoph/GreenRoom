@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import {
-  buildDeterministicLiveBriefing,
   classifyLiveDomain,
   fetchAdobeLiveEvidence,
   fetchYouTubePlatformChanges,
@@ -296,45 +295,6 @@ test("source fetch records latency and fails safely for HTTP and malformed JSON"
   await assert.rejects(fetchAdobeLiveEvidence({ fetchImpl: async () => ({ ok: true, async json() { throw new Error("bad"); } }) }), (error) => error.code === "MALFORMED_SOURCE");
 });
 
-test("deterministic briefing discloses that Minds was not involved and preserves objective binding", () => {
-  const objective = { objective_id: "obj_1", title: "Improve my AI video workflow", constraints: "", fingerprint: "fp_1" };
-  const evidence = normalizeAdobeItem(currentVideo, { now: NOW });
-  const briefing = buildDeterministicLiveBriefing({
-    runId: "run_1", objective, evidence,
-    memorySelection: { context: { learned_rules: ["Prefer free or low-cost tools."], memory_nodes: [] } },
-    startedAt: NOW.toISOString(), completedAt: NOW.toISOString(),
-  });
-  assert.equal(briefing.run_id, "run_1");
-  assert.equal(briefing.objective_snapshot.fingerprint, "fp_1");
-  assert.equal(briefing.minds_verified, false);
-  assert.equal(briefing.decision_engine, "GREENROOM_DETERMINISTIC_LIVE_CORE");
-  assert.equal(briefing.sources[0].source_url, evidence.source_url);
-  assert.match(briefing.items[0].recommended_action, /Prefer free or low-cost tools/);
-});
-
-test("deterministic lifecycle accepts the provider-neutral evidence contract", () => {
-  const evidence = {
-    source: "First-party creator source",
-    source_url: "https://example.com/creator-update",
-    published_at: "2026-08-20T00:00:00.000Z",
-    retrieved_at: NOW.toISOString(),
-    title: "A creator workflow update",
-    summary: "A verified first-party workflow capability was published.",
-    evidence_mode: "LIVE",
-  };
-  const briefing = buildDeterministicLiveBriefing({
-    runId: "run_generic",
-    objective: { objective_id: "obj_generic", title: "Track creator workflow changes", constraints: "", fingerprint: "fp_generic" },
-    evidence,
-    memorySelection: { context: { learned_rules: [], memory_nodes: [] } },
-    startedAt: NOW.toISOString(),
-    completedAt: NOW.toISOString(),
-  });
-  assert.equal(briefing.items[0].category, "live_creator_evidence");
-  assert.equal(briefing.sources[0], evidence);
-  assert.equal(JSON.stringify(briefing).includes("Adobe"), false);
-});
-
 class FakeRedis {
   constructor(values = {}) { this.values = new Map(Object.entries(values)); }
   async get(key) { return this.values.get(key) ?? null; }
@@ -358,6 +318,7 @@ function liveRun(profile = { learned_voice_rules: [], memory_nodes: [] }) {
 test("normal live worker submits verified evidence to Minds without deterministic completion", async () => {
   const { objective, redis } = liveRun({ learned_voice_rules: ["Prefer free or low-cost tools."], memory_nodes: [] });
   const mindsClient = {
+    async getMind() { return { mindId: "8208493e-f36b-1410-8466-00039ce7df11", email: "udophia@hellominds.ai", walletAddress: "0xB675Ec9857776678aE540cF3248d898f015987Cb", isEnabled: true }; },
     async ensureConversation(alias) { return { conversationId: "conversation-safe", alias }; },
     async getLatestHistoryFingerprint() { return "fp-before"; },
     async sendMessage({ messageText }) {
