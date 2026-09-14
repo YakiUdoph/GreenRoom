@@ -232,6 +232,8 @@ The V2 run fingerprint binds the context version and field values, analytics imp
 
 Reconstructed Mind text is captured before strict parsing in a private operational diagnostic at `greenroom:v2_diagnostic:{run_id}`. A rejected response leaves that separate record with bounded provenance, hashes, a sanitized parser error, and `decision_persisted: false`; it is never part of creator History and cannot stand in for `greenroom:v2_decision:{run_id}`. After strict validation and successful decision persistence, the full-text diagnostic is deleted because the accepted decision already retains the required provenance. Failed-response diagnostics require an explicit access-controlled retention and deletion policy before production use; the exact retention duration remains a policy decision.
 
+Every attempted V2 submission also has a private lifecycle record at `greenroom:v2_run:{run_id}`, persisted as `PREPARED` before submission and updated to `SUBMITTED` / `WAITING` only after the SDK submission resolves. The current SSE boundary reliably observes `REPLY_RECEIVED`, local `TIMED_OUT`, and callback `TRANSPORT_ERROR`; `STREAM_CLOSED` is modeled but cannot be distinguished reliably unless the SDK reports closure. A timeout creates neither a reply diagnostic nor a decision. Run records are reloadable only for operational inspection and never enter creator History. No late-reply reconciliation or automatic retry exists: a reply arriving after local timeout cannot create a decision without future explicit orchestration that proves exact-run provenance and executes the unchanged strict validation path.
+
 ## Existing modules to reuse
 
 | Existing file/module | Reuse in V2 |
