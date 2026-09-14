@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { cleanDecisionText } from '../lib/decisionText';
 import { currentHomeResult, homeResultState } from '../lib/homeResult';
 
-const supportedExamples = [
-  'Tell me when YouTube changes something that could affect my channel.',
-  'Watch for meaningful AI video-tool updates.',
-  'Watch for Twitch creator earning or sponsorship opportunities.',
+export const supportedExamples = [
+  ['YouTube changes', 'Tell me when YouTube changes something that could affect my channel.'],
+  ['AI video tools', 'Watch for meaningful AI video-tool updates.'],
+  ['Twitch opportunities', 'Watch for Twitch creator earning or sponsorship opportunities.'],
 ];
+export const populateSupportedExample = (setGoal, example) => setGoal(example);
 const steps = [
   ['01', '◎', 'Tell us your goal', "Share what you're working toward and what matters to you."],
   ['02', '◉', 'Your Mind remembers', 'Your preferences and past decisions carry forward.'],
@@ -41,7 +42,7 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
       <div className="hero-intro home-goal__content">
         <p className="hero-overline">FOR INDEPENDENT CREATORS</p>
         <h1 id="home-title">You create.<br />GreenRoom<br /><em>keeps watch.</em></h1>
-        <p>GreenRoom remembers what matters to you, watches supported creator sources, and brings back the changes and opportunities worth your attention.</p>
+        <p>GreenRoom remembers what matters to you and checks supported creator sources when you ask. Your persistent Mind uses what GreenRoom remembers about you to decide whether verified evidence deserves your attention.</p>
         <form className="goal-form" onSubmit={submitGoal}>
           <label htmlFor="watch-goal">What should GreenRoom keep watch on?</label>
           <div className="goal-entry">
@@ -49,8 +50,8 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
             <button type="submit" disabled={isExecuting || !goal.trim()}>Keep watch <span aria-hidden="true">→</span></button>
           </div>
         </form>
-        <div className="supported-examples" aria-label="Supported objective examples">{supportedExamples.map(example => <button type="button" key={example} onClick={() => setGoal(example)}>{example}</button>)}</div>
-        <p className="coverage-note"><span aria-hidden="true">✓</span><span><strong>Live coverage currently includes selected Adobe creator-tool updates, YouTube platform changes, and Twitch creator opportunities.</strong><small>Each user-triggered check uses supported first-party sources.</small></span></p>
+        <div className="supported-examples" aria-label="Supported objective examples">{supportedExamples.map(([label, example]) => <button type="button" key={label} onClick={() => populateSupportedExample(setGoal, example)}>{label}</button>)}</div>
+        <p className="coverage-note"><span aria-hidden="true">✓</span><span><strong>User-triggered checks currently support AI-video tools, selected YouTube platform changes, and selected Twitch creator opportunities.</strong><small>Checks official Adobe, YouTube, and Twitch sources.</small></span></p>
       </div>
       <aside className="hero-result-toast" aria-label="Current product status">
         <span>CURRENT STATUS</span>
@@ -79,7 +80,7 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
           <div><span className="result-icon" aria-hidden="true">↗</span><div><dt>WHAT CHANGED</dt><dd>{clean(currentItem.what_changed)}</dd></div></div>
           <div><span className="result-icon" aria-hidden="true">◇</span><div><dt>WHY IT MATTERS TO YOU</dt><dd>{clean(currentItem.why_it_matters)}</dd></div></div>
           <div><span className="result-icon" aria-hidden="true">✓</span><div><dt>WHAT TO DO NEXT</dt><dd>{clean(currentItem.recommended_action)}</dd></div></div>
-        </dl><footer><span aria-hidden="true">◇</span> Based on verified first-party sources · Decision by your verified persistent Mind</footer><button type="button" onClick={() => onNavigate('intelligence')}>See full result</button></>}
+        </dl><footer><span aria-hidden="true">◇</span> Based on verified first-party sources · Decision by verified persistent Mind: Udophia</footer><button type="button" onClick={() => onNavigate('intelligence')}>See full result</button></>}
       </article>
     </section>
   </div>;
