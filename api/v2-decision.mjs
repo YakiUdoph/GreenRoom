@@ -336,7 +336,10 @@ export function parseV2MindResponse(
 ) {
   const value = nonEmpty(text, "V2 Mind response")
     .replace(/\r\n/g, "\n")
+    .replace(/<br *\/?>/gi, "\n")
     .trim();
+  if (/<\/?[a-z][^>]*>/i.test(value))
+    throw new Error("V2 Mind response contains unsupported HTML");
   const headerPattern =
     /^(ATTENTION|WHAT I NOTICED|WHY THIS MATTERS TO YOU|WHAT I'D DO NEXT|CONNECTION|UNCERTAINTY)\s*:\s*/gim;
   const headers = [...value.matchAll(headerPattern)];
@@ -490,6 +493,7 @@ function sanitizedParserError(error) {
     "V2 Mind response has invalid CONNECTION value",
     "V2 decision lacks valid personalization provenance",
     "V2 Mind response must be a non-empty string",
+    "V2 Mind response contains unsupported HTML",
   ];
   return allowed.find((item) => message.startsWith(item))
     ? message.slice(0, 500)

@@ -61,6 +61,10 @@ CONNECTION: POSSIBLE
 UNCERTAINTY:
 There is no evidence that the announcement caused the viewing decline.`;
 
+const GENUINE_BR_REPLY = `ATTENTION: KEEP_WATCHING<br><br>WHAT I NOTICED:<br>YouTube published "5 design principles we use to put creators center stage," announcing the design principles behind YouTube's latest interface updates, built to reduce visual clutter and keep creator videos front and center. Your channel's view_momentum is currently STABLE at 38 versus 36 (+5.6%) [REF:signal:signal_import_a60f22cca0af54b3_view_momentum].<br><br>WHY THIS MATTERS TO YOU:<br>The principles describe a YouTube-side change aimed at making creator content more visible, which aligns with your goal of growing channel performance without increasing upload frequency [REF:creator_goal]. With view_momentum STABLE, there is no immediate pressure to act, and the update describes principles rather than specific feature rollouts, so the impact on your existing videos is not yet specified.<br><br>WHAT I'D DO NEXT:<br>Check the linked YouTube Official Blog post for any specific interface changes that implement these principles.<br><br>CONNECTION: POSSIBLE<br><br>UNCERTAINTY:<br>Whether and when the design principles will translate to specific interface changes, and how those changes would affect existing videos' presentation.`;
+
+const GENUINE_REFS = ["creator_goal", "signal:signal_import_a60f22cca0af54b3_view_momentum"];
+
 test("creator context requires explicit field-level provenance", () => {
   const valid = validateCreatorContext(creator("Grow YouTube subscribers", "Do not increase upload frequency"));
   assert.equal(valid.primary_goal.source, "CREATOR_SUPPLIED");
@@ -106,6 +110,36 @@ test("V2 response requires all six sections, valid enums, and supplied personali
   assert.throws(() => parseV2MindResponse(VALID_REPLY.replace(/ \[REF:[^\]]+\]/g, ""), { allowedPersonalizationRefs: ["creator_goal", "signal:signal-view"] }), /personalization provenance/);
   assert.throws(() => parseV2MindResponse(VALID_REPLY.replace("signal:signal-view", "signal:not-supplied"), { allowedPersonalizationRefs: ["creator_goal", "signal:signal-view"] }), /personalization provenance/);
   assert.throws(() => parseV2MindResponse(VALID_REPLY.replace("ATTENTION: KEEP_WATCHING", "**ATTENTION:** KEEP_WATCHING"), { allowedPersonalizationRefs: ["creator_goal", "signal:signal-view"] }), /six required sections/);
+});
+
+test("the exact genuine HTML-break reply normalizes to its original six semantic fields", () => {
+  const parsed = parseV2MindResponse(GENUINE_BR_REPLY, { allowedPersonalizationRefs: GENUINE_REFS });
+  assert.deepEqual(parsed, {
+    attention_verdict: "KEEP_WATCHING",
+    what_i_noticed: `YouTube published "5 design principles we use to put creators center stage," announcing the design principles behind YouTube's latest interface updates, built to reduce visual clutter and keep creator videos front and center. Your channel's view_momentum is currently STABLE at 38 versus 36 (+5.6%) [REF:signal:signal_import_a60f22cca0af54b3_view_momentum].`,
+    why_this_matters_to_you: `The principles describe a YouTube-side change aimed at making creator content more visible, which aligns with your goal of growing channel performance without increasing upload frequency [REF:creator_goal]. With view_momentum STABLE, there is no immediate pressure to act, and the update describes principles rather than specific feature rollouts, so the impact on your existing videos is not yet specified.`,
+    what_id_do_next: "Check the linked YouTube Official Blog post for any specific interface changes that implement these principles.",
+    connection: "POSSIBLE",
+    uncertainty: "Whether and when the design principles will translate to specific interface changes, and how those changes would affect existing videos' presentation.",
+    personalization_refs: ["creator_goal"],
+  });
+});
+
+test("only supported HTML break spellings are normalized", () => {
+  for (const breakTag of ["<br>", "<br/>", "<br />", "<BR>", "<Br />"]) {
+    const reply = VALID_REPLY.replaceAll("\n", breakTag);
+    assert.equal(parseV2MindResponse(reply, { allowedPersonalizationRefs: ["creator_goal", "signal:signal-view"] }).attention_verdict, "KEEP_WATCHING");
+  }
+});
+
+test("HTML-break normalization preserves strict contract rejection", () => {
+  const refs = { allowedPersonalizationRefs: GENUINE_REFS };
+  assert.throws(() => parseV2MindResponse(GENUINE_BR_REPLY.replace("WHAT I NOTICED:<br>", ""), refs), /six required sections/);
+  assert.throws(() => parseV2MindResponse(GENUINE_BR_REPLY.replace("KEEP_WATCHING", "WAIT"), refs), /invalid ATTENTION/);
+  assert.throws(() => parseV2MindResponse(GENUINE_BR_REPLY.replace("POSSIBLE", "CAUSED"), refs), /invalid CONNECTION/);
+  assert.throws(() => parseV2MindResponse(GENUINE_BR_REPLY.replace("WHAT I NOTICED:<br>", "CONNECTION: POSSIBLE<br><br>WHAT I NOTICED:<br>"), refs), /six required sections/);
+  assert.throws(() => parseV2MindResponse(GENUINE_BR_REPLY.replace("[REF:creator_goal]", "[REF:not-supplied]"), refs), /personalization provenance/);
+  assert.throws(() => parseV2MindResponse(GENUINE_BR_REPLY.replace("WHAT I NOTICED:<br>", "<section>WHAT I NOTICED:</section>"), refs), /unsupported HTML/);
 });
 
 test("same evidence produces different bounded Mind inputs for different creator contexts without hardcoded verdicts", () => {
