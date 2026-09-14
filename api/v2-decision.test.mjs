@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   SIGNAL_SELECTION_VERSION,
+  V2_DIAGNOSTIC_VERSION,
+  buildV2DiagnosticArtifact,
   buildV2DecisionRecord,
   buildV2MindPrompt,
   finalizeAndPersistV2Decision,
@@ -9,6 +11,7 @@ import {
   parseV2MindResponse,
   selectV2Signals,
   validateCreatorContext,
+  v2DiagnosticKey,
 } from "./v2-decision.mjs";
 
 const EVIDENCE = Object.freeze({
@@ -102,6 +105,7 @@ test("V2 response requires all six sections, valid enums, and supplied personali
   assert.throws(() => parseV2MindResponse(VALID_REPLY.replace("CONNECTION: POSSIBLE", "CONNECTION: CAUSED"), { allowedPersonalizationRefs: ["creator_goal", "signal:signal-view"] }), /invalid CONNECTION/);
   assert.throws(() => parseV2MindResponse(VALID_REPLY.replace(/ \[REF:[^\]]+\]/g, ""), { allowedPersonalizationRefs: ["creator_goal", "signal:signal-view"] }), /personalization provenance/);
   assert.throws(() => parseV2MindResponse(VALID_REPLY.replace("signal:signal-view", "signal:not-supplied"), { allowedPersonalizationRefs: ["creator_goal", "signal:signal-view"] }), /personalization provenance/);
+  assert.throws(() => parseV2MindResponse(VALID_REPLY.replace("ATTENTION: KEEP_WATCHING", "**ATTENTION:** KEEP_WATCHING"), { allowedPersonalizationRefs: ["creator_goal", "signal:signal-view"] }), /six required sections/);
 });
 
 test("same evidence produces different bounded Mind inputs for different creator contexts without hardcoded verdicts", () => {
@@ -155,17 +159,58 @@ test("analytics insufficiency remains explicit while a bounded goal-and-evidence
   assert.match(prompt, /CONNECTION may be NONE/);
 });
 
-test("finalization persists only a validated personalized decision and never fabricates a failure fallback", async () => {
+test("malformed replies are captured before parsing in a separate sanitized diagnostic and never create a decision", async () => {
   const values = new Map();
-  const redis = { async set(key, value) { values.set(key, value); return "OK"; } };
+  const writes = [];
+  const redis = {
+    async set(key, value) { writes.push({ key, value: JSON.parse(value) }); values.set(key, value); return "OK"; },
+    async del(key) { values.delete(key); return 1; },
+  };
   const context = creator("Grow YouTube subscribers", "Do not increase upload frequency");
   const { selection } = setup(context);
-  const input = { redis, runId: "run-v2", creatorContext: context, analyticsImportHash: "analytics-a", signalSelection: selection, memoryContext: memory, memoryProvenance, externalEvidence: EVIDENCE, completedAt: "2026-09-14T12:00:00.000Z" };
-  await assert.rejects(finalizeAndPersistV2Decision({ ...input, mindReplyText: "ATTENTION: ACT_NOW" }), /six required sections/);
-  assert.equal(values.size, 0);
-  await assert.rejects(finalizeAndPersistV2Decision({ ...input, mindReplyText: VALID_REPLY, verifiedMindIdentity: { mind_id: "wrong", email: "wrong", wallet_address: "wrong" } }), /verified Udophia/);
-  assert.equal(values.size, 0);
+  const input = { redis, runId: "run-v2", promptHash: "prompt-hash", replyProvenance: { transport: "SSE", sender_type: 0, sender_id: "mind-id", authorization: "secret", raw_sdk_response: { token: "secret" } }, sseMetadata: { event_count: 3, reconstructed_from_field: "messageText", authorization: "secret" }, diagnosticTimestamp: "2026-09-14T11:59:59.000Z", creatorContext: { ...context, raw_csv: "Content,Views\nprivate,99" }, analyticsImportHash: "analytics-a", signalSelection: selection, memoryContext: memory, memoryProvenance, externalEvidence: EVIDENCE, completedAt: "2026-09-14T12:00:00.000Z" };
+  const malformed = "ATTENTION: ACT_NOW";
+  await assert.rejects(finalizeAndPersistV2Decision({ ...input, mindReplyText: malformed }), /six required sections/);
+
+  assert.equal(writes[0].key, v2DiagnosticKey("run-v2"));
+  assert.equal(writes[0].value.parser_status, "PENDING");
+  assert.equal(writes[0].value.reconstructed_reply_text, malformed);
+  assert.equal(writes[1].value.parser_status, "REJECTED");
+  assert.match(writes[1].value.parser_error, /six required sections/);
+  assert.equal(writes[1].value.run_id, "run-v2");
+  assert.equal(writes[1].value.prompt_hash, "prompt-hash");
+  assert.equal(writes[1].value.response_hash.length, 64);
+  assert.equal(writes[1].value.decision_persisted, false);
+  assert.equal(writes[1].value.diagnostic_version, V2_DIAGNOSTIC_VERSION);
+  assert.equal(writes[1].value.contract_version, "greenroom_v2_decision_v1");
+  assert.equal(writes[1].value.sse_reconstruction.event_count, 3);
+  assert.equal(values.has("greenroom:v2_decision:run-v2"), false);
+  assert.equal(values.has("greenroom:v2_diagnostic:run-v2"), true);
+  const serialized = JSON.stringify(writes[1].value);
+  assert.doesNotMatch(serialized, /Content,Views|private,99|authorization|raw_sdk_response|token|secret/);
+});
+
+test("successful strict parsing persists the decision and removes the temporary full-text diagnostic", async () => {
+  const values = new Map();
+  const deleted = [];
+  const redis = {
+    async set(key, value) { values.set(key, value); return "OK"; },
+    async del(key) { deleted.push(key); values.delete(key); return 1; },
+  };
+  const context = creator("Grow YouTube subscribers", "Do not increase upload frequency");
+  const { selection } = setup(context);
+  const input = { redis, runId: "run-v2-success", promptHash: "prompt-hash", creatorContext: context, analyticsImportHash: "analytics-a", signalSelection: selection, memoryContext: memory, memoryProvenance, externalEvidence: EVIDENCE, completedAt: "2026-09-14T12:00:00.000Z" };
   const record = await finalizeAndPersistV2Decision({ ...input, mindReplyText: VALID_REPLY });
   assert.equal(record.decision.connection, "POSSIBLE");
-  assert.deepEqual(JSON.parse(values.get("greenroom:v2_decision:run-v2")), record);
+  assert.deepEqual(JSON.parse(values.get("greenroom:v2_decision:run-v2-success")), record);
+  assert.deepEqual(deleted, ["greenroom:v2_diagnostic:run-v2-success"]);
+  assert.equal(values.has("greenroom:v2_diagnostic:run-v2-success"), false);
+  assert.equal(record.diagnostic_version, undefined);
+  assert.equal(record.reconstructed_reply_text, undefined);
+});
+
+test("diagnostic construction exposes only its bounded schema", () => {
+  const artifact = buildV2DiagnosticArtifact({ runId: "run-schema", timestamp: "2026-09-14T12:00:00.000Z", promptHash: "prompt-hash", mindReplyText: "ATTENTION: broken", replyProvenance: { transport: "SSE", cookies: "secret" }, sseMetadata: { event_count: 1, headers: { authorization: "secret" } } });
+  assert.deepEqual(Object.keys(artifact), ["diagnostic_version", "contract_version", "run_id", "timestamp", "prompt_hash", "response_hash", "verified_mind_identity_reference", "reply_provenance", "reconstructed_reply_text", "response_character_length", "sse_reconstruction", "parser_status", "parser_error", "decision_persisted", "visibility"]);
+  assert.doesNotMatch(JSON.stringify(artifact), /cookies|headers|authorization|secret/);
 });

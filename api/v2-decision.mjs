@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 
 export const V2_DECISION_VERSION = "greenroom_v2_decision_v1";
+export const V2_DIAGNOSTIC_VERSION = "greenroom_v2_diagnostic_v1";
 export const SIGNAL_SELECTION_VERSION =
   "objective_evidence_signal_selection_v1";
 export const V2_MIND_IDENTITY = Object.freeze({
@@ -458,22 +459,135 @@ export function allowedV2PersonalizationRefs({
   ]);
 }
 
+export function v2DiagnosticKey(runId) {
+  return `greenroom:v2_diagnostic:${nonEmpty(runId, "runId")}`;
+}
+
+function sanitizedReplyProvenance(value = {}) {
+  return Object.freeze({
+    transport: typeof value.transport === "string" ? value.transport : null,
+    sender_type: Number.isInteger(value.sender_type) ? value.sender_type : null,
+    sender_id: typeof value.sender_id === "string" ? value.sender_id : null,
+    sender_email: typeof value.sender_email === "string" ? value.sender_email : null,
+    fingerprint: typeof value.fingerprint === "string" ? value.fingerprint : null,
+  });
+}
+
+function sanitizedSseMetadata(value = {}) {
+  return Object.freeze({
+    event_count: Number.isInteger(value.event_count) && value.event_count >= 0 ? value.event_count : null,
+    reconstructed_from_field: typeof value.reconstructed_from_field === "string" ? value.reconstructed_from_field : null,
+    chunk_count: Number.isInteger(value.chunk_count) && value.chunk_count >= 0 ? value.chunk_count : null,
+  });
+}
+
+function sanitizedParserError(error) {
+  const message = error?.message || "";
+  const allowed = [
+    "V2 Mind response must contain exactly the six required sections in order",
+    "V2 Mind response missing or invalid section:",
+    "V2 Mind response has invalid ATTENTION value",
+    "V2 Mind response has invalid CONNECTION value",
+    "V2 decision lacks valid personalization provenance",
+    "V2 Mind response must be a non-empty string",
+  ];
+  return allowed.find((item) => message.startsWith(item))
+    ? message.slice(0, 500)
+    : "V2 response validation failed";
+}
+
+export function buildV2DiagnosticArtifact({
+  runId,
+  timestamp,
+  promptHash,
+  mindReplyText,
+  verifiedMindIdentity = V2_MIND_IDENTITY,
+  replyProvenance = {},
+  sseMetadata = {},
+  parserStatus = "PENDING",
+  parserError = null,
+}) {
+  requireVerifiedV2MindIdentity(verifiedMindIdentity);
+  const reply = nonEmpty(mindReplyText, "V2 Mind response");
+  return Object.freeze({
+    diagnostic_version: V2_DIAGNOSTIC_VERSION,
+    contract_version: V2_DECISION_VERSION,
+    run_id: nonEmpty(runId, "runId"),
+    timestamp: nonEmpty(timestamp, "diagnostic timestamp"),
+    prompt_hash: nonEmpty(promptHash, "prompt hash"),
+    response_hash: crypto.createHash("sha256").update(reply).digest("hex"),
+    verified_mind_identity_reference: Object.freeze({
+      mind_id: V2_MIND_IDENTITY.mind_id,
+      email: V2_MIND_IDENTITY.email,
+    }),
+    reply_provenance: sanitizedReplyProvenance(replyProvenance),
+    reconstructed_reply_text: reply,
+    response_character_length: reply.length,
+    sse_reconstruction: sanitizedSseMetadata(sseMetadata),
+    parser_status: parserStatus,
+    parser_error: parserError,
+    decision_persisted: false,
+    visibility: "PRIVATE_OPERATIONAL_ONLY",
+  });
+}
+
+export async function deleteV2Diagnostic(redis, runId) {
+  if (!redis || typeof redis.del !== "function")
+    throw new Error("V2 diagnostic deletion requires a Redis-compatible store");
+  return redis.del(v2DiagnosticKey(runId));
+}
+
 export async function finalizeAndPersistV2Decision({
   redis,
   mindReplyText,
+  promptHash,
+  replyProvenance = {},
+  sseMetadata = {},
+  diagnosticTimestamp,
   ...recordInput
 }) {
-  if (!redis || typeof redis.set !== "function")
+  if (!redis || typeof redis.set !== "function" || typeof redis.del !== "function")
     throw new Error(
       "V2 decision persistence requires a Redis-compatible store",
     );
-  const parsedDecision = parseV2MindResponse(mindReplyText, {
-    allowedPersonalizationRefs: allowedV2PersonalizationRefs(recordInput),
+  const timestamp = diagnosticTimestamp || new Date().toISOString();
+  const diagnosticInput = {
+    runId: recordInput.runId,
+    timestamp,
+    promptHash,
+    mindReplyText,
+    verifiedMindIdentity: recordInput.verifiedMindIdentity,
+    replyProvenance,
+    sseMetadata,
+  };
+  const pendingDiagnostic = buildV2DiagnosticArtifact(diagnosticInput);
+  await redis.set(v2DiagnosticKey(recordInput.runId), JSON.stringify(pendingDiagnostic));
+
+  let parsedDecision;
+  try {
+    parsedDecision = parseV2MindResponse(mindReplyText, {
+      allowedPersonalizationRefs: allowedV2PersonalizationRefs(recordInput),
+    });
+  } catch (error) {
+    const rejectedDiagnostic = buildV2DiagnosticArtifact({
+      ...diagnosticInput,
+      parserStatus: "REJECTED",
+      parserError: sanitizedParserError(error),
+    });
+    await redis.set(v2DiagnosticKey(recordInput.runId), JSON.stringify(rejectedDiagnostic));
+    throw error;
+  }
+
+  const validatedDiagnostic = buildV2DiagnosticArtifact({
+    ...diagnosticInput,
+    parserStatus: "ACCEPTED_AWAITING_DECISION_PERSISTENCE",
   });
+  await redis.set(v2DiagnosticKey(recordInput.runId), JSON.stringify(validatedDiagnostic));
   const record = buildV2DecisionRecord({ ...recordInput, parsedDecision });
   await redis.set(
     `greenroom:v2_decision:${record.run_id}`,
     JSON.stringify(record),
   );
+  await deleteV2Diagnostic(redis, record.run_id);
   return record;
 }

@@ -230,6 +230,8 @@ The verified Mind response has exactly six sections: `ATTENTION`, `WHAT I NOTICE
 
 The V2 run fingerprint binds the context version and field values, analytics import hash, selected signal IDs and calculation versions, selected Memory provenance, external evidence fingerprint/provider, verified Udophia identity, and decision-contract version. Finalization writes only a fully validated run-specific record at `greenroom:v2_decision:{run_id}`. Invalid Mind output creates no decision record and receives no deterministic prose fallback.
 
+Reconstructed Mind text is captured before strict parsing in a private operational diagnostic at `greenroom:v2_diagnostic:{run_id}`. A rejected response leaves that separate record with bounded provenance, hashes, a sanitized parser error, and `decision_persisted: false`; it is never part of creator History and cannot stand in for `greenroom:v2_decision:{run_id}`. After strict validation and successful decision persistence, the full-text diagnostic is deleted because the accepted decision already retains the required provenance. Failed-response diagnostics require an explicit access-controlled retention and deletion policy before production use; the exact retention duration remains a policy decision.
+
 ## Existing modules to reuse
 
 | Existing file/module | Reuse in V2 |
