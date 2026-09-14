@@ -52,14 +52,14 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
   return <div className="manus-home home-compressed">
     <section className="new-hero home-goal" aria-labelledby="home-title">
       <div className="hero-intro home-goal__content">
-        <p className="hero-overline">YOUR CREATIVE COMPANION</p>
-        <h1 id="home-title">GreenRoom<br />keeps <em>watch</em><br />while you create.</h1>
-        <p>Tell GreenRoom what you're working toward. It remembers what matters to you, watches for useful changes, and tells you what deserves your attention.</p>
+        <p className="hero-overline">FOR INDEPENDENT CREATORS</p>
+        <h1 id="home-title">You create.<br />GreenRoom<br /><em>keeps watch.</em></h1>
+        <p>GreenRoom remembers what matters to you, watches supported creator sources, and brings back the changes and opportunities worth your attention.</p>
         <form className="goal-form" onSubmit={submitGoal}>
-          <label htmlFor="watch-goal">What should GreenRoom keep an eye on for you?</label>
+          <label htmlFor="watch-goal">What should GreenRoom keep watch on?</label>
           <div className="goal-entry">
             <input id="watch-goal" value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="e.g. Find better tools for making my videos" autoFocus={Boolean(objective)} required />
-            <button type="submit" disabled={isExecuting || !goal.trim()}>Start watching <span aria-hidden="true">→</span></button>
+            <button type="submit" disabled={isExecuting || !goal.trim()}>Keep watch <span aria-hidden="true">→</span></button>
           </div>
         </form>
         <p className="coverage-note"><span aria-hidden="true">✓</span><span><strong>Live monitoring currently supports creator tools, selected platform changes, and selected creator opportunities.</strong><small>Monitoring bounded first-party Adobe, YouTube, and Twitch sources.</small></span></p>
@@ -68,7 +68,7 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
         <span>ILLUSTRATIVE PREVIEW</span>
         <strong>GreenRoom found something</strong>
         <p>New AI video tools and updates that match your goal.</p>
-        <button type="button" onClick={() => onNavigate('intelligence')}>View example</button>
+        <span>Example only — submit your objective for a live check.</span>
       </aside>
     </section>
 
@@ -84,12 +84,12 @@ export function HomePage({ memoryState, onNavigate, onOpenOfflineModal, onCreate
       <article className={`result-preview is-${resultState}`}>
         <header className="result-preview__heading"><span>{isExample ? 'RESULT PREVIEW · EXAMPLE' : 'LATEST RESULT'}</span><h2 id="result-title">A change becomes <em>a decision.</em></h2></header>
         {resultState === 'working' ? <div className="result-message"><span className="watch-pulse" /><strong>GreenRoom is watching</strong><p>Your Mind is deciding whether the latest changes matter to you. You can come back later.</p></div>
-        : resultState === 'unsupported' ? <div className="result-message"><strong>GreenRoom can't watch this category live yet.</strong><p>AI video tools are supported now. More creator categories are coming.</p></div>
+        : resultState === 'unsupported' ? <div className="result-message"><strong>GreenRoom can't watch this category live yet.</strong><p>Try AI-video tools, selected YouTube platform changes, or selected Twitch creator opportunities.</p></div>
         : resultState === 'failed' ? <div className="result-message"><strong>This check didn't complete.</strong><p>No older result has been substituted. Try checking again when you're ready.</p><button type="button" onClick={onOpenOfflineModal}>Try again</button></div>
         : resultState === 'no-update' ? <div className="result-message"><strong>Nothing needs your attention right now.</strong><p>GreenRoom checked the current sources and found no relevant update.</p></div>
         : <><dl>
           <div><span className="result-icon" aria-hidden="true">↗</span><div><dt>WHAT CHANGED</dt><dd>{clean(result.what_changed)}</dd></div></div>
-          <div><span className="result-icon" aria-hidden="true">◇</span><div><dt>WHY IT MATTERS</dt><dd>{clean(result.why_it_matters)}</dd></div></div>
+          <div><span className="result-icon" aria-hidden="true">◇</span><div><dt>WHY IT MATTERS TO YOU</dt><dd>{clean(result.why_it_matters)}</dd></div></div>
           <div><span className="result-icon" aria-hidden="true">✓</span><div><dt>WHAT TO DO NEXT</dt><dd>{clean(result.recommended_action)}</dd></div></div>
         </dl><footer><span aria-hidden="true">◇</span> Based on verified first-party sources · Powered by Your Mind{isExample ? ' · Example only' : ''}</footer>{currentItem && <button type="button" onClick={() => onNavigate('intelligence')}>See full result</button>}</>}
       </article>

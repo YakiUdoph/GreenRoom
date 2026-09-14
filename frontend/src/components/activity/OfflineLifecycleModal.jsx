@@ -16,8 +16,6 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
   const [offlineSeconds, setOfflineSeconds] = useState(0);
   const backgroundedRef = useRef(false);
 
-  const creatorName = memoryState?.creator_name || 'ALEX RIVERA';
-  const niche = memoryState?.niche || 'Developer Tools & AI Automation';
   const currentObjective = memoryState?.creator_objectives?.[0] || null;
 
   useEffect(() => {
@@ -320,17 +318,17 @@ export function OfflineLifecycleModal({ isOpen, onClose, onBriefingUpdated, onRu
 
                 {/* Visual Description Card */}
                 <div className="creator-technical-detail p-4 bg-[#142616]/40 border border-[#234d28] rounded font-mono text-xs text-zinc-200 leading-relaxed">
-                  {step === 1 && `Creator "${creatorName}" identity rules & $45 CPM benchmark verified in memory store.`}
-                  {step === 2 && `POST /api/briefing/trigger called. Background job enqueued with status QUEUED.`}
-                  {step === 3 && `The creator can close this view while GreenRoom keeps the durable run active.`}
-                  {step === 4 && `QStash worker endpoint /api/briefing-worker triggered via signed webhook.`}
+                  {step === 1 && `Your saved objective was verified before this run started.`}
+                  {step === 2 && `The objective-bound background run is queued.`}
+                  {step === 3 && `You can close this view while the durable run remains active.`}
+                  {step === 4 && `GreenRoom is checking the supported first-party source.`}
                   {step === 5 && (jobStatus === 'FAILED'
                     ? (errorMessage || `GreenRoom couldn't complete this run.`)
                     : jobStatus === 'WAITING_FOR_MINDS'
-                    ? `GreenRoom is waiting for a verified response from the GreenRoom Decision Skill.`
-                    : `GreenRoom is retrieving and validating current first-party AI-video evidence.`)}
-                  {step === 6 && (runStatusDetails?.decision_engine === 'MINDS_NATIVE_DECISION' ? 'Saving Mind-generated decision briefing to durable database.' : 'Ranking result. Executive Briefing and provenance metadata durably saved to Upstash Redis.')}
-                  {step === 7 && `Creator re-opens dashboard. Polling confirms job completion.`}
+                    ? `Relevant evidence was found. GreenRoom is asking your persistent Mind what deserves attention.`
+                    : `GreenRoom is retrieving and validating current first-party evidence.`)}
+                  {step === 6 && 'Decision ready. Saving the run-specific result and proof.'}
+                  {step === 7 && `The completed result is ready to review.`}
                 </div>
                 {step === 5 && isOfflineRunPending(jobStatus) && <button onClick={handleContinue} className="px-5 py-3 bg-primary-container text-on-primary-container font-mono text-xs font-bold uppercase rounded hover:bg-primary-fixed-dim transition self-start">Continue in GreenRoom</button>}
               </div>

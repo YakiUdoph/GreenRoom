@@ -1,41 +1,68 @@
 # GreenRoom
 
-**GreenRoom keeps watch while you create.**
+## You create. GreenRoom keeps watch.
 
-GreenRoom is persistent AI staff for creators. Tell it what you're working toward, it remembers what matters to you, watches real sources for useful changes, and turns those changes into decisions.
+GreenRoom keeps watch for creators, remembers what matters to them, and brings back the changes and opportunities worth their attention.
 
-Live: https://greenroom-ruby.vercel.app
+Live project: https://greenroom-ruby.vercel.app
+
+## The problem
+
+Independent creators responsible for their own growth and monetization cannot continuously monitor platform changes, creator tools, and opportunities while also doing the work of creating. Information is abundant; creator attention is scarce. GreenRoom's target-user and product thesis still require external validation.
 
 ## What GreenRoom does
 
-GreenRoom keeps creator goals, preferences, feedback, and prior decisions connected across asynchronous runs. Each result answers: what changed, why it matters to you, and what to do next.
+A creator gives GreenRoom an objective. GreenRoom checks a supported first-party source, retrieves relevant persistent Memory, and asks one persistent Mind whether the verified change deserves this creator's attention. A completed result explains what changed, why it matters to this creator, and what to do next.
 
-## What works live
+GreenRoom is not a generic chatbot, content generator, or web-wide news aggregator. Current watches are user-triggered; recurring autonomous monitoring is roadmap work.
 
-- Domains: `AI_VIDEO`, `PLATFORM_CHANGES`, and `CREATOR_OPPORTUNITIES`
-- Providers: `ADOBE_BLOG`, `YOUTUBE_OFFICIAL_BLOG`, and `TWITCH_OFFICIAL_BLOG`
-- First-party evidence with publication and retrieval provenance
-- Durable objective-bound runs, Memory, feedback, and result history
+## The killer mechanism
 
-These are bounded live verticals, not GreenRoom's identity. Unsupported categories return a truthful no-provider state.
+```text
+EXTERNAL EVENT -> VERIFIED FIRST-PARTY EVIDENCE -> RELEVANT CREATOR MEMORY
+-> ONE PERSISTENT MIND -> ATTENTION VERDICT -> WHY IT MATTERS
+-> WHAT TO DO NEXT -> PERSISTED RESULT -> FEEDBACK -> MEMORY
+```
 
-## How it works
+The Mind chooses `ACT_NOW`, `KEEP_WATCHING`, or `IGNORE_FOR_NOW` from the objective, relevant Memory, and evidence. Verdicts are not hardcoded by domain or provider.
 
-Creator goal → watch → verified evidence → relevant Memory → Your Mind → decision → feedback → Memory.
+## Why Minds is essential
 
-GreenRoom owns objectives, evidence, provenance, Memory selection, orchestration, persistence, and feedback. Minds supplies the personalized `WHY IT MATTERS` and `WHAT TO DO NEXT`.
+Minds is not decorative. GreenRoom's value depends on persistent creator context across decisions. Without persistence, GreenRoom could still retrieve information, but it would be materially worse at deciding whether the same event matters to a particular creator.
 
-## Why Minds is integral
+Udophia (`udophia@hellominds.ai`, UUID `8208493e-f36b-1410-8466-00039ce7df11`) is the only verified platform Mind. The live worker verifies its identity, sends the immutable objective, selected Memory, and verified evidence through the official Minds Builder client, then accepts only a verified, correctly attributed reply. GreenRoom owns retrieval, Memory, orchestration, parsing, persistence, feedback, and run isolation; Udophia supplies the personalized verdict and decision explanation.
 
-GreenRoom uses the official Minds Builder client and verifies the configured persistent creator Mind before accepting a reply. A missing, late, invalid, or mismatched reply cannot become a completed personalized decision. The GreenRoom Decision Skill remains part of the verified reasoning path.
+## What is live today
+
+| Domain | Provider | First-party source |
+|---|---|---|
+| `AI_VIDEO` | `ADOBE_BLOG` | Adobe Blog query index |
+| `PLATFORM_CHANGES` | `YOUTUBE_OFFICIAL_BLOG` | YouTube Official Blog RSS |
+| `CREATOR_OPPORTUNITIES` | `TWITCH_OFFICIAL_BLOG` | Twitch Official Blog |
+
+Also live when production dependencies are configured: durable objectives and Memory, signed QStash background runs, relevant-Memory selection, Udophia identity/reply verification, run-specific results, feedback, and history. Unsupported objectives return an honest no-provider state. The explicitly labeled `Demo Dataset (Simulated)` path and test fixtures are not live evidence.
+
+## Example flow
+
+1. Enter: `Keep watch on YouTube platform changes that could affect my channel.`
+2. GreenRoom binds the saved objective to a run and checks the YouTube Official Blog.
+3. It selects relevant creator preferences and asks Udophia to judge the verified update.
+4. A successful result shows `ATTENTION`, `WHAT CHANGED`, `WHY IT MATTERS TO YOU`, and `WHAT TO DO NEXT`.
+5. Open `Verify proof` to inspect source, provider/domain, Memory, Mind status, and run provenance.
+
+The current result depends on fresh evidence and external Minds availability. No verdict is guaranteed.
 
 ## Architecture
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Run-specific IDs, objective fingerprints, evidence provenance, and terminal states prevent stale results from crossing run boundaries.
+See [ARCHITECTURE.md](ARCHITECTURE.md). Immutable objective fingerprints, run-specific persistence, idempotent queue claims, and terminal states prevent cross-run result delivery.
 
-## Local setup
+## Proof / how to verify
 
-Prerequisites: Python, Node.js 22+, npm, and credentials for the integrations being exercised.
+Start with [JUDGE.md](JUDGE.md) for the 30-second explanation and exact golden path. The result's `Verify proof` area links to the first-party article and exposes retained provenance.
+
+## Run locally
+
+Prerequisites: Python 3.12+, Node.js 22+, and npm.
 
 ```bash
 python -m venv .venv
@@ -46,25 +73,22 @@ python server.py
 npm --prefix frontend run dev
 ```
 
-Copy `.env.example` to an ignored local environment file. Production execution requires QStash, durable Upstash Redis, and Minds Builder credentials. `DEMO_MODE=true` is explicitly simulated and must never be represented as live.
+Copy `.env.example` to an ignored local file only when exercising configured integrations. Production execution requires QStash, durable Upstash Redis/KV, and Minds Builder credentials. `DEMO_MODE=true` is simulated and must never be represented as live.
 
 ## Tests
 
 ```bash
-python test_memory_persistence.py
-python test_objective_bound_runs.py
+python -m unittest test_greenroom.py test_memory_persistence.py test_objective_bound_runs.py
 node --test api/*.test.mjs frontend/src/lib/*.test.js
 npm --prefix frontend run build
 ```
 
-## Limitations
+No frontend lint or type-check script is configured. See [FOUNDATION.md](FOUNDATION.md) for evidenced results.
 
-- Live coverage currently supports AI-video creator tools through Adobe Blog, selected platform changes through the YouTube Official Blog, and selected creator opportunities through the Twitch Official Blog.
-- Unsupported creator domains have no live provider yet.
-- Source and Minds availability remain external dependencies.
-- GreenRoom does not infer pricing, availability, adoption, or performance without evidence.
-- The product thesis still needs creator validation.
+## Known limitations
+
+Coverage is limited to the three source/domain pairs above. Source, queue, persistence, and Minds availability are external dependencies. GreenRoom has no creator-account connectors, cannot infer missing eligibility or rollout facts, and does not yet run recurring scheduled watches. See [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md).
 
 ## Roadmap
 
-See [ROADMAP.md](ROADMAP.md).
+Reliability measurement and creator validation come before broader coverage, recurring watches, notifications, or creator-account connectors. See [ROADMAP.md](ROADMAP.md). Roadmap items are not implemented features.
