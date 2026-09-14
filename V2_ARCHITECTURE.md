@@ -220,6 +220,16 @@ When the previous value is nonzero, percentage change is `(current - previous) /
 
 `VIDEO_CTR_VARIATION` and `VIDEO_IMPRESSION_VARIATION` calculate range and median across eligible content observations. They have no trend direction. V1 includes only groups with an explicit CSV content type and at least two observations; untyped videos are excluded rather than classified from duration. The signal says only whether observed values vary and never treats impressions as an isolated quality verdict.
 
+## V2 decision mechanism
+
+`api/v2-decision.mjs` is the bounded Slice 2 contract. Creator-stated facts, selected Memory, observed analytics, and external evidence remain separately labeled evidence classes through prompt construction and persistence. Creator context fields carry `CREATOR_SUPPLIED`, `MEMORY`, or `OBSERVED_ANALYTICS` provenance; the required platform and goal are creator-supplied in this slice.
+
+Signal selection is deterministic under `objective_evidence_signal_selection_v1`. It selects only sufficient signals whose declared metric domain overlaps the explicit goal, constraints, or verified evidence, records available/selected/omitted IDs, and never maps profile data to an attention verdict. Raw CSV and supporting analytics rows are not accepted by the prompt builder.
+
+The verified Mind response has exactly six sections: `ATTENTION`, `WHAT I NOTICED`, `WHY THIS MATTERS TO YOU`, `WHAT I'D DO NEXT`, `CONNECTION`, and `UNCERTAINTY`. `CONNECTION` is `SUPPORTED`, `POSSIBLE`, or `NONE` and never asserts causation. Personalization is proven with validated `[REF:...]` references to supplied goals, constraints, selected signals, or selected Memory; generic prose without valid provenance is rejected before persistence.
+
+The V2 run fingerprint binds the context version and field values, analytics import hash, selected signal IDs and calculation versions, selected Memory provenance, external evidence fingerprint/provider, verified Udophia identity, and decision-contract version. Finalization writes only a fully validated run-specific record at `greenroom:v2_decision:{run_id}`. Invalid Mind output creates no decision record and receives no deterministic prose fallback.
+
 ## Existing modules to reuse
 
 | Existing file/module | Reuse in V2 |
