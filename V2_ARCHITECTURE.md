@@ -70,10 +70,12 @@ This structure should be introduced through a migration/adapter from existing pr
   "schema_version": "youtube_analytics_import_v1",
   "platform": "YOUTUBE",
   "source_type": "YOUTUBE_STUDIO_CSV",
+  "granularity": "CONTENT|DATE",
   "filename": "export.csv",
   "imported_at": "timestamp",
   "content_sha256": "hex",
   "row_count": 42,
+  "aggregate_rows_excluded": 1,
   "recognized_columns": [{
     "source_header": "Impressions click-through rate (%)",
     "normalized_field": "impressions_ctr"
@@ -91,15 +93,17 @@ This structure should be introduced through a migration/adapter from existing pr
   "row_id": "row_*",
   "import_id": "import_*",
   "source_row_number": 2,
+  "granularity": "CONTENT|DATE",
   "video_id": "string|null",
   "title": "string|null",
   "published_at": "timestamp|null",
+  "observation_date": "date|null",
   "metrics": {
     "views": "integer|null",
     "impressions": "integer|null",
     "impressions_ctr": "decimal_fraction|null",
     "average_view_duration_seconds": "number|null",
-    "watch_time_minutes": "number|null",
+    "watch_time_hours": "number|null",
     "subscribers_gained": "integer|null",
     "subscribers_lost": "integer|null",
     "subscribers_net": "integer|null"
@@ -116,12 +120,13 @@ This structure should be introduced through a migration/adapter from existing pr
 
 Rules:
 
-- `null` means unavailable; zero is valid only when the CSV explicitly contains zero or a documented derivation yields zero.
+- Every metric carries `VALUE`, explicit `ZERO`, or `UNAVAILABLE`; unavailable values are `null` and are never normalized to zero.
 - CTR is stored internally as a decimal fraction (`0.052`, not `5.2`) with display conversion at the UI boundary.
-- Duration is stored in seconds and watch time in minutes; original header/unit mapping stays in import provenance.
-- Net subscribers is derived only if no explicit net column exists and both gained and lost are valid.
+- Duration and average view duration are stored in seconds; watch time preserves the export's hours unit. Original header/unit mapping stays in import provenance.
+- Net subscribers is normalized only from an explicit supported column in this pass and is unavailable at daily granularity.
 - A row requires `video_id` or `title`; aggregate rows such as “Total” must be identified explicitly and excluded from per-video trend calculations unless a future calculation declares them valid.
 - The normalized record does not retain unknown CSV columns by default.
+- Content type is accepted only from explicit export metadata. Duration is not used to fabricate Shorts/long-form metadata.
 
 ### CreatorSignal
 
@@ -129,19 +134,22 @@ Rules:
 {
   "signal_id": "signal_*",
   "schema_version": "creator_signal_v1",
-  "type": "CTR_TREND|VIEW_TREND|SUBSCRIBER_CONVERSION_TREND|AVERAGE_VIEW_DURATION_TREND",
-  "direction": "IMPROVING|DECLINING|STABLE|INSUFFICIENT_DATA",
+  "type": "VIDEO_CTR_VARIATION|VIDEO_IMPRESSION_VARIATION|VIEW_MOMENTUM|WATCH_TIME_MOMENTUM|AVD_MOMENTUM",
+  "direction": "IMPROVING|DECLINING|STABLE|INSUFFICIENT_DATA|null",
+  "classification": "IMPROVING|DECLINING|STABLE|ZERO_BASELINE|VARIATION_OBSERVED|NO_OBSERVED_VARIATION|INSUFFICIENT_DATA",
   "period": {
-    "basis": "PUBLISH_DATE|ROW_ORDER",
+    "basis": "EXPLICIT_COMPLETE_CALENDAR_DAYS|ELIGIBLE_CONTENT_OBSERVATIONS",
     "current": {"from": "timestamp|null", "to": "timestamp|null", "observation_count": 3},
     "comparison": {"from": "timestamp|null", "to": "timestamp|null", "observation_count": 3}
   },
   "current_value": "number|null",
   "comparison_value": "number|null",
+  "absolute_delta": "number|null",
+  "percentage_delta": "number|null",
   "unit": "DECIMAL_FRACTION|COUNT|SECONDS|RATIO",
   "calculation": {
     "method": "string",
-    "version": "signal_rules_v1",
+    "version": "creator_signal_thresholds_v1",
     "threshold": "number|null",
     "minimum_observations": 3
   },
@@ -191,6 +199,26 @@ Recommended new modules:
 - FastAPI endpoints for CSV upload, latest import summary, and creator-business context.
 
 The importer should use Python's standard `csv` module initially. It avoids a large dependency and supports quoted fields safely. Upload handling may require `python-multipart`; confirm whether Vercel's Python build supports it before choosing multipart over a raw `text/csv` request body.
+
+## Locked signal formulas and thresholds
+
+Signal engine V1 uses two equal, non-overlapping 14-day windows for date-granularity momentum. The current window ends on the newest explicit observation date that is also a complete day (no later than yesterday); the previous window is the immediately preceding 14 calendar days. All 28 dates must have explicit rows. An absent row is missing coverage, while a present numeric zero is real zero activity.
+
+Future-dated rows never anchor a window. If no explicit observation exists on or before yesterday, momentum is `INSUFFICIENT_DATA`.
+
+For `VIEW_MOMENTUM` and `WATCH_TIME_MOMENTUM`, each window value is the sum of its daily values. For `AVD_MOMENTUM`, each window value is:
+
+```text
+sum(daily_average_view_duration_seconds × daily_views)
+────────────────────────────────────────────────────────
+                    sum(daily_views)
+```
+
+Daily AVD is never arithmetic-averaged. A zero view denominator is insufficient data.
+
+When the previous value is nonzero, percentage change is `(current - previous) / previous`. `>= +20%` is `IMPROVING`, `<= -20%` is `DECLINING`, and the interior is `STABLE`. These are product thresholds under `creator_signal_thresholds_v1`, not statistical-significance claims. When the previous value is zero, percentage change and directional classification are withheld using `ZERO_BASELINE`; the absolute difference and explanation remain available.
+
+`VIDEO_CTR_VARIATION` and `VIDEO_IMPRESSION_VARIATION` calculate range and median across eligible content observations. They have no trend direction. V1 includes only groups with an explicit CSV content type and at least two observations; untyped videos are excluded rather than classified from duration. The signal says only whether observed values vary and never treats impressions as an isolated quality verdict.
 
 ## Existing modules to reuse
 
@@ -279,4 +307,3 @@ Follow this order without beginning UI redesign early:
 **CONDITIONAL GO**
 
 The V1 execution and trust foundation is reusable, and the first V2 slice is technically bounded. Implementation should begin only after one genuine YouTube export shape and its valid trend semantics are selected, and creator authorization/privacy handling is agreed. Multi-user release remains blocked on authentication and tenant-isolated persistence, but that does not block a controlled single-creator killer demo.
-
