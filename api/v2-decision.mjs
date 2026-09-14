@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 
 export const V2_DECISION_VERSION = "greenroom_v2_decision_v1";
 export const V2_DIAGNOSTIC_VERSION = "greenroom_v2_diagnostic_v1";
+export const V2_ACTION_VALIDATION_VERSION = "v2_action_quality_v1";
 export const SIGNAL_SELECTION_VERSION =
   "objective_evidence_signal_selection_v1";
 export const V2_MIND_IDENTITY = Object.freeze({
@@ -327,12 +328,49 @@ export function buildV2MindPrompt({
     ...safeMemory.learned_rules.map((_, index) => `memory_rule:${index}`),
     ...signalSelection.selected_signal_ids.map((id) => `signal:${id}`),
   ];
-  return `GREENROOM V2 VERIFIED DECISION INPUT\n\nCREATOR GOAL [CREATOR-STATED FACTS]\n${json({ primary_platform: context.primary_platform, primary_goal: context.primary_goal, optional_target: context.optional_target, optional_target_date: context.optional_target_date, context_version: context.context_version })}\n\nCREATOR CONSTRAINTS [CREATOR-STATED FACTS]\n${json(context.constraints)}\n\nCREATOR-SUPPLIED PREFERENCES [CREATOR-STATED FACTS]\n${json(context.creator_supplied_preferences)}\n\nRELEVANT REMEMBERED CONTEXT [MEMORY]\n${json(safeMemory)}\n\nOBSERVED CHANNEL SIGNALS [OBSERVED CREATOR SIGNALS]\n${json({ analytics_status: analyticsStatus, selection: { selection_version: signalSelection.selection_version, available_signal_ids: signalSelection.available_signal_ids, selected_signal_ids: signalSelection.selected_signal_ids, omitted_signal_ids: signalSelection.omitted_signal_ids, selection_reason: signalSelection.selection_reason }, signals: signalSelection.selected_signals })}\n\nVERIFIED EXTERNAL UPDATE [EXTERNAL EVIDENCE]\n${json(evidenceBlock)}\n\nEVIDENCE LIMITATIONS\nTemporal coexistence does not establish causation. For this V2 slice, causal evidence does not exist. Do not say or imply that the external update caused any creator metric change. A real Mind processing an observed signal does not upgrade relevance into causality. Do not force a connection; CONNECTION may be NONE. Analytics may be unavailable or insufficient without invalidating an honest goal-and-evidence decision.\n\nDECISION INSTRUCTIONS\nUse only the bounded evidence above. Produce a decision specific to this creator, not generic creator commentary. WHAT I'D DO NEXT must contain exactly one bounded realistic action. WHY THIS MATTERS TO YOU must cite at least one applicable machine reference using [REF:reference], chosen only from: ${allowedRefs.join(", ")}. The reference is personalization provenance and must support the reasoning. Do not invent creator facts, demographics, subscriber or revenue data, availability, or causal claims.\n\nReturn exactly these six sections and no Markdown:\nATTENTION: ACT_NOW | KEEP_WATCHING | IGNORE_FOR_NOW\nWHAT I NOTICED:\nconcise meaningful evidence\nWHY THIS MATTERS TO YOU:\ncreator-specific relevance with at least one [REF:reference]\nWHAT I'D DO NEXT:\none bounded realistic action\nCONNECTION: SUPPORTED | POSSIBLE | NONE\nUNCERTAINTY:\nimportant unknowns`;
+  return `GREENROOM V2 VERIFIED DECISION INPUT\n\nCREATOR GOAL [CREATOR-STATED FACTS]\n${json({ primary_platform: context.primary_platform, primary_goal: context.primary_goal, optional_target: context.optional_target, optional_target_date: context.optional_target_date, context_version: context.context_version })}\n\nCREATOR CONSTRAINTS [CREATOR-STATED FACTS]\n${json(context.constraints)}\n\nCREATOR-SUPPLIED PREFERENCES [CREATOR-STATED FACTS]\n${json(context.creator_supplied_preferences)}\n\nRELEVANT REMEMBERED CONTEXT [MEMORY]\n${json(safeMemory)}\n\nOBSERVED CHANNEL SIGNALS [OBSERVED CREATOR SIGNALS]\n${json({ analytics_status: analyticsStatus, selection: { selection_version: signalSelection.selection_version, available_signal_ids: signalSelection.available_signal_ids, selected_signal_ids: signalSelection.selected_signal_ids, omitted_signal_ids: signalSelection.omitted_signal_ids, selection_reason: signalSelection.selection_reason }, signals: signalSelection.selected_signals })}\n\nVERIFIED EXTERNAL UPDATE [EXTERNAL EVIDENCE]\n${json(evidenceBlock)}\n\nEVIDENCE LIMITATIONS\nTemporal coexistence does not establish causation. For this V2 slice, causal evidence does not exist. Do not say or imply that the external update caused any creator metric change. A real Mind processing an observed signal does not upgrade relevance into causality. Do not force a connection; CONNECTION may be NONE. Analytics may be unavailable or insufficient without invalidating an honest goal-and-evidence decision.\n\nDECISION INSTRUCTIONS\nUse only the bounded evidence above. Produce a decision specific to this creator, not generic creator commentary. WHAT I'D DO NEXT must contain exactly one bounded realistic creator action using the information GreenRoom already retrieved. Do not delegate duplicate source research: do not tell the creator to read, check, visit, research, look up, monitor, or investigate the linked source, article, post, or announcement. Recommend the smallest action justified by the supplied evidence, respect the creator's constraints, avoid generic advice, and do not increase workload without evidence. If no behavior change is justified, an explicit bounded non-action such as no workflow change for now is valid and preferable to speculative busywork. Do not promise future monitoring or notification unless a supplied mechanism establishes it. WHY THIS MATTERS TO YOU must cite at least one applicable machine reference using [REF:reference], chosen only from: ${allowedRefs.join(", ")}. The reference is personalization provenance and must support the reasoning. Do not invent creator facts, demographics, subscriber or revenue data, availability, or causal claims.\n\nReturn exactly these six sections and no Markdown:\nATTENTION: ACT_NOW | KEEP_WATCHING | IGNORE_FOR_NOW\nWHAT I NOTICED:\nconcise meaningful evidence\nWHY THIS MATTERS TO YOU:\ncreator-specific relevance with at least one [REF:reference]\nWHAT I'D DO NEXT:\none bounded realistic action or explicit bounded non-action\nCONNECTION: SUPPORTED | POSSIBLE | NONE\nUNCERTAINTY:\nimportant unknowns`;
+}
+
+export function validateV2ActionQuality(action, {
+  creatorContext,
+  signalSelection,
+  externalEvidence,
+} = {}) {
+  const value = nonEmpty(action, "WHAT I'D DO NEXT");
+  const normalized = value.toLowerCase().replace(/\s+/g, " ").trim();
+  const delegatesResearch = /^(?:please\s+)?(?:check|read|visit|research|look up|monitor|investigate)\b/i.test(normalized)
+    && /\b(?:linked|source|article|blog post|post|announcement|what changed)\b/i.test(normalized)
+    && Boolean(externalEvidence);
+  if (delegatesResearch)
+    throw new Error("V2 action delegates duplicate research of supplied external evidence");
+
+  const constraints = Array.isArray(creatorContext?.constraints)
+    ? creatorContext.constraints.map((item) => String(item?.value || "").toLowerCase()).join(" ")
+    : "";
+  const forbidsFrequencyIncrease = /(?:do not|without|avoid)\b.{0,45}\b(?:increase|increasing|raise|raising)\b.{0,30}\b(?:upload|posting|publishing)\s+(?:frequency|cadence)/i.test(constraints);
+  const increasesFrequency = /\b(?:increase|raise|boost)\b.{0,30}\b(?:upload|posting|publishing)\s+(?:frequency|cadence)\b/i.test(normalized)
+    || /\b(?:upload|post|publish)\b.{0,20}\b(?:more often|more frequently)\b/i.test(normalized);
+  if (forbidsFrequencyIncrease && increasesFrequency)
+    throw new Error("V2 action violates a supplied upload-frequency constraint");
+
+  const selectedTypes = new Set((signalSelection?.selected_signals || []).map((signal) => signal.type));
+  const unsupportedDirectionalClaims = [
+    { pattern: /\b(?:ctr|click-through rate)\b.{0,40}\b(?:declin|fall|drop|improv|ris|increas|trend)/i, type: "VIDEO_CTR_VARIATION" },
+    { pattern: /\bwatch time\b.{0,40}\b(?:declin|fall|drop|improv|ris|increas|trend)/i, type: "WATCH_TIME_MOMENTUM" },
+    { pattern: /\b(?:avd|average view duration)\b.{0,40}\b(?:declin|fall|drop|improv|ris|increas|trend)/i, type: "AVD_MOMENTUM" },
+    { pattern: /\bsubscribers?\b.{0,40}\b(?:declin|fall|drop|improv|ris|increas|trend)/i, type: "SUBSCRIBER_MOMENTUM" },
+  ];
+  if (unsupportedDirectionalClaims.some(({ pattern, type }) => pattern.test(normalized) && !selectedTypes.has(type)))
+    throw new Error("V2 action relies on an unsupported analytics claim");
+
+  if (/\b(?:i|greenroom)\s+(?:will|'ll)\s+(?:notify|alert|monitor|watch)\b/i.test(normalized))
+    throw new Error("V2 action promises unsupported future monitoring");
+  return value;
 }
 
 export function parseV2MindResponse(
   text,
-  { allowedPersonalizationRefs = [] } = {},
+  { allowedPersonalizationRefs = [], actionValidationContext = null } = {},
 ) {
   const value = nonEmpty(text, "V2 Mind response")
     .replace(/\r\n/g, "\n")
@@ -377,6 +415,8 @@ export function parseV2MindResponse(
   const allowed = new Set(allowedPersonalizationRefs);
   if (!refs.length || refs.some((ref) => !allowed.has(ref)))
     throw new Error("V2 decision lacks valid personalization provenance");
+  if (actionValidationContext)
+    validateV2ActionQuality(parsed["WHAT I'D DO NEXT"], actionValidationContext);
   return Object.freeze({
     attention_verdict: attention,
     what_i_noticed: parsed["WHAT I NOTICED"],
@@ -441,6 +481,7 @@ export function buildV2DecisionRecord({
     external_evidence: externalEvidence,
     verified_mind_identity: requireVerifiedV2MindIdentity(verifiedMindIdentity),
     decision: parsedDecision,
+    action_validation_version: V2_ACTION_VALIDATION_VERSION,
   });
 }
 
@@ -494,6 +535,10 @@ function sanitizedParserError(error) {
     "V2 decision lacks valid personalization provenance",
     "V2 Mind response must be a non-empty string",
     "V2 Mind response contains unsupported HTML",
+    "V2 action delegates duplicate research of supplied external evidence",
+    "V2 action violates a supplied upload-frequency constraint",
+    "V2 action relies on an unsupported analytics claim",
+    "V2 action promises unsupported future monitoring",
   ];
   return allowed.find((item) => message.startsWith(item))
     ? message.slice(0, 500)
@@ -571,6 +616,11 @@ export async function finalizeAndPersistV2Decision({
   try {
     parsedDecision = parseV2MindResponse(mindReplyText, {
       allowedPersonalizationRefs: allowedV2PersonalizationRefs(recordInput),
+      actionValidationContext: {
+        creatorContext: recordInput.creatorContext,
+        signalSelection: recordInput.signalSelection,
+        externalEvidence: recordInput.externalEvidence,
+      },
     });
   } catch (error) {
     const rejectedDiagnostic = buildV2DiagnosticArtifact({

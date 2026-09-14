@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   SIGNAL_SELECTION_VERSION,
+  V2_ACTION_VALIDATION_VERSION,
   V2_DIAGNOSTIC_VERSION,
   buildV2DiagnosticArtifact,
   buildV2DecisionRecord,
@@ -10,6 +11,7 @@ import {
   fingerprintV2Decision,
   parseV2MindResponse,
   selectV2Signals,
+  validateV2ActionQuality,
   validateCreatorContext,
   v2DiagnosticKey,
 } from "./v2-decision.mjs";
@@ -78,6 +80,10 @@ test("structured prompt keeps evidence classes distinguishable and includes the 
   assert.match(prompt, /Temporal coexistence does not establish causation/);
   assert.match(prompt, /causal evidence does not exist/);
   assert.match(prompt, /CONNECTION may be NONE/);
+  assert.match(prompt, /Do not delegate duplicate source research/);
+  assert.match(prompt, /explicit bounded non-action/);
+  assert.match(prompt, /do not increase workload without evidence/);
+  assert.doesNotMatch(prompt, /I will notify you later/);
 });
 
 test("only deterministically selected signals enter the bounded Mind prompt", () => {
@@ -123,6 +129,42 @@ test("the exact genuine HTML-break reply normalizes to its original six semantic
     uncertainty: "Whether and when the design principles will translate to specific interface changes, and how those changes would affect existing videos' presentation.",
     personalization_refs: ["creator_goal"],
   });
+});
+
+test("the genuine duplicate-source-research action is rejected by action-quality validation", () => {
+  const context = creator("Grow the channel and improve performance without increasing upload frequency.", "Do not recommend increasing upload frequency.");
+  const signalSelection = selectV2Signals({ creatorContext: context, externalEvidence: EVIDENCE, signals: signals("STABLE") });
+  assert.throws(() => parseV2MindResponse(GENUINE_BR_REPLY, {
+    allowedPersonalizationRefs: GENUINE_REFS,
+    actionValidationContext: { creatorContext: context, signalSelection, externalEvidence: EVIDENCE },
+  }), /delegates duplicate research/);
+});
+
+test("action-quality validation narrowly rejects source research and unsupported recommendations", () => {
+  const context = creator("Grow YouTube subscribers", "Do not recommend increasing upload frequency.");
+  const signalSelection = setup(context).selection;
+  const validation = { creatorContext: context, signalSelection, externalEvidence: EVIDENCE };
+  for (const action of ["Read the linked article for more details.", "Visit the source and see what changed.", "Research the announcement before deciding."]) {
+    assert.throws(() => validateV2ActionQuality(action, validation), /delegates duplicate research/);
+  }
+  assert.throws(() => validateV2ActionQuality("Increase your upload frequency this month.", validation), /upload-frequency constraint/);
+  assert.throws(() => validateV2ActionQuality("Change your thumbnails because CTR is declining.", validation), /unsupported analytics claim/);
+  assert.throws(() => validateV2ActionQuality("I will notify you when this changes.", validation), /unsupported future monitoring/);
+  assert.doesNotThrow(() => validateV2ActionQuality("Check whether your existing thumbnails remain legible on mobile.", validation));
+});
+
+test("bounded non-actions and grounded concrete ACT_NOW actions remain valid", () => {
+  const context = creator("Grow YouTube subscribers", "Do not recommend increasing upload frequency.");
+  const signalSelection = setup(context).selection;
+  const actionValidationContext = { creatorContext: context, signalSelection, externalEvidence: EVIDENCE };
+  const replaceAction = (reply, action) => reply.replace("Review the control documentation before changing one existing upload.", action);
+  const nonAction = "Keep your current publishing approach unchanged for now; this announcement does not provide enough evidence to justify changing your upload frequency or workflow.";
+  for (const verdict of ["KEEP_WATCHING", "IGNORE_FOR_NOW"]) {
+    const reply = replaceAction(VALID_REPLY.replace("KEEP_WATCHING", verdict), nonAction);
+    assert.equal(parseV2MindResponse(reply, { allowedPersonalizationRefs: ["creator_goal", "signal:signal-view"], actionValidationContext }).attention_verdict, verdict);
+  }
+  const actNow = replaceAction(VALID_REPLY.replace("KEEP_WATCHING", "ACT_NOW"), "Check whether your existing thumbnail text remains legible on mobile before editing that existing upload.");
+  assert.equal(parseV2MindResponse(actNow, { allowedPersonalizationRefs: ["creator_goal", "signal:signal-view"], actionValidationContext }).attention_verdict, "ACT_NOW");
 });
 
 test("only supported HTML break spellings are normalized", () => {
@@ -176,6 +218,7 @@ test("persistence record retains the complete inspectable V2 decision provenance
   const record = buildV2DecisionRecord({ runId: "run-v2", creatorContext: context, analyticsImportHash: "analytics-a", signalSelection: selection, memoryContext: memory, memoryProvenance, externalEvidence: EVIDENCE, parsedDecision: parsed, completedAt: "2026-09-14T12:00:00.000Z" });
   assert.equal(record.decision.connection, "POSSIBLE");
   assert.equal(record.decision.attention_verdict, "KEEP_WATCHING");
+  assert.equal(record.action_validation_version, V2_ACTION_VALIDATION_VERSION);
   assert.equal(record.analytics.import_hash, "analytics-a");
   assert.deepEqual(record.signal_selection.selected_signal_ids, ["signal-view"]);
   assert.deepEqual(record.memory.provenance.selected_rule_hashes, ["rule-hash"]);
