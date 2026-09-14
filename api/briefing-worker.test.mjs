@@ -76,6 +76,7 @@ test("verified live reply persists complete run, Mind, source and Memory provena
   assert.equal(briefing.objective_snapshot.fingerprint, OBJECTIVE.fingerprint);
   assert.equal(briefing.minds_verified, true);
   assert.equal(briefing.provenance.minds_verified, true);
+  assert.equal(redis.json("greenroom:run_status:run_live").minds_verified, true);
   assert.equal(briefing.sources[0].source_url, EVIDENCE.source_url);
   assert.deepEqual(briefing.learned_rules_active, ["Prefer practical tools."]);
 });
@@ -89,6 +90,7 @@ test("provider failure, unsupported domain and empty evidence cannot create a br
     const redis = initialRedis();
     const result = await processWorkerPhase({ phase: "submit", ...args(redis, fakeMinds(), { fetchEvidence }) });
     assert.equal(result.body.status, expected);
+    assert.equal(redis.json("greenroom:run_status:run_live").minds_verified, false);
     assert.equal(redis.json("greenroom:briefing:run_live"), undefined);
   }
 });
@@ -97,6 +99,7 @@ test("missing Mind and malformed Mind reply cannot become deterministic success"
   const missingRedis = initialRedis();
   const missing = await processWorkerPhase({ phase: "submit", ...args(missingRedis, null) });
   assert.equal(missing.body.status, "FAILED");
+  assert.equal(missingRedis.json("greenroom:run_status:run_live").minds_verified, false);
   assert.equal(missingRedis.json("greenroom:briefing:run_live"), undefined);
 
   const malformedRedis = initialRedis();
@@ -105,6 +108,7 @@ test("missing Mind and malformed Mind reply cannot become deterministic success"
   await processWorkerPhase({ phase: "submit", ...args(malformedRedis, minds) });
   const malformed = await processWorkerPhase({ phase: "collect", ...args(malformedRedis, minds) });
   assert.equal(malformed.body.status, "FAILED");
+  assert.equal(malformedRedis.json("greenroom:run_status:run_live").minds_verified, false);
   assert.equal(malformedRedis.json("greenroom:briefing:run_live"), undefined);
 });
 
@@ -114,7 +118,20 @@ test("Mind identity mismatch fails before message submission", async () => {
   minds.getMind = async () => ({ mindId: "wrong", email: "wrong@example.com", walletAddress: "0x0", isEnabled: true });
   const result = await processWorkerPhase({ phase: "submit", ...args(redis, minds) });
   assert.equal(result.body.status, "FAILED");
+  assert.equal(redis.json("greenroom:run_status:run_live").minds_verified, false);
   assert.equal(minds.calls.send, 0);
+  assert.equal(redis.json("greenroom:briefing:run_live"), undefined);
+});
+
+test("Mind reply timeout keeps terminal verification false", async () => {
+  const redis = initialRedis();
+  const minds = fakeMinds();
+  await processWorkerPhase({ phase: "submit", ...args(redis, minds) });
+  const waiting = redis.json("greenroom:run_status:run_live");
+  await redis.set("greenroom:run_status:run_live", JSON.stringify({ ...waiting, reply_deadline_at: "2020-01-01T00:00:00.000Z" }));
+  const result = await processWorkerPhase({ phase: "collect", ...args(redis, minds) });
+  assert.equal(result.body.status, "FAILED");
+  assert.equal(redis.json("greenroom:run_status:run_live").minds_verified, false);
   assert.equal(redis.json("greenroom:briefing:run_live"), undefined);
 });
 

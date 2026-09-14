@@ -572,7 +572,7 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
     
     await redis.set(`greenroom:briefing:${runId}`, JSON.stringify(briefing));
     await redis.set("greenroom:latest_briefing", JSON.stringify(briefing));
-    await persistRunStatus(redis, runId, { ...status, status: "COMPLETED", completed_at: completedAt, briefing_id: runId, provenance: briefing.provenance, reply_diagnostics: diagnostics, reply_metadata: extractSafeSdkMetadata(reply), submission_to_verified_reply_ms: Math.max(0, Date.parse(replyFoundAt) - Date.parse(status.submitted_at)), submission_to_completion_ms: Math.max(0, Date.parse(completedAt) - Date.parse(status.submitted_at)), stage_timestamps: stages(status, { verified_reply_found: replyFoundAt, parsing_started: replyFoundAt, parsing_completed: completedAt, briefing_persisted: completedAt }) });
+    await persistRunStatus(redis, runId, { ...status, status: "COMPLETED", completed_at: completedAt, briefing_id: runId, minds_verified: briefing.minds_verified === true, provenance: briefing.provenance, reply_diagnostics: diagnostics, reply_metadata: extractSafeSdkMetadata(reply), submission_to_verified_reply_ms: Math.max(0, Date.parse(replyFoundAt) - Date.parse(status.submitted_at)), submission_to_completion_ms: Math.max(0, Date.parse(completedAt) - Date.parse(status.submitted_at)), stage_timestamps: stages(status, { verified_reply_found: replyFoundAt, parsing_started: replyFoundAt, parsing_completed: completedAt, briefing_persisted: completedAt }) });
     return { httpStatus: 200, body: { status: "COMPLETED", run_id: runId, briefing } };
   } catch (error) {
     const failedAt = isoNow();
