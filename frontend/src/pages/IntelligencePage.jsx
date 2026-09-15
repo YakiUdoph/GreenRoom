@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import { api } from '../lib/api';
 import { formatCompletedDate, isSimulatedBriefing, recentHistoryRuns, verifyHistoricalBriefing, verifyHistoricalRunRecord } from '../lib/briefingHistory';
 import { normalizeCreatorDecision } from '../lib/creatorDecision';
@@ -18,11 +19,11 @@ export function IntelligencePage({ memoryState }) {
     if (!disposed) { setRuns(checked.filter(item => item.status === 'fulfilled' && item.value).map(item => item.value)); setState('ready'); }
   }).catch(() => !disposed && setState('error')); return () => { disposed = true; }; }, [currentRunId]);
   const choose = item => { setDetailState('loading'); setSelected(null); Promise.all([api.getBriefingStatus(item.record.run_id), api.getRunBriefing(item.record.run_id)]).then(([status, response]) => { const verified = verifyHistoricalBriefing(item.record, status, response); if (isSimulatedBriefing(verified.briefing)) throw new Error('Simulated'); setSelected({ ...item, briefing: verified.briefing }); setDetailState('ready'); }).catch(() => setDetailState('error')); };
-  return <div className="creator-desk history-page"><header className="desk-heading"><p>HISTORY</p><h1>Decisions you can revisit.</h1><span>Verified completed checks, kept in chronological order. Previous work is never presented as today’s result.</span></header>
+  return <motion.div className="creator-desk history-page" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .45 }}><header className="v2-brand-hero history-hero"><img src="/assets/greenroom-living-network.png" alt="A quiet network of connected signals"/><div className="v2-hero-copy"><p>HISTORY</p><h1>What GreenRoom decided, and why.</h1><span>Verified completed checks you can revisit. Previous work is never presented as today’s result.</span></div></header>
     <section className="history-layout"><div className="history-index">
       {state === 'loading' && <p role="status">Loading history…</p>}{state === 'error' && <p role="alert">History is temporarily unavailable.</p>}{state === 'ready' && runs.length === 0 && <p className="soft-empty">No verified completed decisions yet.</p>}
       {runs.map(item => { const decision = normalizeCreatorDecision(item.briefing); const completed = item.status.completed_at || item.record.completed_at; return <button key={item.record.run_id} className={selected?.record.run_id === item.record.run_id ? 'is-selected' : ''} onClick={() => choose(item)}><time dateTime={completed}>{formatCompletedDate(completed)}</time><strong>{decision?.headline || item.snapshot?.title || 'Creator decision'}</strong><span>{decision?.attention?.replaceAll('_', ' ') || 'COMPLETED'}</span></button>; })}
     </div><div>{detailState === 'idle' && runs.length > 0 && <p className="history-prompt">Choose a decision to revisit.</p>}{detailState === 'loading' && <p role="status">Opening decision…</p>}{detailState === 'error' && <p role="alert">This result could not be verified.</p>}{detailState === 'ready' && selected && <DecisionDetail briefing={selected.briefing}/>}</div></section>
-  </div>;
+  </motion.div>;
 }
 export default IntelligencePage;
