@@ -37,6 +37,12 @@ test('legacy seeded profile values never become creator-supplied V2 context', ()
   assert.equal(context.constraints.some(item => item.value === 'Supplied constraint'), true);
 });
 
+test('queue failure retains and returns the authoritative failed run ID', async () => {
+  const redis = store({ 'greenroom:v2_analytics:latest': { content_hash: 'analytics-hash', signals: [] }, 'greenroom:creator_profile': {} });
+  const run = await initializeV2Run({ redis, objective, targetUrl: 'https://example.test/api/briefing-worker', enqueue: async () => { throw new Error('regional queue mismatch'); } });
+  assert.match(run.run_id, /^run_v2_/); assert.equal(run.status, 'FAILED'); assert.equal(run.failure_category, 'QUEUE_UNAVAILABLE');
+});
+
 test('normal mocked path persists only a strictly accepted decision under the exact run ID', async () => {
   const redis = store({ 'greenroom:v2_analytics:latest': { content_hash: 'analytics-hash', signals: [signal] }, 'greenroom:creator_profile': {} });
   const run = await initializeV2Run({ redis, objective, targetUrl: 'https://example.test/api/briefing-worker', enqueue: async () => {} });

@@ -15,13 +15,19 @@ const snapshot = objective => {
 
 export async function publishV2Worker(targetUrl, payload, env = process.env, fetchImpl = fetch) {
   if (!env.QSTASH_TOKEN) throw new Error("Background execution is unavailable");
-  const response = await fetchImpl(`https://qstash.upstash.io/v2/publish/${targetUrl}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${env.QSTASH_TOKEN}`, "Content-Type": "application/json", "Upstash-Retries": "2" },
-    body: JSON.stringify(payload),
-  });
-  if (!response.ok) throw new Error("Background execution could not be scheduled");
-  return response.json().catch(() => ({}));
+  const configured = (() => { try { return new URL(env.QSTASH_URL || '').host; } catch { return ''; } })();
+  const hosts = [...new Set([configured, 'qstash-us-east-1.upstash.io', 'qstash-us-west-1.upstash.io', 'qstash-eu-west-1.upstash.io', 'qstash.upstash.io'].filter(Boolean))];
+  for (const host of hosts) {
+    const response = await fetchImpl(`https://${host}/v2/publish/${targetUrl}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${env.QSTASH_TOKEN}`, "Content-Type": "application/json", "Upstash-Retries": "2" },
+      body: JSON.stringify(payload),
+    });
+    if (response.ok) return response.json().catch(() => ({}));
+    const body = await response.text().catch(() => '');
+    if (response.status !== 404 || !body.includes('not found in this region')) break;
+  }
+  throw new Error("Background execution could not be scheduled");
 }
 
 export async function handleV2Run(req, res, redis, { enqueue = publishV2Worker, env = process.env } = {}) {

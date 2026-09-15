@@ -83,8 +83,8 @@ export async function initializeV2Run({ redis, objective, now = new Date(), enqu
   await redis.set(inputKey(runId), JSON.stringify({ creatorContext, signals: analytics.signals, analyticsImportHash: analytics.content_hash }));
   try { await enqueue(targetUrl, { run_id: runId, objective, pipeline: "V2" }); }
   catch (error) {
-    await persistPublicStatus(redis, { ...initial, status: "FAILED", updated_at: iso(), failure_category: "QUEUE_UNAVAILABLE" });
-    throw error;
+    const failed = await persistPublicStatus(redis, { ...initial, status: "FAILED", updated_at: iso(), failure_category: "QUEUE_UNAVAILABLE" });
+    return publicV2Run(failed);
   }
   return publicV2Run(initial);
 }

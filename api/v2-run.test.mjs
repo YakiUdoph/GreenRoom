@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { handleV2Run } from './v2-run.mjs';
+import { handleV2Run, publishV2Worker } from './v2-run.mjs';
 
 const response = () => ({ code: null, body: null, status(code) { this.code = code; return this; }, json(body) { this.body = body; return this; } });
 function store(seed = {}) { const values = new Map(Object.entries(seed).map(([key, value]) => [key, JSON.stringify(value)])); return { values, async get(key) { return values.get(key) ?? null; }, async set(key, value, options) { if (options?.nx && values.has(key)) return null; values.set(key, value); return 'OK'; } }; }
@@ -23,4 +23,10 @@ test('GET exposes only safe lifecycle state and never guesses another run', asyn
 test('history returns accepted decisions only', async () => {
   const redis = store({ 'greenroom:v2_recent_runs': [{ run_id: 'run_v2_yes123', decision_available: true }, { run_id: 'run_v2_no1234', decision_available: false }] });
   const res = response(); await handleV2Run({ method: 'GET', query: { history: '1' } }, res, redis); assert.deepEqual(res.body.runs.map(item => item.run_id), ['run_v2_yes123']);
+});
+
+test('initial QStash publish uses the proven regional fallback without duplicating a successful publish', async () => {
+  const calls = []; const fetchImpl = async url => { calls.push(url); return calls.length === 1 ? { ok: false, status: 404, async text() { return 'not found in this region'; } } : { ok: true, async json() { return { messageId: 'one' }; } }; };
+  const result = await publishV2Worker('https://example.test/api/briefing-worker', { run_id: 'run_v2_123' }, { QSTASH_TOKEN: 'configured', QSTASH_URL: 'https://qstash.upstash.io' }, fetchImpl);
+  assert.equal(result.messageId, 'one'); assert.equal(calls.length, 2);
 });
