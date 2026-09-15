@@ -4,7 +4,8 @@ import { Receiver } from "@upstash/qstash";
 import { Redis } from "@upstash/redis";
 import { buildMindReplyDiagnostics, collectionDeadlinePassed, collectionDelaySeconds, extractSafeSdkMetadata, isTerminalRunStatus, normalizeMindReply, selectRelevantCreatorContext, selectVerifiedHistoryReply, updateRecentRunIndex, validateObjectiveSnapshot, validateWorkerConfiguration, verifyMindIdentity } from "./worker-guards.mjs";
 import { retrieveLiveEvidenceForObjective } from "./live-evidence.mjs";
-import { collectV2Run, submitV2Run } from "./v2-execution.mjs";
+import { collectV2Run, failV2Run, submitV2Run } from "./v2-execution.mjs";
+import { safeV2Failure, v2Failure } from "./v2-observability.mjs";
 
 export const maxDuration = 60;
 export const config = { api: { bodyParser: false } };
@@ -591,6 +592,18 @@ export async function processWorkerPhase(args) {
   return handleLiveSubmission(args);
 }
 
+export async function handleUnexpectedV2WorkerError({ redis, runId, error, now = new Date() }) {
+  const current = await loadRunStatus(redis, runId).catch(() => null);
+  if (!current || current.pipeline !== "V2") return { status: "FAILED", run_id: runId, execution_stage: "WORKER_STARTED", failure_category: "RUN_NOT_FOUND" };
+  if (isTerminalRunStatus(current.status) || current.status === "WAITING_FOR_MINDS") return { ...safeV2Failure(error, current.execution_stage), status: current.status, run_id: runId };
+  const failed = await failV2Run(redis, current, error?.v2_category ? error : v2Failure("INTERNAL_EXECUTION_FAILED", current.execution_stage || "WORKER_STARTED", error), current.execution_stage || "WORKER_STARTED", now);
+  return { status: failed.status, run_id: runId, execution_stage: failed.execution_stage, failure_category: failed.failure_category };
+}
+
+export function workerAuthFailure() {
+  return Object.freeze({ status: "FAILED", execution_stage: "WORKER_STARTED", failure_category: "WORKER_AUTH_FAILED" });
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
   const rawBody = await getRawBody(req);
@@ -598,13 +611,13 @@ export default async function handler(req, res) {
   if (missing.length) return res.status(503).json({ error: `Production worker configuration missing: ${missing.join(", ")}` });
   const receiver = new Receiver({ currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY, nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY });
   const signature = req.headers["upstash-signature"];
-  if (!signature) return res.status(401).json({ error: "Unauthorized: Missing QStash signature" });
+  if (!signature) return res.status(401).json(workerAuthFailure());
   const host = req.headers["x-forwarded-host"] || req.headers.host || "greenroom-ruby.vercel.app";
   const proto = req.headers["x-forwarded-proto"] || "https";
   const targetUrl = `${proto}://${host}/api/briefing-worker`;
   let valid = await receiver.verify({ signature, body: rawBody, url: targetUrl }).catch(() => false);
   if (!valid) valid = await receiver.verify({ signature, body: rawBody }).catch(() => false);
-  if (!valid) return res.status(401).json({ error: "Unauthorized: Invalid QStash signature" });
+  if (!valid) return res.status(401).json(workerAuthFailure());
   let payload;
   try { payload = JSON.parse(rawBody || "{}"); } catch { return res.status(400).json({ error: "Invalid JSON payload" }); }
   if (!payload.run_id) return res.status(422).json({ error: "QStash payload run_id missing" });
@@ -619,6 +632,11 @@ export default async function handler(req, res) {
     const result = await processWorkerPhase({ phase: payload.phase || "submit", pipeline: payload.pipeline, redis, mindsClient, runId: payload.run_id, objective, targetUrl, env: process.env });
     return res.status(result.httpStatus).json(result.body);
   } catch (error) {
+    if (payload.pipeline === "V2") {
+      const failed = await handleUnexpectedV2WorkerError({ redis, runId: payload.run_id, error });
+      console.error(`[NodeWorker] ${payload.phase || "submit"} V2 failure: ${failed.failure_category || "RETRYABLE_WAIT"}`);
+      return res.status(500).json(failed);
+    }
     const current = await loadRunStatus(redis, payload.run_id).catch(() => ({}));
     // Once a message is durably WAITING, transient history/QStash failures must be
     // retried by QStash and must not turn the run into a terminal failure.

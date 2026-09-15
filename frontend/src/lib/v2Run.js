@@ -10,5 +10,5 @@ export function bindV2Decision(run, decision) {
 }
 
 export function shouldPollV2Run(run) {
-  return Boolean(run?.run_id) && !['COMPLETED', 'FAILED', 'NO_RELEVANT_UPDATE', 'UNSUPPORTED_DOMAIN'].includes(run.status);
+  return Boolean(run?.run_id) && !['COMPLETED', 'FAILED', 'REJECTED', 'TIMED_OUT', 'NO_RELEVANT_UPDATE', 'UNSUPPORTED_DOMAIN'].includes(run.status);
 }

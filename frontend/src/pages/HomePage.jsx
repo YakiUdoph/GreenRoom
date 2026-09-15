@@ -16,7 +16,7 @@ export function HomePage({ memoryState, onOpenOfflineModal, onCreateObjective, i
   const v2Record = memoryState?.current_v2_decision;
   const [goal, setGoal] = useState(objective?.title || '');
   useEffect(() => setGoal(objective?.title || ''), [objective?.title]);
-  const state = useMemo(() => v2Run ? ({ COMPLETED: v2Record?.run_id === v2Run.run_id ? 'result' : 'working', FAILED: 'failed', NO_RELEVANT_UPDATE: 'no-update', UNSUPPORTED_DOMAIN: 'unsupported' }[v2Run.status] || 'working') : homeResultState(run, briefing), [v2Run, v2Record, run, briefing]);
+  const state = useMemo(() => v2Run ? ({ COMPLETED: v2Record?.run_id === v2Run.run_id ? 'result' : 'working', FAILED: 'failed', REJECTED: 'failed', TIMED_OUT: 'failed', NO_RELEVANT_UPDATE: 'no-update', UNSUPPORTED_DOMAIN: 'unsupported' }[v2Run.status] || 'working') : homeResultState(run, briefing), [v2Run, v2Record, run, briefing]);
   const decision = useMemo(() => normalizeCreatorDecision(v2Record?.run_id === v2Run?.run_id ? v2Record : (currentHomeResult(run, briefing) ? briefing : null)), [v2Record, v2Run, run, briefing]);
   const submit = async event => { event.preventDefault(); if (!goal.trim()) return; await onCreateObjective(goal.trim()); };
   return <motion.div className="creator-desk today-page" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: .45 }}>

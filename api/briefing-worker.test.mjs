@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { cleanParsedSection, parseMindPlainResponse, processWorkerPhase, scheduleCollection } from "./briefing-worker.mjs";
+import { cleanParsedSection, handleUnexpectedV2WorkerError, parseMindPlainResponse, processWorkerPhase, scheduleCollection, workerAuthFailure } from "./briefing-worker.mjs";
 
 const OBJECTIVE = Object.freeze({ objective_id: "obj_video", title: "Watch for meaningful AI video-tool updates.", constraints: "Prefer practical tools.", fingerprint: "fp_objective" });
 const EVIDENCE = Object.freeze({ source: "Adobe Blog", source_url: "https://blog.adobe.com/en/publish/2026/08/27/adobe-video.html", title: "Adobe video update", summary: "Adobe published an AI video workflow update.", published_at: "2026-08-27T00:00:00.000Z", retrieved_at: "2026-08-27T12:00:00.000Z", evidence_mode: "LIVE", category: "ai_video_workflow" });
@@ -149,4 +149,21 @@ test("QStash scheduling is bounded and reports failure without fallback success"
     calls++; return { ok: false, status: 503, async text() { return "unavailable"; } };
   }), /HTTP 503/);
   assert.equal(calls, 1);
+});
+
+test("worker auth failure is bounded and exposes no request or secret detail", () => {
+  assert.deepEqual(workerAuthFailure(), { status: "FAILED", execution_stage: "WORKER_STARTED", failure_category: "WORKER_AUTH_FAILED" });
+});
+
+test("unexpected V2 worker exception persists a non-null category and private bounded diagnostic", async () => {
+  const redis = new FakeRedis({
+    "greenroom:run_status:run_v2_previous": JSON.stringify({ pipeline: "V2", run_id: "run_v2_previous", status: "PREPARED", execution_stage: "WORKER_STARTED", created_at: "2026-01-01T00:00:00.000Z", updated_at: "2026-01-01T00:00:00.000Z" }),
+    "greenroom:v2_recent_runs": "[]",
+  });
+  const result = await handleUnexpectedV2WorkerError({ redis, runId: "run_v2_previous", error: new Error("Bearer secret-value https://private.invalid") });
+  assert.equal(result.failure_category, "INTERNAL_EXECUTION_FAILED");
+  const status = redis.json("greenroom:run_status:run_v2_previous");
+  assert.equal(status.status, "FAILED"); assert.equal(status.execution_stage, "WORKER_STARTED"); assert.equal(status.failure_category, "INTERNAL_EXECUTION_FAILED");
+  const diagnostic = redis.json("greenroom:v2_operational_diagnostic:run_v2_previous");
+  assert.equal(diagnostic.visibility, "PRIVATE_OPERATIONAL_ONLY"); assert.doesNotMatch(JSON.stringify(diagnostic), /secret-value|private\.invalid|stack/i);
 });

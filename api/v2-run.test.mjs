@@ -16,7 +16,7 @@ test('POST resolves a real saved objective and returns the persisted server run 
 test('GET exposes only safe lifecycle state and never guesses another run', async () => {
   const runId = 'run_v2_123456abcdef'; const redis = store({ [`greenroom:run_status:${runId}`]: { pipeline: 'V2', run_id: runId, status: 'WAITING_FOR_MINDS', created_at: 'now', updated_at: 'now', prompt_hash: 'private', analytics_import_hash: 'private' } });
   const res = response(); await handleV2Run({ method: 'GET', query: { run_id: runId } }, res, redis);
-  assert.equal(res.code, 200); assert.deepEqual(Object.keys(res.body), ['run_id', 'status', 'decision_available', 'created_at', 'updated_at', 'completed_at', 'failure_category']); assert.equal(JSON.stringify(res.body).includes('private'), false);
+  assert.equal(res.code, 200); assert.deepEqual(Object.keys(res.body), ['run_id', 'status', 'decision_available', 'created_at', 'updated_at', 'completed_at', 'failure_category', 'execution_stage', 'queue']); assert.equal(JSON.stringify(res.body).includes('private'), false);
   const missing = response(); await handleV2Run({ method: 'GET', query: { run_id: 'run_v2_missing999' } }, missing, redis); assert.equal(missing.code, 404);
 });
 
@@ -25,8 +25,21 @@ test('history returns accepted decisions only', async () => {
   const res = response(); await handleV2Run({ method: 'GET', query: { history: '1' } }, res, redis); assert.deepEqual(res.body.runs.map(item => item.run_id), ['run_v2_yes123']);
 });
 
-test('initial QStash publish uses the proven regional fallback without duplicating a successful publish', async () => {
+test('primary QStash success suppresses fallback and records one accepted publication', async () => {
+  const calls = []; const result = await publishV2Worker('https://example.test/api/briefing-worker', { run_id: 'run_v2_123' }, { QSTASH_TOKEN: 'configured', QSTASH_URL: 'https://primary.example' }, async url => { calls.push(url); return { ok: true, async json() { return { messageId: 'one' }; } }; });
+  assert.equal(calls.length, 1); assert.equal(result.queue.route, 'PRIMARY'); assert.equal(result.queue.accepted_publication_count, 1); assert.equal(result.queue.fallback_result, 'NOT_NEEDED');
+});
+
+test('primary regional failure uses one fallback without duplicating a successful publish', async () => {
   const calls = []; const fetchImpl = async url => { calls.push(url); return calls.length === 1 ? { ok: false, status: 404, async text() { return 'not found in this region'; } } : { ok: true, async json() { return { messageId: 'one' }; } }; };
   const result = await publishV2Worker('https://example.test/api/briefing-worker', { run_id: 'run_v2_123' }, { QSTASH_TOKEN: 'configured', QSTASH_URL: 'https://qstash.upstash.io' }, fetchImpl);
-  assert.equal(result.messageId, 'one'); assert.equal(calls.length, 2);
+  assert.equal(result.messageId, 'one'); assert.equal(calls.length, 2); assert.equal(result.queue.route, 'REGIONAL_FALLBACK'); assert.equal(result.queue.accepted_publication_count, 1);
+});
+
+test('primary and every bounded regional route failing records no accepted publication', async () => {
+  let calls = 0;
+  await assert.rejects(() => publishV2Worker('https://example.test/api/briefing-worker', { run_id: 'run_v2_123' }, { QSTASH_TOKEN: 'configured', QSTASH_URL: 'https://primary.example' }, async () => { calls += 1; return { ok: false, status: 404, async text() { return 'not found in this region'; } }; }), error => {
+    assert.equal(error.v2_category, 'QUEUE_UNAVAILABLE'); assert.equal(error.queue.publication_accepted, false); return true;
+  });
+  assert.equal(calls, 5);
 });

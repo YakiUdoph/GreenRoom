@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { Redis } from "@upstash/redis";
 import { initializeV2Run, publicV2Run } from "./v2-execution.mjs";
 import { validV2RunId } from "./v2-decision-read.mjs";
+import { safeQueueTelemetry, v2Failure } from "./v2-observability.mjs";
 
 const parse = (value, fallback = null) => {
   if (!value) return fallback;
@@ -17,17 +18,30 @@ export async function publishV2Worker(targetUrl, payload, env = process.env, fet
   if (!env.QSTASH_TOKEN) throw new Error("Background execution is unavailable");
   const configured = (() => { try { return new URL(env.QSTASH_URL || '').host; } catch { return ''; } })();
   const hosts = [...new Set([configured, 'qstash-us-east-1.upstash.io', 'qstash-us-west-1.upstash.io', 'qstash-eu-west-1.upstash.io', 'qstash.upstash.io'].filter(Boolean))];
-  for (const host of hosts) {
-    const response = await fetchImpl(`https://${host}/v2/publish/${targetUrl}`, {
+  let primaryFailed = false;
+  for (let index = 0; index < hosts.length; index += 1) {
+    const host = hosts[index];
+    let response;
+    try { response = await fetchImpl(`https://${host}/v2/publish/${targetUrl}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${env.QSTASH_TOKEN}`, "Content-Type": "application/json", "Upstash-Retries": "2" },
       body: JSON.stringify(payload),
-    });
-    if (response.ok) return response.json().catch(() => ({}));
+    }); } catch (error) {
+      const failed = v2Failure("QUEUE_UNAVAILABLE", "QUEUEING", error);
+      failed.queue = safeQueueTelemetry({ route: "NONE", primary_result: index === 0 ? "FAILED" : "FAILED", fallback_result: index === 0 ? "NOT_ATTEMPTED" : "FAILED" });
+      throw failed;
+    }
+    if (response.ok) {
+      const provider = await response.json().catch(() => ({}));
+      return { ...provider, queue: safeQueueTelemetry({ route: index === 0 ? "PRIMARY" : "REGIONAL_FALLBACK", primary_result: index === 0 ? "ACCEPTED" : "FAILED", fallback_result: index === 0 ? "NOT_NEEDED" : "ACCEPTED", publication_accepted: true }) };
+    }
     const body = await response.text().catch(() => '');
-    if (response.status !== 404 || !body.includes('not found in this region')) break;
+    if (index === 0) primaryFailed = true;
+    if (response.status !== 404 || !body.toLowerCase().includes('not found in this region')) break;
   }
-  throw new Error("Background execution could not be scheduled");
+  const failed = v2Failure("QUEUE_UNAVAILABLE", "QUEUEING");
+  failed.queue = safeQueueTelemetry({ route: "NONE", primary_result: primaryFailed ? "FAILED" : "NOT_ATTEMPTED", fallback_result: primaryFailed ? "FAILED" : "NOT_ATTEMPTED" });
+  throw failed;
 }
 
 export async function handleV2Run(req, res, redis, { enqueue = publishV2Worker, env = process.env } = {}) {
