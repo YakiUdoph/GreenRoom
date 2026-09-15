@@ -12,6 +12,8 @@
 - The target user, demand, willingness to pay, and product-market fit have not been validated by repository evidence.
 - Local file and ephemeral persistence modes are not equivalent to production durability and are labeled separately.
 - Historical persisted briefings may predate the live-provider architecture and remain visibly labeled in history. They can never become the current run's result.
-- The creator-facing state does not yet carry a trustworthy V2 run ID. The read-only V2 decision endpoint therefore requires an explicit genuine `run_id`; the frontend does not guess one or load the private acceptance artifact. Until that binding exists, TODAY safely presents only its run-bound V1 briefing shape through the shared presentation adapter.
+- The browser now retains the exact server-generated V2 run ID and can restore, poll, render, and place its accepted decision in History. This remains a controlled single-creator architecture: global persistence keys are not tenant-isolated and must not be used for a multi-user release without authentication and per-creator namespaces.
+- YouTube analytics import currently requires exactly one supported Content CSV and one supported Date CSV, each no larger than 2 MB and using the validated English header shapes. OAuth/API connection, localized exports, analytics deletion/export controls, and multi-import selection are not implemented.
+- Rejected V2 response diagnostics remain private operational artifacts; a formal retention/deletion policy is still required before beta use.
 
 GreenRoom does not substitute simulated intelligence when live execution fails. Homepage empty states contain no fabricated recommendations.

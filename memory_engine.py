@@ -332,6 +332,7 @@ class GreenroomMemoryEngine:
             "key_takeaways": ["Explicit creator preference", preference]
         }
         rules.append(preference)
+        self.state.setdefault("v2_creator_context_input", {}).setdefault("preferences", []).append(preference)
         self.state.setdefault("memory_nodes", []).append(node)
 
         try:
@@ -408,6 +409,15 @@ class GreenroomMemoryEngine:
         Ingest and persist structured onboarding profile context.
         Explicit creator preferences carry higher authority than AI inference.
         """
+        self.reload_state()
+        supplied = self.state.setdefault("creator_supplied_fields", {})
+        for field, value in data.items():
+            if value not in (None, "", []):
+                supplied[field] = {"provenance": "CREATOR_SUPPLIED", "recorded_at": time.time()}
+        exact = self.state.setdefault("v2_creator_context_input", {})
+        for field in ("preferred_tone", "main_goal", "long_term_objective", "content_wanted", "content_not_wanted"):
+            if field in data and data[field] not in (None, "", []):
+                exact[field] = data[field]
         if "creator_name" in data and data["creator_name"]:
             self.state["creator_name"] = data["creator_name"]
         if "niche" in data and data["niche"]:

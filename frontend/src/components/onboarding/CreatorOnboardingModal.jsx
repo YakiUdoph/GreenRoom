@@ -3,22 +3,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export function CreatorOnboardingModal({ isOpen, onClose, onSave, initialData }) {
   const [formData, setFormData] = useState({
-    creator_name: initialData?.creator_name || 'Alex Rivera',
-    niche: initialData?.niche || 'Developer Tools & AI Automation',
-    audience_description:
-      initialData?.audience_description ||
-      'Software engineers and builders entering local AI setup for the first time.',
-    preferred_tone: initialData?.preferred_tone || 'Conversational, direct and practical',
-    main_goal: initialData?.main_goal || 'Grow a high-trust technical developer audience',
-    long_term_objective:
-      initialData?.long_term_objective ||
-      'Build the premier channel for open-source AI agent workflows',
-    content_wanted: initialData?.content_wanted
+    creator_name: initialData?.creator_supplied_fields?.creator_name ? initialData?.creator_name || '' : '',
+    niche: initialData?.creator_supplied_fields?.niche ? initialData?.niche || '' : '',
+    audience_description: initialData?.creator_supplied_fields?.audience_description ? initialData?.audience_description || '' : '',
+    preferred_tone: initialData?.creator_supplied_fields?.preferred_tone ? initialData?.preferred_tone || '' : '',
+    main_goal: initialData?.creator_supplied_fields?.main_goal ? initialData?.main_goal || '' : '',
+    long_term_objective: initialData?.creator_supplied_fields?.long_term_objective ? initialData?.long_term_objective || '' : '',
+    content_wanted: initialData?.creator_supplied_fields?.content_wanted && initialData?.content_wanted
       ? initialData.content_wanted.join(', ')
-      : 'Beginner local setup walkthroughs, Open-source GitHub repos',
-    content_not_wanted: initialData?.rejected_topics
+      : '',
+    content_not_wanted: initialData?.creator_supplied_fields?.content_not_wanted && initialData?.rejected_topics
       ? initialData.rejected_topics.join(', ')
-      : 'Crypto trading bots, Generic AI news clickbait',
+      : '',
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);

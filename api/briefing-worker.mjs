@@ -4,6 +4,7 @@ import { Receiver } from "@upstash/qstash";
 import { Redis } from "@upstash/redis";
 import { buildMindReplyDiagnostics, collectionDeadlinePassed, collectionDelaySeconds, extractSafeSdkMetadata, isTerminalRunStatus, normalizeMindReply, selectRelevantCreatorContext, selectVerifiedHistoryReply, updateRecentRunIndex, validateObjectiveSnapshot, validateWorkerConfiguration, verifyMindIdentity } from "./worker-guards.mjs";
 import { retrieveLiveEvidenceForObjective } from "./live-evidence.mjs";
+import { collectV2Run, submitV2Run } from "./v2-execution.mjs";
 
 export const maxDuration = 60;
 export const config = { api: { bodyParser: false } };
@@ -582,6 +583,10 @@ async function handleCollection({ redis, mindsClient, runId, objective, targetUr
 }
 
 export async function processWorkerPhase(args) {
+  if (args.pipeline === "V2") {
+    const shared = { ...args, enqueueCollection: (targetUrl, payload, delay) => scheduleCollection(targetUrl, payload, args.env, delay) };
+    return args.phase === "collect" ? collectV2Run(shared) : submitV2Run(shared);
+  }
   if (args.phase === "collect") return handleCollection(args);
   return handleLiveSubmission(args);
 }
@@ -611,7 +616,7 @@ export default async function handler(req, res) {
     ? createMindsClient({ builderApiKey: process.env.MINDS_BUILDER_API_KEY })
     : null;
   try {
-    const result = await processWorkerPhase({ phase: payload.phase || "submit", redis, mindsClient, runId: payload.run_id, objective, targetUrl, env: process.env });
+    const result = await processWorkerPhase({ phase: payload.phase || "submit", pipeline: payload.pipeline, redis, mindsClient, runId: payload.run_id, objective, targetUrl, env: process.env });
     return res.status(result.httpStatus).json(result.body);
   } catch (error) {
     const current = await loadRunStatus(redis, payload.run_id).catch(() => ({}));

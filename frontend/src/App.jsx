@@ -5,6 +5,7 @@ import { greenroomStore } from './stores/greenroomStore';
 import { api } from './lib/api';
 import { CURRENT_OFFLINE_RUN_STORAGE_KEY, restoreCurrentOfflineRun, selectCurrentRunForRefresh, shouldPollOfflineRun, verifyRunBriefing } from './lib/offlineRun';
 import { createAndStartObjective } from './lib/objectiveRun';
+import { bindV2Decision, CURRENT_V2_RUN_STORAGE_KEY, shouldPollV2Run, validCurrentV2RunId } from './lib/v2Run';
 
 import { ManusHeader } from './components/layout/ManusHeader';
 import { CreatorOnboardingModal } from './components/onboarding/CreatorOnboardingModal';
@@ -23,6 +24,7 @@ export function App() {
   const [isOfflineModalOpen, setIsOfflineModalOpen] = useState(false);
   const [currentOfflineRun, setCurrentOfflineRun] = useState(null);
   const [resumeOfflineRun, setResumeOfflineRun] = useState(null);
+  const [currentV2Run, setCurrentV2Run] = useState(null);
 
   // Subscribe to Centralized Store State
   const {
@@ -51,11 +53,22 @@ export function App() {
         } catch { /* current results require successful run-specific verification */ }
       }
       if (mState) {
+        let v2Run = null; let v2Decision = null;
+        try {
+          const rememberedV2 = window.localStorage.getItem(CURRENT_V2_RUN_STORAGE_KEY);
+          if (validCurrentV2RunId(rememberedV2)) {
+            v2Run = await api.getV2Run(rememberedV2);
+            if (v2Run.decision_available) v2Decision = bindV2Decision(v2Run, await api.getV2Decision(v2Run.run_id));
+          }
+        } catch { /* an unavailable exact run is never replaced by a guessed run */ }
         greenroomStore.setMemoryState({
           ...mState,
           latest_briefing: authoritativeBriefing,
           latest_offline_run: currentRun,
+          current_v2_run: v2Run,
+          current_v2_decision: v2Decision,
         });
+        if (v2Run) setCurrentV2Run(v2Run);
       }
       if (currentRun) setCurrentOfflineRun(currentRun);
       if (mStatus) {
@@ -96,6 +109,25 @@ export function App() {
     return () => { disposed = true; clearInterval(timer); };
   }, [currentOfflineRun?.run_id, currentOfflineRun?.status]);
 
+  useEffect(() => {
+    if (!shouldPollV2Run(currentV2Run)) return undefined;
+    let disposed = false;
+    const refresh = async () => {
+      try {
+        const run = await api.getV2Run(currentV2Run.run_id);
+        let decision = null;
+        if (run.decision_available) decision = bindV2Decision(run, await api.getV2Decision(run.run_id));
+        if (!disposed) {
+          setCurrentV2Run(run);
+          const state = greenroomStore.getState().memoryState;
+          greenroomStore.setMemoryState({ ...state, current_v2_run: run, current_v2_decision: decision || state?.current_v2_decision || null });
+        }
+      } catch { /* preserve the exact reference and retry without guessing */ }
+    };
+    refresh(); const timer = setInterval(refresh, 2000);
+    return () => { disposed = true; clearInterval(timer); };
+  }, [currentV2Run?.run_id, currentV2Run?.status]);
+
   const openCurrentOfflineRun = async () => {
     if (!currentOfflineRun?.run_id) return;
     if (currentOfflineRun.status === 'COMPLETED') {
@@ -123,7 +155,7 @@ export function App() {
     setIsExecuting(true);
     try {
       const res = await api.onboardCreator(data);
-      if (res.state) greenroomStore.setMemoryState(res.state);
+      if (res.state) greenroomStore.setMemoryState({ ...greenroomStore.getState().memoryState, ...res.state });
       if (res.minds_status) greenroomStore.setMindsStatus(res.minds_status);
     } catch (err) {
       console.error('[GreenroomApp] Onboarding save error:', err);
@@ -137,7 +169,7 @@ export function App() {
     setIsExecuting(true);
     try {
       const res = await api.rememberPreference(feedbackText);
-      if (res.state) greenroomStore.setMemoryState(res.state);
+      if (res.state) greenroomStore.setMemoryState({ ...greenroomStore.getState().memoryState, ...res.state });
       return res;
     } finally {
       setIsExecuting(false);
@@ -147,17 +179,21 @@ export function App() {
   const handleCreateObjective = async (title, details = '') => {
     setIsExecuting(true);
     try {
-      const result = await createAndStartObjective(api, title, details);
-      const { created, run } = result;
+      const created = await api.createObjective(title, details);
+      if (!created?.objective?.id) throw new Error('The objective was not persisted with an ID.');
+      const run = await api.startV2Run(created.objective.id);
+      const result = { created, queued: run, objective: created.objective, run };
       if (created.state) {
         greenroomStore.setMemoryState({
           ...created.state,
           latest_briefing: null,
-          latest_offline_run: run,
+          latest_offline_run: null,
+          current_v2_run: run,
+          current_v2_decision: null,
         });
       }
-      try { window.localStorage.setItem(CURRENT_OFFLINE_RUN_STORAGE_KEY, run.run_id); } catch { /* storage unavailable */ }
-      setCurrentOfflineRun(run);
+      try { window.localStorage.setItem(CURRENT_V2_RUN_STORAGE_KEY, run.run_id); } catch { /* storage unavailable */ }
+      setCurrentV2Run(run);
       return result;
     } finally {
       setIsExecuting(false);
@@ -189,6 +225,7 @@ export function App() {
             onSubmitFeedback={handleSubmitFeedback}
             onOpenOnboarding={() => setIsOnboardingOpen(true)}
             isExecuting={isExecuting}
+            onImportAnalytics={async (content, dates) => { const result = await api.importV2Analytics(content, dates); const state = greenroomStore.getState().memoryState; greenroomStore.setMemoryState({ ...state, v2_analytics: result.analytics }); return result; }}
           />
         );
       case 'intelligence':

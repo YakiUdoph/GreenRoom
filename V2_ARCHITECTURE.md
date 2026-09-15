@@ -1,5 +1,15 @@
 # GreenRoom V2 Architecture Amendment
 
+## Implemented normal-product golden path
+
+The normal V2 path is now connected. `POST /api/v2-analytics` accepts one bounded YouTube Studio Content CSV and one Date CSV, parses them with `youtube_analytics.py`, calculates only the five locked signals with `creator_signals.py`, persists the immutable normalized bundle separately from the creator profile, and returns creator-safe metadata only. Raw CSV is neither logged nor accepted by the V2 prompt builder.
+
+`POST /api/v2-run` resolves a saved creator objective and the latest genuine analytics import, generates `run_v2_*` on the server, persists the exact run and bounded execution input before publishing a signed QStash job, and immediately returns that ID. The existing `/api/briefing-worker` signature boundary dispatches V2 jobs to `api/v2-execution.mjs`, which composes the bounded evidence provider, deterministic signal selector, verified Udophia identity check, existing six-section prompt/parser/action validator, lifecycle module, and decision persistence module. A per-run durable claim prevents duplicate delivery from producing a second Minds submission.
+
+The browser stores only the returned server ID under `greenroom.currentV2RunId`. Reload restores that exact ID, `GET /api/v2-run?run_id=...` exposes only safe lifecycle state, and `GET /api/v2-decision?run_id=...` is called only when that same run reports `decision_available`. TODAY rejects mismatched decisions. HISTORY loads only accepted persisted V2 decisions and excludes the exact current run; it never guesses a latest run.
+
+Creator provenance is sourced from the newly created objective and an exact `v2_creator_context_input` snapshot. Legacy fallback profile values are never promoted merely because the creator later edits another field.
+
 ## Architectural intent
 
 V2 adds a creator-analytics plane to the passing V1 decision pipeline. It reuses the existing trust boundaries rather than replacing them.

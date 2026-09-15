@@ -49,6 +49,20 @@ export const api = {
 
   getV2Decision: (runId) => request(`/api/v2-decision?run_id=${encodeURIComponent(runId)}`),
 
+  importV2Analytics: async (contentReport, dateReport) => request('/api/v2-analytics', {
+    method: 'POST',
+    body: JSON.stringify({
+      content_report: { filename: contentReport.name, mime_type: contentReport.type, content: await contentReport.text() },
+      date_report: { filename: dateReport.name, mime_type: dateReport.type, content: await dateReport.text() },
+    }),
+  }),
+
+  startV2Run: (objectiveId) => request('/api/v2-run', { method: 'POST', body: JSON.stringify({ objective_id: objectiveId }) }),
+
+  getV2Run: (runId) => request(`/api/v2-run?run_id=${encodeURIComponent(runId)}`),
+
+  getV2History: () => request('/api/v2-run?history=1'),
+
   getBriefingStatus: (runId) =>
     request(runId ? `/api/briefing/status?run_id=${runId}` : '/api/briefing/status'),
 

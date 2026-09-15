@@ -20,8 +20,8 @@ export function normalizeCreatorDecision(input) {
     action,
     uncertainty: text(decision?.uncertainty),
     connection: text(decision?.connection),
-    sources: Array.isArray(input?.sources) ? input.sources : [],
-    live: input?.evidence_mode === 'LIVE' || input?.provenance?.evidence_mode === 'LIVE',
-    verified: input?.minds_verified === true || Boolean(input?.verified_mind_identity),
+    sources: Array.isArray(input?.sources) ? input.sources : input?.evidence ? [input.evidence] : [],
+    live: input?.evidence_mode === 'LIVE' || input?.provenance?.evidence_mode === 'LIVE' || Boolean(input?.evidence),
+    verified: input?.minds_verified === true || Boolean(input?.verified_mind_identity) || Boolean(input?.mind?.mind_id),
   };
 }

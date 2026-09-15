@@ -9,6 +9,10 @@
       "use": "@vercel/node"
     },
     {
+      "src": "api/v2-run.mjs",
+      "use": "@vercel/node"
+    },
+    {
       "src": "server.py",
       "use": "@vercel/python"
     },
@@ -28,6 +32,10 @@
     {
       "src": "/api/v2-decision",
       "dest": "api/v2-decision-read.mjs"
+    },
+    {
+      "src": "/api/v2-run",
+      "dest": "api/v2-run.mjs"
     },
     {
       "src": "/api/(.*)",

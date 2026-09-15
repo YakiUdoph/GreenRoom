@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+from dataclasses import asdict
 from typing import List, Optional
 
 from dotenv import load_dotenv
@@ -12,6 +13,10 @@ from pydantic import BaseModel
 from async_runner import QStashJobRunner
 from memory_engine import memory_tool
 from minds_integration import MindsConfigurationError, minds_manager
+from creator_signals import calculate_signals
+from youtube_analytics import AnalyticsImportError, MAX_CSV_BYTES, parse_content_csv, parse_date_csv
+
+V2_PRODUCT_CSV_MAX_BYTES = min(MAX_CSV_BYTES, 2 * 1024 * 1024)
 
 load_dotenv()
 app = FastAPI(title="GreenRoom: Persistent Creator Decision Intelligence", version="2.0.0")
@@ -55,9 +60,84 @@ class OnboardingRequest(BaseModel):
     content_not_wanted: Optional[List[str]] = None
 
 
+class AnalyticsFileRequest(BaseModel):
+    filename: str
+    mime_type: Optional[str] = None
+    content: str
+
+
+class AnalyticsImportRequest(BaseModel):
+    content_report: AnalyticsFileRequest
+    date_report: AnalyticsFileRequest
+
+
+def _public_analytics(analytics):
+    if not analytics:
+        return None
+    return {
+        "platform": analytics.get("platform"),
+        "imported_at": analytics.get("imported_at"),
+        "content_hash": analytics.get("content_hash"),
+        "reports": [{
+            "report_type": item.get("granularity"),
+            "filename": item.get("filename"),
+            "row_count": item.get("row_count"),
+            "recognized_columns": item.get("recognized_columns", []),
+        } for item in analytics.get("imports", [])],
+        "signals": [{
+            key: signal.get(key) for key in (
+                "signal_id", "type", "direction", "classification", "current_value",
+                "comparison_value", "percentage_delta", "unit", "data_sufficiency", "uncertainty"
+            )
+        } for signal in analytics.get("signals", [])],
+    }
+
+
 @app.get("/api/state")
 def get_state():
-    return memory_tool.reload_state()
+    state = memory_tool.reload_state()
+    return {**state, "v2_analytics": _public_analytics(qstash_runner.store.get_v2_analytics())}
+
+
+@app.post("/api/v2-analytics")
+def import_v2_analytics(req: AnalyticsImportRequest):
+    files = (req.content_report, req.date_report)
+    for item in files:
+        size = len(item.content.encode("utf-8"))
+        if size > V2_PRODUCT_CSV_MAX_BYTES:
+            raise HTTPException(status_code=413, detail="CSV exceeds the 2 MB file limit")
+        if not os.path.basename(item.filename).lower().endswith(".csv"):
+            raise HTTPException(status_code=422, detail="Only CSV files are supported")
+        if item.mime_type and item.mime_type.lower() not in ("text/csv", "application/csv", "application/vnd.ms-excel"):
+            raise HTTPException(status_code=422, detail="The selected file is not a supported CSV")
+    try:
+        content_import = parse_content_csv(req.content_report.content, os.path.basename(req.content_report.filename))
+        date_import = parse_date_csv(req.date_report.content, os.path.basename(req.date_report.filename))
+        signals = calculate_signals(content_import, date_import)
+    except AnalyticsImportError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    imported_at = max(content_import.imported_at, date_import.imported_at)
+    combined_hash = hashlib.sha256(
+        f"{content_import.content_sha256}:{date_import.content_sha256}".encode("ascii")
+    ).hexdigest()
+    record = {
+        "schema_version": "greenroom_v2_analytics_bundle_v1",
+        "platform": "YOUTUBE",
+        "imported_at": imported_at,
+        "content_hash": combined_hash,
+        "imports": [content_import.to_dict(), date_import.to_dict()],
+        "signals": [asdict(signal) for signal in signals],
+    }
+    qstash_runner.store.save_v2_analytics(record)
+    return {"status": "success", "analytics": _public_analytics(record)}
+
+
+@app.get("/api/v2-analytics")
+def get_v2_analytics():
+    analytics = _public_analytics(qstash_runner.store.get_v2_analytics())
+    if not analytics:
+        raise HTTPException(status_code=404, detail="No YouTube Studio analytics import is available")
+    return {"status": "success", "analytics": analytics}
 
 
 @app.post("/api/memory/preferences")

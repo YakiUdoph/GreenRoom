@@ -46,6 +46,12 @@ class PersistenceStore:
     def save_recent_runs(self, runs: List[Dict[str, Any]]) -> None:
         raise NotImplementedError
 
+    def get_v2_analytics(self) -> Optional[Dict[str, Any]]:
+        raise NotImplementedError
+
+    def save_v2_analytics(self, analytics: Dict[str, Any]) -> None:
+        raise NotImplementedError
+
 
 class LocalFileStore(PersistenceStore):
     """Local File Persistence Store for local development & testing."""
@@ -56,6 +62,7 @@ class LocalFileStore(PersistenceStore):
         self.run_status_path = os.path.join(data_dir, "run_statuses.json")
         self.run_briefings_path = os.path.join(data_dir, "run_briefings.json")
         self.recent_runs_path = os.path.join(data_dir, "recent_runs.json")
+        self.v2_analytics_path = os.path.join(data_dir, ".greenroom_v2_analytics.json")
 
     @property
     def mode_label(self) -> str:
@@ -140,6 +147,17 @@ class LocalFileStore(PersistenceStore):
     def save_recent_runs(self, runs: List[Dict[str, Any]]) -> None:
         self._write_json_map(self.recent_runs_path, runs)
 
+    def get_v2_analytics(self) -> Optional[Dict[str, Any]]:
+        value = self._read_json_map(self.v2_analytics_path)
+        return (value.get("imports") or {}).get(value.get("latest_hash")) if value else None
+
+    def save_v2_analytics(self, analytics: Dict[str, Any]) -> None:
+        value = self._read_json_map(self.v2_analytics_path)
+        digest = analytics["content_hash"]
+        value.setdefault("imports", {})[digest] = analytics
+        value["latest_hash"] = digest
+        self._write_json_map(self.v2_analytics_path, value)
+
     def _default_profile(self) -> Dict[str, Any]:
         return {
             "creator_name": "Alex Rivera",
@@ -165,6 +183,7 @@ class EphemeralTmpStore(PersistenceStore):
         self.run_status_path = "/tmp/run_statuses.json"
         self.run_briefings_path = "/tmp/run_briefings.json"
         self.recent_runs_path = "/tmp/recent_runs.json"
+        self.v2_analytics_path = "/tmp/.greenroom_v2_analytics.json"
 
     @property
     def mode_label(self) -> str:
@@ -279,6 +298,30 @@ class EphemeralTmpStore(PersistenceStore):
         with open(self.recent_runs_path, "w", encoding="utf-8") as f:
             json.dump(runs, f, indent=2)
 
+    def get_v2_analytics(self) -> Optional[Dict[str, Any]]:
+        if not os.path.exists(self.v2_analytics_path):
+            return None
+        try:
+            with open(self.v2_analytics_path, "r", encoding="utf-8") as f:
+                value = json.load(f)
+                return (value.get("imports") or {}).get(value.get("latest_hash"))
+        except Exception:
+            return None
+
+    def save_v2_analytics(self, analytics: Dict[str, Any]) -> None:
+        value = {}
+        if os.path.exists(self.v2_analytics_path):
+            try:
+                with open(self.v2_analytics_path, "r", encoding="utf-8") as f:
+                    value = json.load(f)
+            except Exception:
+                value = {}
+        digest = analytics["content_hash"]
+        value.setdefault("imports", {})[digest] = analytics
+        value["latest_hash"] = digest
+        with open(self.v2_analytics_path, "w", encoding="utf-8") as f:
+            json.dump(value, f, indent=2)
+
 
 class UpstashRedisStore(PersistenceStore):
     """
@@ -390,6 +433,19 @@ class UpstashRedisStore(PersistenceStore):
 
     def save_recent_runs(self, runs: List[Dict[str, Any]]) -> None:
         self._redis_cmd(["SET", "greenroom:recent_runs", json.dumps(runs)])
+
+    def get_v2_analytics(self) -> Optional[Dict[str, Any]]:
+        val = self._redis_cmd(["GET", "greenroom:v2_analytics:latest"])
+        if not val:
+            return None
+        try:
+            return json.loads(val)
+        except Exception:
+            return None
+
+    def save_v2_analytics(self, analytics: Dict[str, Any]) -> None:
+        self._redis_cmd(["SET", f"greenroom:v2_analytics:{analytics['content_hash']}", json.dumps(analytics)])
+        self._redis_cmd(["SET", "greenroom:v2_analytics:latest", json.dumps(analytics)])
 
 
 def get_persistence_store() -> PersistenceStore:

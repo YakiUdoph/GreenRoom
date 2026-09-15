@@ -11,12 +11,22 @@ export function publicV2Decision(record) {
     schema_version: record.schema_version,
     run_id: record.run_id,
     completed_at: string(record.completed_at),
+    evidence: record.external_evidence ? {
+      provider: string(record.external_evidence.provider_id || record.external_evidence.source),
+      title: string(record.external_evidence.title),
+      source_url: string(record.external_evidence.source_url),
+      published_at: string(record.external_evidence.published_at),
+    } : null,
+    mind: record.verified_mind_identity ? {
+      mind_id: string(record.verified_mind_identity.mind_id),
+      email: string(record.verified_mind_identity.email),
+    } : null,
     decision: {
       attention_verdict: decision.attention_verdict,
       what_i_noticed: string(decision.what_i_noticed),
       why_this_matters_to_you: string(decision.why_this_matters_to_you),
       what_id_do_next: string(decision.what_id_do_next),
-      connection: ['CLEAR', 'POSSIBLE', 'NONE'].includes(decision.connection) ? decision.connection : null,
+      connection: ['SUPPORTED', 'POSSIBLE', 'NONE'].includes(decision.connection) ? decision.connection : null,
       uncertainty: string(decision.uncertainty),
     },
   };
